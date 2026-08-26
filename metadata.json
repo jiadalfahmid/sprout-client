@@ -1,8 +1,10 @@
 {
   "name": "Sprout - Unified Home & Family Care",
-  "description": "A smart app designed to help users manage their home, family, finances, and health seamlessly in one place. Track expenses, manage budgets, set reminders, and monitor family health records within a unified ecosystem.",
+  "description": "A smart unified home, family, finance, and health management app powered by Firebase authentication (sprout-live), real-time notifications, Google Calendar synchronization, and Gmail family invitations.",
   "requestFramePermissions": [
     "camera"
   ],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

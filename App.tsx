@@ -13,15 +13,36 @@ import MedicinesSettingsPage from './pages/MedicinesSettingsPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 import RestockPage from './pages/RestockPage';
 import MedicalProfilePage from './pages/MedicalProfilePage';
+import LandingPage from './pages/LandingPage';
+import { Toaster } from 'react-hot-toast';
 
 const ThemedApp = () => {
-  const { theme } = useAppContext();
+  const { theme, isGoogleAuthenticated, isGuestMode, setGuestMode } = useAppContext();
   
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove(theme === 'dark' ? 'light' : 'dark');
     root.classList.add(theme);
   }, [theme]);
+
+  // If user is not authenticated and has not entered guest mode, show the production Landing & Auth Page
+  if (!isGoogleAuthenticated && !isGuestMode) {
+    return (
+      <div className="min-h-screen bg-light-background dark:bg-background font-sans text-light-text-primary dark:text-text-primary">
+        <Toaster 
+          position="top-center"
+          toastOptions={{
+            style: {
+              background: theme === 'dark' ? '#27272A' : '#FFFFFF',
+              color: theme === 'dark' ? '#FAFAFA' : '#1E293B',
+              border: `1px solid ${theme === 'dark' ? '#3F3F46' : '#E2E8F0'}`
+            },
+          }}
+        />
+        <LandingPage onEnterGuest={() => setGuestMode(true)} />
+      </div>
+    );
+  }
 
   return (
     <HashRouter>
@@ -39,11 +60,12 @@ const ThemedApp = () => {
           <Route path="/settings/appointments" element={<AppointmentsPage />} />
           <Route path="/restock" element={<RestockPage />} />
           <Route path="/tasks" element={<TasksPage />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </Layout>
     </HashRouter>
-  )
-}
+  );
+};
 
 function App() {
   return (

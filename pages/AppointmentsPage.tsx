@@ -7,16 +7,31 @@ import Modal from '../components/ui/Modal';
 import { uploadImage } from '../utils/imageUploader';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiPlus, HiOutlinePencil, HiOutlineTrash, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineCloudArrowUp } from 'react-icons/hi2';
+import { 
+    HiPlus, HiOutlinePencil, HiOutlineTrash, HiOutlineCheckCircle, 
+    HiOutlineXCircle, HiOutlineCloudArrowUp, HiOutlineCalendarDays,
+    HiOutlineArrowPath
+} from 'react-icons/hi2';
 import { FaUserDoctor } from 'react-icons/fa6';
 
 const AppointmentsPage: React.FC = () => {
-    const { loading, appointments, familyMembers, addAppointment, updateAppointment, deleteAppointment } = useAppContext();
+    const { 
+        loading, 
+        appointments, 
+        familyMembers, 
+        addAppointment, 
+        updateAppointment, 
+        deleteAppointment,
+        isGoogleAuthenticated,
+        syncAppointmentToGoogle,
+        loginWithGoogle
+    } = useAppContext();
     const { t } = useTranslation();
 
     const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+    const [syncingApptId, setSyncingApptId] = useState<string | null>(null);
 
     const [formState, setFormState] = useState({
         memberId: familyMembers.length > 0 ? familyMembers[0].id : '',
@@ -26,6 +41,7 @@ const AppointmentsPage: React.FC = () => {
         purpose: '',
         specialization: '',
         documentFile: null as File | null,
+        syncToGCal: true,
     });
 
     const resetForm = () => {
@@ -37,6 +53,7 @@ const AppointmentsPage: React.FC = () => {
             purpose: '',
             specialization: '',
             documentFile: null,
+            syncToGCal: true,
         });
         setEditingAppointment(null);
     };
@@ -51,7 +68,8 @@ const AppointmentsPage: React.FC = () => {
                 dateTime: new Date(appointment.dateTime).toISOString().slice(0, 16),
                 purpose: appointment.purpose,
                 specialization: appointment.specialization || '',
-                documentFile: null
+                documentFile: null,
+                syncToGCal: true,
             });
         } else {
             resetForm();
@@ -102,6 +120,27 @@ const AppointmentsPage: React.FC = () => {
         toast.success(t(status === 'completed' ? 'appointments.modal.completed' : 'appointments.modal.cancelled'));
     };
 
+    const handleSyncToGoogle = async (appointmentId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!isGoogleAuthenticated) {
+            toast.error('Please connect your Google account first.');
+            const ok = await loginWithGoogle();
+            if (!ok) return;
+        }
+
+        setSyncingApptId(appointmentId);
+        try {
+            const res = await syncAppointmentToGoogle(appointmentId);
+            if (res.success) {
+                toast.success('Synced to Google Calendar!');
+            } else {
+                toast.error(res.error || 'Failed to sync to Google Calendar');
+            }
+        } finally {
+            setSyncingApptId(null);
+        }
+    };
+
     const { upcoming, past } = useMemo(() => {
         const now = new Date();
         const upcoming: Appointment[] = [];
@@ -131,20 +170,41 @@ const AppointmentsPage: React.FC = () => {
         if (appointment.status === 'cancelled') statusColor = 'text-red-500';
 
         return (
-            <Card>
+            <Card className="hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start group">
-                    <div>
-                        <p className="font-bold text-lg text-light-text-primary dark:text-text-primary">{appointment.purpose}</p>
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-bold text-lg text-light-text-primary dark:text-text-primary">{appointment.purpose}</p>
+                            {appointment.googleCalendarEventId && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/40">
+                                    <HiOutlineCalendarDays className="w-3.5 h-3.5" />
+                                    Google Calendar
+                                </span>
+                            )}
+                        </div>
                         <p className="text-sm font-semibold text-primary">{t('medicines.for')}: {member?.name || 'N/A'}</p>
                         <div className="text-sm text-light-text-secondary dark:text-text-secondary mt-2 space-y-1">
-                            <p className="flex items-center gap-2"><FaUserDoctor /> {appointment.doctorName} {appointment.specialization && `(${appointment.specialization})`}</p>
-                            <p>{appointment.clinicName}</p>
-                            <p className="font-semibold">{date.toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}</p>
+                            <p className="flex items-center gap-2"><FaUserDoctor className="text-primary" /> {appointment.doctorName} {appointment.specialization && `(${appointment.specialization})`}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">🏥 {appointment.clinicName}</p>
+                            <p className="font-semibold text-xs text-slate-700 dark:text-slate-200">🗓️ {date.toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}</p>
                         </div>
                     </div>
-                     <div className="text-right">
+                     <div className="text-right flex flex-col items-end gap-2">
                         <p className={`text-sm font-bold capitalize ${statusColor}`}>{appointment.status}</p>
-                        <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                        
+                        {/* Google Calendar Sync Button */}
+                        {!appointment.googleCalendarEventId && appointment.status === 'upcoming' && (
+                            <button
+                                onClick={(e) => handleSyncToGoogle(appointment.id, e)}
+                                disabled={syncingApptId === appointment.id}
+                                className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition shadow-xs disabled:opacity-60"
+                            >
+                                <HiOutlineArrowPath className={`w-3.5 h-3.5 ${syncingApptId === appointment.id ? 'animate-spin' : ''}`} />
+                                {syncingApptId === appointment.id ? 'Syncing...' : 'Sync to GCal'}
+                            </button>
+                        )}
+
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                            <button onClick={() => handleOpenModal(appointment)} className="text-blue-400 hover:text-blue-300"><HiOutlinePencil className="h-5 w-5"/></button>
                            <button onClick={() => deleteAppointment(appointment.id)} className="text-red-400 hover:text-red-300"><HiOutlineTrash className="h-5 w-5"/></button>
                         </div>
@@ -167,13 +227,18 @@ const AppointmentsPage: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">{t('appointments.title')}</h1>
-                <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-primary text-white font-semibold rounded-lg flex items-center gap-2">
+                <div>
+                    <h1 className="text-3xl font-bold">{t('appointments.title')}</h1>
+                    <p className="text-sm text-light-text-secondary dark:text-text-secondary mt-1">
+                        Track medical consultations and keep schedules synced with your Google Calendar.
+                    </p>
+                </div>
+                <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-primary text-white font-semibold rounded-xl flex items-center gap-2 shadow-sm shrink-0">
                     <HiPlus /> {t('appointments.add')}
                 </button>
             </div>
 
-            <div className="flex justify-center items-center gap-2 mb-8 bg-slate-100 dark:bg-surface p-1 rounded-full">
+            <div className="flex justify-center items-center gap-2 mb-8 bg-slate-100 dark:bg-surface p-1 rounded-full max-w-md mx-auto">
                 <button onClick={() => setActiveTab('upcoming')} className={`w-1/2 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${activeTab === 'upcoming' ? 'bg-primary text-white shadow-lg' : 'text-light-text-secondary dark:text-text-secondary'}`}>{t('appointments.upcomingTitle')}</button>
                 <button onClick={() => setActiveTab('past')} className={`w-1/2 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${activeTab === 'past' ? 'bg-primary text-white shadow-lg' : 'text-light-text-secondary dark:text-text-secondary'}`}>{t('appointments.pastTitle')}</button>
             </div>
@@ -196,22 +261,66 @@ const AppointmentsPage: React.FC = () => {
             
             <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)} title={editingAppointment ? t('appointments.modal.editTitle') : t('appointments.modal.addTitle')}>
                 <div className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
-                    <select value={formState.memberId} onChange={e => setFormState(s => ({...s, memberId: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
-                        {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                    </select>
-                    <input type="text" placeholder={t('appointments.modal.doctor')} value={formState.doctorName} onChange={e => setFormState(s => ({...s, doctorName: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
-                    <input type="text" placeholder={t('appointments.modal.clinic')} value={formState.clinicName} onChange={e => setFormState(s => ({...s, clinicName: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
-                    <input type="datetime-local" value={formState.dateTime} onChange={e => setFormState(s => ({...s, dateTime: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
-                    <textarea placeholder={t('appointments.modal.purpose')} value={formState.purpose} onChange={e => setFormState(s => ({...s, purpose: e.target.value}))} rows={3} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
-                    <input type="text" placeholder={t('appointments.modal.specialization')} value={formState.specialization} onChange={e => setFormState(s => ({...s, specialization: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
-                     <label className="block w-full cursor-pointer p-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-700/80">
-                        <div className="flex flex-col items-center justify-center">
-                            <HiOutlineCloudArrowUp className="h-8 w-8 mb-1" />
-                            <span>{formState.documentFile ? formState.documentFile.name : t('appointments.modal.upload')}</span>
-                        </div>
-                        <input type="file" className="hidden" onChange={e => e.target.files && setFormState(s=> ({...s, documentFile: e.target.files![0]}))} accept="image/*,application/pdf" />
-                    </label>
-                    <button onClick={handleSaveAppointment} className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90">{editingAppointment ? t('finance.modal.saveChanges') : t('finance.modal.addRecord')}</button>
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+                            Family Member *
+                        </label>
+                        <select value={formState.memberId} onChange={e => setFormState(s => ({...s, memberId: e.target.value}))} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm">
+                            {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+                            {t('appointments.modal.doctor')} *
+                        </label>
+                        <input type="text" placeholder="e.g., Dr. Smith" value={formState.doctorName} onChange={e => setFormState(s => ({...s, doctorName: e.target.value}))} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm" />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+                            {t('appointments.modal.clinic')} *
+                        </label>
+                        <input type="text" placeholder="e.g., City Medical Center" value={formState.clinicName} onChange={e => setFormState(s => ({...s, clinicName: e.target.value}))} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm" />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+                            Date & Time *
+                        </label>
+                        <input type="datetime-local" value={formState.dateTime} onChange={e => setFormState(s => ({...s, dateTime: e.target.value}))} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm" />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+                            {t('appointments.modal.purpose')} *
+                        </label>
+                        <textarea placeholder="e.g., Annual cardiology checkup & blood work review" value={formState.purpose} onChange={e => setFormState(s => ({...s, purpose: e.target.value}))} rows={2} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm resize-none" />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+                            {t('appointments.modal.specialization')} (Optional)
+                        </label>
+                        <input type="text" placeholder="e.g., Cardiology, Pediatrics" value={formState.specialization} onChange={e => setFormState(s => ({...s, specialization: e.target.value}))} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm" />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+                            Prescription or Document (Optional)
+                        </label>
+                        <label className="block w-full cursor-pointer p-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-50 dark:hover:bg-zinc-800 transition">
+                            <div className="flex flex-col items-center justify-center">
+                                <HiOutlineCloudArrowUp className="h-6 w-6 mb-1 text-primary" />
+                                <span className="text-xs">{formState.documentFile ? formState.documentFile.name : t('appointments.modal.upload')}</span>
+                            </div>
+                            <input type="file" className="hidden" onChange={e => e.target.files && setFormState(s=> ({...s, documentFile: e.target.files![0]}))} accept="image/*,application/pdf" />
+                        </label>
+                    </div>
+
+                    <button onClick={handleSaveAppointment} className="w-full py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary-focus transition shadow-sm text-sm">
+                        {editingAppointment ? t('finance.modal.saveChanges') : t('finance.modal.addRecord')}
+                    </button>
                 </div>
             </Modal>
         </div>
@@ -219,3 +328,4 @@ const AppointmentsPage: React.FC = () => {
 };
 
 export default AppointmentsPage;
+

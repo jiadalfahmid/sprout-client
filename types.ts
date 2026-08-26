@@ -80,6 +80,9 @@ export interface FamilyMember {
   relation: string;
   age: number;
   avatar: string;
+  email?: string;
+  inviteStatus?: 'none' | 'invited' | 'accepted';
+  inviteSentAt?: string;
 }
 
 export interface MedicineSchedule {
@@ -141,6 +144,8 @@ export interface Appointment {
   specialization?: string;
   documentUrl?: string;
   status: 'upcoming' | 'completed' | 'cancelled';
+  googleEventId?: string;
+  syncedWithGoogle?: boolean;
 }
 
 export interface TaskList {
@@ -165,6 +170,20 @@ export interface Note {
 export interface User {
   name: string;
   avatar: string;
+  email?: string;
+  googleId?: string;
+  firebaseUid?: string;
+  isGoogleUser?: boolean;
+}
+
+export interface NotificationSettings {
+  browserPushEnabled: boolean;
+  medicineReminders: boolean;
+  billAlerts: boolean;
+  appointmentReminders: boolean;
+  taskAlerts: boolean;
+  lowStockAlerts: boolean;
+  soundEnabled: boolean;
 }
 
 export interface Notification {
@@ -180,10 +199,14 @@ export interface Notification {
 export interface CalendarEvent {
   id: string;
   date: Date;
+  endDate?: Date;
   title: string;
-  type: 'medicine' | 'bill' | 'task' | 'appointment';
-  status: 'paid' | 'unpaid' | 'taken' | 'missed' | 'upcoming' | 'completed' | 'cancelled';
+  type: 'medicine' | 'bill' | 'task' | 'appointment' | 'google_event';
+  status: 'paid' | 'unpaid' | 'taken' | 'missed' | 'upcoming' | 'completed' | 'cancelled' | 'google_sync';
   details: any;
+  isGoogleCalendarEvent?: boolean;
+  googleEventId?: string;
+  location?: string;
 }
 
 export interface CartItem {

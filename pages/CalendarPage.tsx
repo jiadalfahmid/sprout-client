@@ -1,11 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
-import { HiChevronLeft, HiChevronRight, HiOutlineBeaker, HiOutlineCurrencyDollar, HiOutlineCheckCircle, HiMagnifyingGlass, HiOutlineXMark } from 'react-icons/hi2';
+import { 
+    HiChevronLeft, HiChevronRight, HiOutlineBeaker, HiOutlineCurrencyDollar, 
+    HiOutlineCheckCircle, HiMagnifyingGlass, HiOutlineXMark, HiOutlineArrowPath,
+    HiOutlineCalendarDays
+} from 'react-icons/hi2';
 import { FaUserDoctor } from 'react-icons/fa6';
 import { CalendarEvent } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../hooks/useTranslation';
+import toast from 'react-hot-toast';
 
 // --- Helper Functions & Components ---
 
@@ -19,7 +24,7 @@ const getEventVisuals = (event: CalendarEvent) => {
             color = 'purple';
             if (event.status === 'taken') color = 'green';
             else if (event.status === 'missed') color = 'yellow';
-            else if (event.details.stock === 0) color = 'red';
+            else if (event.details?.stock === 0) color = 'red';
             break;
         case 'bill':
             icon = HiOutlineCurrencyDollar;
@@ -36,6 +41,10 @@ const getEventVisuals = (event: CalendarEvent) => {
             color = 'teal';
             if (event.status === 'cancelled') color = 'slate';
             break;
+        case 'google_event':
+            icon = HiOutlineCalendarDays;
+            color = 'google';
+            break;
     }
 
     const colorMapping: Record<string, { dot: string; text: string; border: string; bgLight: string; }> = {
@@ -48,17 +57,18 @@ const getEventVisuals = (event: CalendarEvent) => {
         orange: { dot: 'bg-orange-500', text: 'text-orange-500', border: 'border-orange-500', bgLight: 'bg-orange-500/10' },
         teal: { dot: 'bg-teal-500', text: 'text-teal-500', border: 'border-teal-500', bgLight: 'bg-teal-500/10' },
         slate: { dot: 'bg-slate-500', text: 'text-slate-500', border: 'border-slate-500', bgLight: 'bg-slate-500/10' },
+        google: { dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500', bgLight: 'bg-emerald-500/10' },
     };
 
     return { icon, colors: colorMapping[color] || colorMapping.primary };
 };
 
 
-const TimelineEventCard: React.FC<{ event: CalendarEvent }> = ({ event }) => {
+const TimelineEventCard: React.FC<{ event: CalendarEvent; onSyncToGoogle?: (id: string, type: 'appointment' | 'bill') => void }> = ({ event, onSyncToGoogle }) => {
     const { colors, icon: Icon } = getEventVisuals(event);
-    const { familyMembers, currency, availableCurrencies } = useAppContext();
+    const { familyMembers, currency, availableCurrencies, isGoogleAuthenticated } = useAppContext();
     const { t } = useTranslation();
-    const member = familyMembers.find(m => m.id === event.details.memberId);
+    const member = familyMembers.find(m => m.id === event.details?.memberId);
     const currencySymbol = useMemo(() => availableCurrencies.find(c => c.code === currency)?.symbol || '$', [currency, availableCurrencies]);
 
     return (
@@ -67,22 +77,48 @@ const TimelineEventCard: React.FC<{ event: CalendarEvent }> = ({ event }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className={`p-4 rounded-lg bg-light-background dark:bg-background border-l-4 ${colors.border} flex items-start gap-4`}
+            className={`p-4 rounded-xl bg-light-background dark:bg-background border-l-4 ${colors.border} flex items-start justify-between gap-3`}
         >
-            {Icon && (
-                <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${colors.bgLight} ${colors.text}`}>
-                    <Icon className="h-5 w-5" />
+            <div className="flex items-start gap-3 min-w-0">
+                {Icon && (
+                    <div className={`flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center ${colors.bgLight} ${colors.text}`}>
+                        <Icon className="h-5 w-5" />
+                    </div>
+                )}
+                <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-sm text-light-text-primary dark:text-text-primary truncate">{event.title}</p>
+                        {event.isGoogleCalendarEvent && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                Google Calendar
+                            </span>
+                        )}
+                        {event.details?.syncedWithGoogle && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
+                                Synced
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-xs text-light-text-secondary dark:text-text-secondary capitalize mt-0.5">
+                        {event.type === 'medicine' && `${event.details?.doseQuantity} ${event.details?.doseForm} for ${member?.name || 'N/A'}`}
+                        {event.type === 'bill' && `${currencySymbol}${event.details?.amount?.toFixed(2)} - ${event.status}`}
+                        {event.type === 'task' && `${t('calendar.modal.status')}: ${event.status}`}
+                        {event.type === 'appointment' && `Doctor: ${event.details?.doctorName} • ${event.details?.clinicName || ''}`}
+                        {event.type === 'google_event' && (event.location ? `📍 ${event.location}` : 'Synced from your Google Calendar')}
+                    </p>
                 </div>
-            )}
-            <div>
-                <p className="font-bold text-light-text-primary dark:text-text-primary">{event.title}</p>
-                 <p className="text-sm text-light-text-secondary dark:text-text-secondary capitalize">
-                    {event.type === 'medicine' && `${event.details.doseQuantity} ${event.details.doseForm} for ${member?.name || 'N/A'}`}
-                    {event.type === 'bill' && `${currencySymbol}${event.details.amount.toFixed(2)} - ${event.status}`}
-                    {event.type === 'task' && `${t('calendar.modal.status')}: ${event.status}`}
-                    {event.type === 'appointment' && `${t('calendar.modal.status')}: ${event.status}`}
-                </p>
             </div>
+
+            {/* Quick sync trigger if appointment not yet synced */}
+            {isGoogleAuthenticated && event.type === 'appointment' && !event.details?.syncedWithGoogle && onSyncToGoogle && (
+                <button
+                    onClick={() => onSyncToGoogle(event.details?.id, 'appointment')}
+                    title="Sync to Google Calendar"
+                    className="p-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition shrink-0"
+                >
+                    Sync GCal
+                </button>
+            )}
         </motion.div>
     );
 };
@@ -93,7 +129,18 @@ const DayDetailsModal: React.FC<{
     date: Date;
 }> = ({ onClose, events, date }) => {
     const { t, language } = useTranslation();
+    const { syncAppointmentToGoogle, syncBillToGoogle } = useAppContext();
     
+    const handleSyncToGoogle = async (id: string, type: 'appointment' | 'bill') => {
+        if (type === 'appointment') {
+            await syncAppointmentToGoogle(id);
+            toast.success('Appointment synced to Google Calendar!');
+        } else if (type === 'bill') {
+            await syncBillToGoogle(id);
+            toast.success('Bill synced to Google Calendar!');
+        }
+    };
+
     const groupedEvents = useMemo(() => 
         events?.reduce((acc, event) => {
             const timeKey = event.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -110,44 +157,60 @@ const DayDetailsModal: React.FC<{
     }) : [], [groupedEvents]);
 
     return (
-        <div className="fixed inset-0 bg-black/70 z-50 flex justify-center items-center" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/70 z-50 flex justify-center items-center p-4" onClick={onClose}>
             <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 onClick={e => e.stopPropagation()}
-                className="bg-light-surface dark:bg-surface rounded-2xl shadow-xl w-full max-w-lg m-4 border border-slate-200 dark:border-zinc-700 flex flex-col"
+                className="bg-light-surface dark:bg-surface rounded-2xl shadow-xl w-full max-w-lg border border-slate-200 dark:border-zinc-700 flex flex-col overflow-hidden"
             >
-                <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-zinc-700">
-                    <h2 className="text-xl font-bold text-light-text-primary dark:text-text-primary">
-                        {date ? t('calendar.modal.title', { date: date.toLocaleDateString(language, { weekday: 'long', month: 'long', day: 'numeric' }) }) : ''}
-                    </h2>
-                    <button onClick={onClose} className="text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary">
+                <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/30">
+                    <div>
+                        <h2 className="text-lg font-bold text-light-text-primary dark:text-text-primary">
+                            {date ? date.toLocaleDateString(language, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
+                        </h2>
+                        <p className="text-xs text-light-text-secondary dark:text-text-secondary">
+                            {events?.length || 0} event{(events?.length || 0) === 1 ? '' : 's'} scheduled
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
                         <HiOutlineXMark className="h-6 w-6" />
                     </button>
                 </div>
 
-                <div className="max-h-[60vh] overflow-y-auto p-6">
+                <div className="max-h-[60vh] overflow-y-auto p-5">
                     {events && sortedTimeKeys.length > 0 && groupedEvents ? (
                         <div className="relative pl-8">
                             <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-primary/20 rounded-full"></div>
                             <AnimatePresence>
                             {sortedTimeKeys.map((time) => (
-                                <div key={time} className="relative flex items-start mb-6">
+                                <div key={time} className="relative flex items-start mb-6 last:mb-2">
                                     <div className="absolute -left-[5.5px] top-1 h-3 w-3 rounded-full bg-light-surface dark:bg-surface border-2 border-primary"></div>
                                     <div className="absolute -left-16 text-right w-14">
-                                        <p className="font-bold text-sm text-light-text-primary dark:text-text-primary whitespace-nowrap">{time.split(' ')[0]}</p>
-                                        <p className="text-xs text-light-text-secondary dark:text-text-secondary">{time.split(' ')[1]}</p>
+                                        <p className="font-bold text-xs text-light-text-primary dark:text-text-primary whitespace-nowrap">{time.split(' ')[0]}</p>
+                                        <p className="text-[10px] text-light-text-secondary dark:text-text-secondary">{time.split(' ')[1]}</p>
                                     </div>
                                     <div className="flex-1 space-y-3 ml-4">
-                                        {groupedEvents[time].map((event) => <TimelineEventCard key={event.id} event={event} />)}
+                                        {groupedEvents[time].map((event) => (
+                                            <TimelineEventCard 
+                                                key={event.id} 
+                                                event={event} 
+                                                onSyncToGoogle={handleSyncToGoogle} 
+                                            />
+                                        ))}
                                     </div>
                                 </div>
                             ))}
                             </AnimatePresence>
                         </div>
-                    ) : <p className="text-center py-10 text-light-text-secondary dark:text-text-secondary">{t('calendar.modal.noEvents')}</p>}
+                    ) : (
+                        <div className="text-center py-12">
+                            <HiOutlineCalendarDays className="w-12 h-12 mx-auto text-slate-300 dark:text-zinc-600 mb-2" />
+                            <p className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('calendar.modal.noEvents')}</p>
+                        </div>
+                    )}
                 </div>
             </motion.div>
         </div>
@@ -157,11 +220,22 @@ const DayDetailsModal: React.FC<{
 // --- Main Calendar Page Component ---
 
 const CalendarPage: React.FC = () => {
-    const { familyMembers, getCalendarEvents } = useAppContext();
+    const { 
+        familyMembers, 
+        getCalendarEvents, 
+        isGoogleAuthenticated, 
+        loginWithGoogle,
+        isCalendarSyncing, 
+        fetchGoogleEvents,
+        syncAllToGoogleCalendar,
+        includeGoogleCalendar,
+        setIncludeGoogleCalendar,
+        googleCalendarEvents
+    } = useAppContext();
     const { t, language } = useTranslation();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedMemberId, setSelectedMemberId] = useState('all');
-    const [filterType, setFilterType] = useState<'all' | 'medicine' | 'bill' | 'task' | 'appointment'>('all');
+    const [filterType, setFilterType] = useState<'all' | 'medicine' | 'bill' | 'task' | 'appointment' | 'google_event'>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [modalData, setModalData] = useState<{events: CalendarEvent[], date: Date} | null>(null);
 
@@ -176,7 +250,7 @@ const CalendarPage: React.FC = () => {
         }
         
         if (selectedMemberId !== 'all') {
-            events = events.filter(e => e.details.memberId === selectedMemberId);
+            events = events.filter(e => e.details?.memberId === selectedMemberId);
         }
 
         if (searchQuery.trim() !== '') {
@@ -213,29 +287,97 @@ const CalendarPage: React.FC = () => {
         setModalData({ events, date: day });
     };
 
+    const handleSyncCalendar = async () => {
+        try {
+            if (!isGoogleAuthenticated) {
+                const ok = await loginWithGoogle();
+                if (!ok) return;
+            }
+            const res = await syncAllToGoogleCalendar();
+            toast.success(`Google Calendar synced! (${res.appointmentsSynced} appointments & ${res.billsSynced} bills synced)`);
+        } catch (err: any) {
+            if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+                return;
+            }
+            toast.error(err.message || 'Google Calendar sync failed.');
+        }
+    };
+
     return (
         <div className="space-y-6">
+            {/* Top Google Calendar Sync Bar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-primary/5 to-transparent border border-emerald-200 dark:border-emerald-800/40">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm shrink-0 border border-slate-200 dark:border-zinc-700">
+                        <svg className="w-6 h-6" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
+                            <path fill="#34A853" d="M7 10h5v5H7z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-light-text-primary dark:text-text-primary">
+                                {t('googleServices.calendarSyncTitle')}
+                            </h3>
+                            {isGoogleAuthenticated && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/40">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    {googleCalendarEvents.length} Events Synced
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-xs text-light-text-secondary dark:text-text-secondary mt-0.5">
+                            {t('googleServices.calendarSyncDesc')}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    {isGoogleAuthenticated && (
+                        <label className="flex items-center gap-2 cursor-pointer text-xs text-light-text-secondary dark:text-text-secondary">
+                            <input
+                                type="checkbox"
+                                checked={includeGoogleCalendar}
+                                onChange={(e) => setIncludeGoogleCalendar(e.target.checked)}
+                                className="rounded text-primary focus:ring-primary h-4 w-4"
+                            />
+                            <span className="hidden md:inline">{t('googleServices.includeGoogleEvents')}</span>
+                        </label>
+                    )}
+
+                    <button
+                        onClick={handleSyncCalendar}
+                        disabled={isCalendarSyncing}
+                        className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary-focus transition-all flex items-center gap-2 shadow-sm shrink-0 disabled:opacity-60"
+                    >
+                        <HiOutlineArrowPath className={`w-4 h-4 ${isCalendarSyncing ? 'animate-spin' : ''}`} />
+                        {isCalendarSyncing ? t('googleServices.syncing') : t('googleServices.syncNow')}
+                    </button>
+                </div>
+            </div>
+
             <Card className="!p-0 overflow-hidden">
                 <div className="flex flex-col md:flex-row justify-between items-center p-4 border-b border-slate-200 dark:border-zinc-700 gap-4">
                     <div className="flex items-center gap-2 self-start md:self-center">
                         <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-700"><HiChevronLeft className="h-6 w-6" /></button>
-                        <h2 className="text-xl font-semibold w-32 text-center">{currentDate.toLocaleString(language, { month: 'long', year: 'numeric' })}</h2>
+                        <h2 className="text-xl font-semibold w-40 text-center">{currentDate.toLocaleString(language, { month: 'long', year: 'numeric' })}</h2>
                         <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-700"><HiChevronRight className="h-6 w-6" /></button>
                     </div>
                     
                     <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
                         <div className="relative w-full sm:w-auto flex-grow">
                             <HiMagnifyingGlass className="absolute top-1/2 left-3 -translate-y-1/2 h-5 w-5 text-light-text-secondary dark:text-text-secondary" />
-                            <input type="text" placeholder={t('calendar.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full p-2 pl-10 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary"/>
+                            <input type="text" placeholder={t('calendar.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full p-2 pl-10 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-sm"/>
                         </div>
-                        <select value={filterType} onChange={e => setFilterType(e.target.value as any)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary">
+                        <select value={filterType} onChange={e => setFilterType(e.target.value as any)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-sm">
                             <option value="all">{t('calendar.filter.allTypes')}</option>
                             <option value="medicine">{t('calendar.filter.medicine')}</option>
                             <option value="bill">{t('calendar.filter.bills')}</option>
                             <option value="task">{t('calendar.filter.tasks')}</option>
                             <option value="appointment">{t('appointments.title')}</option>
+                            <option value="google_event">Google Calendar</option>
                         </select>
-                        <select value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary">
+                        <select value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-sm">
                             <option value="all">{t('health.allMembers')}</option>
                             {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                         </select>
@@ -243,8 +385,8 @@ const CalendarPage: React.FC = () => {
                 </div>
 
                 <div role="grid">
-                    <div role="row" className="grid grid-cols-7 text-center text-xs font-semibold text-light-text-secondary dark:text-text-secondary">
-                        {['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => <div role="columnheader" key={day} className="py-2">{t(`calendar.days.${day}`)}</div>)}
+                    <div role="row" className="grid grid-cols-7 text-center text-xs font-semibold text-light-text-secondary dark:text-text-secondary bg-slate-50/50 dark:bg-zinc-800/30">
+                        {['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => <div role="columnheader" key={day} className="py-2.5">{t(`calendar.days.${day}`)}</div>)}
                     </div>
                     <div role="rowgroup" className="grid grid-cols-7">
                         {daysInMonth.map((day, index) => {
@@ -253,7 +395,7 @@ const CalendarPage: React.FC = () => {
                             const isToday = day.toDateString() === new Date().toDateString();
                             const eventsForDay = calendarEvents.filter(e => e.date.toDateString() === day.toDateString());
                             
-                            const dayNumberClasses = `w-8 h-8 flex items-center justify-center rounded-full text-sm font-semibold transition-colors ${
+                            const dayNumberClasses = `w-7 h-7 flex items-center justify-center rounded-full text-xs font-semibold transition-colors ${
                                 isToday ? 'bg-primary text-white shadow' : 'text-light-text-primary dark:text-text-primary'
                             }`;
                             
@@ -277,7 +419,7 @@ const CalendarPage: React.FC = () => {
                                                     key={event.id}
                                                     initial={{scale: 0}}
                                                     animate={{scale: 1}}
-                                                    transition={{delay: i * 0.1}}
+                                                    transition={{delay: i * 0.05}}
                                                     className={`w-2 h-2 rounded-full ${colors.dot}`} 
                                                     title={event.title} 
                                                 />;
@@ -285,7 +427,7 @@ const CalendarPage: React.FC = () => {
                                         </motion.div>
                                         </AnimatePresence>
                                         {eventsForDay.length > 4 && (
-                                            <p className="text-xs text-light-text-secondary dark:text-text-secondary mt-1">
+                                            <p className="text-[10px] font-semibold text-light-text-secondary dark:text-text-secondary mt-1">
                                                 +{eventsForDay.length - 4} more
                                             </p>
                                         )}
@@ -311,3 +453,4 @@ const CalendarPage: React.FC = () => {
 };
 
 export default CalendarPage;
+

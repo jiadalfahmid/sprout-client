@@ -218,18 +218,32 @@ const HomePage: React.FC = () => {
               </div>
             </div>
             <div className="flex-1" style={{ width: '100%', height: 200 }}>
-              <ResponsiveContainer>
-                <RadialBarChart cx="50%" cy="50%" innerRadius="40%" outerRadius="110%" barSize={10} data={expenseByCategory} startAngle={90} endAngle={-270}>
-                    <PolarAngleAxis type="number" domain={[0, financialSummary.totalExpense]} angleAxisId={0} tick={false} />
-                    <RadialBar background dataKey="value" angleAxisId={0} cornerRadius={5}>
-                        {expenseByCategory.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="focus:outline-none" />
-                        ))}
-                    </RadialBar>
-                    <Legend iconSize={10} wrapperStyle={{fontSize: "12px"}}/>
-                    <Tooltip formatter={(value: number) => `${currencySymbol}${value.toFixed(2)}`}/>
-                </RadialBarChart>
-              </ResponsiveContainer>
+              {expenseByCategory.length > 0 && financialSummary.totalExpense > 0 ? (
+                <ResponsiveContainer>
+                  <RadialBarChart cx="50%" cy="50%" innerRadius="40%" outerRadius="110%" barSize={10} data={expenseByCategory} startAngle={90} endAngle={-270}>
+                      <PolarAngleAxis type="number" domain={[0, financialSummary.totalExpense]} angleAxisId={0} tick={false} />
+                      <RadialBar background dataKey="value" angleAxisId={0} cornerRadius={5}>
+                          {expenseByCategory.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="focus:outline-none" />
+                          ))}
+                      </RadialBar>
+                      <Legend iconSize={10} wrapperStyle={{fontSize: "12px"}}/>
+                      <Tooltip formatter={(value: number) => `${currencySymbol}${value.toFixed(2)}`}/>
+                  </RadialBarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-200 dark:border-zinc-700 rounded-2xl">
+                  <p className="text-xs text-light-text-secondary dark:text-text-secondary mb-2">
+                    No expense transactions logged for this month.
+                  </p>
+                  <button
+                    onClick={() => navigate('/finance')}
+                    className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition"
+                  >
+                    + Add Transaction
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </Card>
