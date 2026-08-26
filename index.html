@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sprout - Unified Home & Family Care</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: '#8B5CF6', // Violet-500
+              income: '#4ADE80', // Green-400
+              expense: '#F87171', // Red-400
+              // New chart/category colors
+              'teal': '#2DD4BF', // teal-400
+              'lilac': '#A78BFA', // violet-400
+              'category-groceries': '#A3E635', // lime-400
+              'category-utilities': '#60A5FA', // blue-400
+              'category-medicine': '#C084FC', // purple-400
+              'category-transport': '#F97316', // orange-500
+              'category-entertainment': '#F472B6', // pink-400
+              'category-savings': '#2DD4BF', // teal-400
+              // New Card Colors
+              'card-accent-blue-bg': '#EBF5FF',
+              'card-accent-blue-text': '#2563EB',
+              'dark-card-accent-blue-bg': '#172554',
+              'dark-card-accent-blue-text': '#93C5FD',
+              'card-accent-green-bg': '#F0FDF4',
+              'card-accent-green-text': '#16A34A',
+              'dark-card-accent-green-bg': '#14532D',
+              'dark-card-accent-green-text': '#A7F3D0',
+              'card-accent-purple-bg': '#FAF5FF',
+              'card-accent-purple-text': '#9333EA',
+              'dark-card-accent-purple-bg': '#3B0764',
+              'dark-card-accent-purple-text': '#E9D5FF',
+              'card-accent-orange-bg': '#FFF7ED',
+              'card-accent-orange-text': '#EA580C',
+              'dark-card-accent-orange-bg': '#431407',
+              'dark-card-accent-orange-text': '#FDBA74',
+              // Dark mode
+              background: '#18181B', // zinc-900
+              surface: '#27272A',    // zinc-800
+              'text-primary': '#FAFAFA', // zinc-50
+              'text-secondary': '#A1A1AA', // zinc-400
+              // Light mode
+              'light-background': '#F8FAFC', // slate-50
+              'light-surface': '#FFFFFF',
+              'light-text-primary': '#1E293B', // slate-800
+              'light-text-secondary': '#64748B', // slate-500
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+          },
+        },
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-icons/": "https://aistudiocdn.com/react-icons@^5.2.1/",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^11.3.11",
+    "react-hot-toast": "https://aistudiocdn.com/react-hot-toast@^2.4.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.25.0"
+  }
+}
+</script>
+<style>
+      /* Custom scrollbar for WebKit browsers (Chrome, Safari, Edge) */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: rgba(107, 114, 128, 0.5); /* gray-500 with opacity */
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(107, 114, 128, 0.7);
+      }
+      /* Custom scrollbar for Firefox */
+      html {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(107, 114, 128, 0.5) transparent;
+      }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-light-background dark:bg-background text-light-text-primary dark:text-text-primary transition-colors duration-300">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

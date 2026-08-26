@@ -1,0 +1,313 @@
+import React, { useState, useMemo } from 'react';
+import { useAppContext } from '../context/AppContext';
+import Card from '../components/ui/Card';
+import { HiChevronLeft, HiChevronRight, HiOutlineBeaker, HiOutlineCurrencyDollar, HiOutlineCheckCircle, HiMagnifyingGlass, HiOutlineXMark } from 'react-icons/hi2';
+import { FaUserDoctor } from 'react-icons/fa6';
+import { CalendarEvent } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '../hooks/useTranslation';
+
+// --- Helper Functions & Components ---
+
+const getEventVisuals = (event: CalendarEvent) => {
+    let icon: React.ElementType | undefined;
+    let color: string = 'primary';
+
+    switch (event.type) {
+        case 'medicine':
+            icon = HiOutlineBeaker;
+            color = 'purple';
+            if (event.status === 'taken') color = 'green';
+            else if (event.status === 'missed') color = 'yellow';
+            else if (event.details.stock === 0) color = 'red';
+            break;
+        case 'bill':
+            icon = HiOutlineCurrencyDollar;
+            color = 'blue';
+            if (event.status !== 'paid') color = 'red';
+            break;
+        case 'task':
+            icon = HiOutlineCheckCircle;
+            color = 'orange';
+            if (event.status === 'completed') color = 'green';
+            break;
+        case 'appointment':
+            icon = FaUserDoctor;
+            color = 'teal';
+            if (event.status === 'cancelled') color = 'slate';
+            break;
+    }
+
+    const colorMapping: Record<string, { dot: string; text: string; border: string; bgLight: string; }> = {
+        primary: { dot: 'bg-primary', text: 'text-primary', border: 'border-primary', bgLight: 'bg-primary/10' },
+        purple: { dot: 'bg-purple-500', text: 'text-purple-500', border: 'border-purple-500', bgLight: 'bg-purple-500/10' },
+        green: { dot: 'bg-green-500', text: 'text-green-500', border: 'border-green-500', bgLight: 'bg-green-500/10' },
+        yellow: { dot: 'bg-yellow-500', text: 'text-yellow-500', border: 'border-yellow-500', bgLight: 'bg-yellow-500/10' },
+        red: { dot: 'bg-red-500', text: 'text-red-500', border: 'border-red-500', bgLight: 'bg-red-500/10' },
+        blue: { dot: 'bg-blue-500', text: 'text-blue-500', border: 'border-blue-500', bgLight: 'bg-blue-500/10' },
+        orange: { dot: 'bg-orange-500', text: 'text-orange-500', border: 'border-orange-500', bgLight: 'bg-orange-500/10' },
+        teal: { dot: 'bg-teal-500', text: 'text-teal-500', border: 'border-teal-500', bgLight: 'bg-teal-500/10' },
+        slate: { dot: 'bg-slate-500', text: 'text-slate-500', border: 'border-slate-500', bgLight: 'bg-slate-500/10' },
+    };
+
+    return { icon, colors: colorMapping[color] || colorMapping.primary };
+};
+
+
+const TimelineEventCard: React.FC<{ event: CalendarEvent }> = ({ event }) => {
+    const { colors, icon: Icon } = getEventVisuals(event);
+    const { familyMembers, currency, availableCurrencies } = useAppContext();
+    const { t } = useTranslation();
+    const member = familyMembers.find(m => m.id === event.details.memberId);
+    const currencySymbol = useMemo(() => availableCurrencies.find(c => c.code === currency)?.symbol || '$', [currency, availableCurrencies]);
+
+    return (
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`p-4 rounded-lg bg-light-background dark:bg-background border-l-4 ${colors.border} flex items-start gap-4`}
+        >
+            {Icon && (
+                <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${colors.bgLight} ${colors.text}`}>
+                    <Icon className="h-5 w-5" />
+                </div>
+            )}
+            <div>
+                <p className="font-bold text-light-text-primary dark:text-text-primary">{event.title}</p>
+                 <p className="text-sm text-light-text-secondary dark:text-text-secondary capitalize">
+                    {event.type === 'medicine' && `${event.details.doseQuantity} ${event.details.doseForm} for ${member?.name || 'N/A'}`}
+                    {event.type === 'bill' && `${currencySymbol}${event.details.amount.toFixed(2)} - ${event.status}`}
+                    {event.type === 'task' && `${t('calendar.modal.status')}: ${event.status}`}
+                    {event.type === 'appointment' && `${t('calendar.modal.status')}: ${event.status}`}
+                </p>
+            </div>
+        </motion.div>
+    );
+};
+
+const DayDetailsModal: React.FC<{
+    onClose: () => void;
+    events: CalendarEvent[];
+    date: Date;
+}> = ({ onClose, events, date }) => {
+    const { t, language } = useTranslation();
+    
+    const groupedEvents = useMemo(() => 
+        events?.reduce((acc, event) => {
+            const timeKey = event.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (!acc[timeKey]) acc[timeKey] = [];
+            acc[timeKey].push(event);
+            return acc;
+        }, {} as Record<string, CalendarEvent[]>)
+    , [events]);
+
+    const sortedTimeKeys = useMemo(() => groupedEvents ? Object.keys(groupedEvents).sort((a, b) => {
+      const timeA = new Date(`1970/01/01 ${a}`).getTime();
+      const timeB = new Date(`1970/01/01 ${b}`).getTime();
+      return timeA - timeB;
+    }) : [], [groupedEvents]);
+
+    return (
+        <div className="fixed inset-0 bg-black/70 z-50 flex justify-center items-center" onClick={onClose}>
+            <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 30 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                onClick={e => e.stopPropagation()}
+                className="bg-light-surface dark:bg-surface rounded-2xl shadow-xl w-full max-w-lg m-4 border border-slate-200 dark:border-zinc-700 flex flex-col"
+            >
+                <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-zinc-700">
+                    <h2 className="text-xl font-bold text-light-text-primary dark:text-text-primary">
+                        {date ? t('calendar.modal.title', { date: date.toLocaleDateString(language, { weekday: 'long', month: 'long', day: 'numeric' }) }) : ''}
+                    </h2>
+                    <button onClick={onClose} className="text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary">
+                        <HiOutlineXMark className="h-6 w-6" />
+                    </button>
+                </div>
+
+                <div className="max-h-[60vh] overflow-y-auto p-6">
+                    {events && sortedTimeKeys.length > 0 && groupedEvents ? (
+                        <div className="relative pl-8">
+                            <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-primary/20 rounded-full"></div>
+                            <AnimatePresence>
+                            {sortedTimeKeys.map((time) => (
+                                <div key={time} className="relative flex items-start mb-6">
+                                    <div className="absolute -left-[5.5px] top-1 h-3 w-3 rounded-full bg-light-surface dark:bg-surface border-2 border-primary"></div>
+                                    <div className="absolute -left-16 text-right w-14">
+                                        <p className="font-bold text-sm text-light-text-primary dark:text-text-primary whitespace-nowrap">{time.split(' ')[0]}</p>
+                                        <p className="text-xs text-light-text-secondary dark:text-text-secondary">{time.split(' ')[1]}</p>
+                                    </div>
+                                    <div className="flex-1 space-y-3 ml-4">
+                                        {groupedEvents[time].map((event) => <TimelineEventCard key={event.id} event={event} />)}
+                                    </div>
+                                </div>
+                            ))}
+                            </AnimatePresence>
+                        </div>
+                    ) : <p className="text-center py-10 text-light-text-secondary dark:text-text-secondary">{t('calendar.modal.noEvents')}</p>}
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
+// --- Main Calendar Page Component ---
+
+const CalendarPage: React.FC = () => {
+    const { familyMembers, getCalendarEvents } = useAppContext();
+    const { t, language } = useTranslation();
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedMemberId, setSelectedMemberId] = useState('all');
+    const [filterType, setFilterType] = useState<'all' | 'medicine' | 'bill' | 'task' | 'appointment'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [modalData, setModalData] = useState<{events: CalendarEvent[], date: Date} | null>(null);
+
+    const firstDayOfMonth = useMemo(() => new Date(currentDate.getFullYear(), currentDate.getMonth(), 1), [currentDate]);
+    const lastDayOfMonth = useMemo(() => new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0), [currentDate]);
+
+    const calendarEvents = useMemo(() => {
+        let events = getCalendarEvents(firstDayOfMonth, lastDayOfMonth);
+
+        if (filterType !== 'all') {
+            events = events.filter(e => e.type === filterType);
+        }
+        
+        if (selectedMemberId !== 'all') {
+            events = events.filter(e => e.details.memberId === selectedMemberId);
+        }
+
+        if (searchQuery.trim() !== '') {
+            events = events.filter(e => e.title.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+
+        return events;
+    }, [currentDate, selectedMemberId, filterType, searchQuery, getCalendarEvents, firstDayOfMonth, lastDayOfMonth]);
+
+    const daysInMonth = useMemo(() => {
+        const days = [];
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const date = new Date(year, month, 1);
+        const startingDay = date.getDay();
+
+        for (let i = 0; i < startingDay; i++) {
+            days.push(null);
+        }
+        
+        while (date.getMonth() === month) {
+            days.push(new Date(date));
+            date.setDate(date.getDate() + 1);
+        }
+        return days;
+    }, [currentDate]);
+
+    const changeMonth = (offset: number) => {
+        setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
+    };
+
+    const handleDayClick = (day: Date) => {
+        const events = calendarEvents.filter(e => e.date.toDateString() === day.toDateString());
+        setModalData({ events, date: day });
+    };
+
+    return (
+        <div className="space-y-6">
+            <Card className="!p-0 overflow-hidden">
+                <div className="flex flex-col md:flex-row justify-between items-center p-4 border-b border-slate-200 dark:border-zinc-700 gap-4">
+                    <div className="flex items-center gap-2 self-start md:self-center">
+                        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-700"><HiChevronLeft className="h-6 w-6" /></button>
+                        <h2 className="text-xl font-semibold w-32 text-center">{currentDate.toLocaleString(language, { month: 'long', year: 'numeric' })}</h2>
+                        <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-700"><HiChevronRight className="h-6 w-6" /></button>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+                        <div className="relative w-full sm:w-auto flex-grow">
+                            <HiMagnifyingGlass className="absolute top-1/2 left-3 -translate-y-1/2 h-5 w-5 text-light-text-secondary dark:text-text-secondary" />
+                            <input type="text" placeholder={t('calendar.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full p-2 pl-10 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary"/>
+                        </div>
+                        <select value={filterType} onChange={e => setFilterType(e.target.value as any)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary">
+                            <option value="all">{t('calendar.filter.allTypes')}</option>
+                            <option value="medicine">{t('calendar.filter.medicine')}</option>
+                            <option value="bill">{t('calendar.filter.bills')}</option>
+                            <option value="task">{t('calendar.filter.tasks')}</option>
+                            <option value="appointment">{t('appointments.title')}</option>
+                        </select>
+                        <select value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary">
+                            <option value="all">{t('health.allMembers')}</option>
+                            {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                <div role="grid">
+                    <div role="row" className="grid grid-cols-7 text-center text-xs font-semibold text-light-text-secondary dark:text-text-secondary">
+                        {['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => <div role="columnheader" key={day} className="py-2">{t(`calendar.days.${day}`)}</div>)}
+                    </div>
+                    <div role="rowgroup" className="grid grid-cols-7">
+                        {daysInMonth.map((day, index) => {
+                            if (!day) return <div key={`empty-${index}`} role="gridcell" className="border-t border-r border-slate-200 dark:border-zinc-800" />;
+
+                            const isToday = day.toDateString() === new Date().toDateString();
+                            const eventsForDay = calendarEvents.filter(e => e.date.toDateString() === day.toDateString());
+                            
+                            const dayNumberClasses = `w-8 h-8 flex items-center justify-center rounded-full text-sm font-semibold transition-colors ${
+                                isToday ? 'bg-primary text-white shadow' : 'text-light-text-primary dark:text-text-primary'
+                            }`;
+                            
+                            return (
+                                <motion.div 
+                                    role="gridcell" 
+                                    key={day.toISOString()} 
+                                    onClick={() => handleDayClick(day)} 
+                                    className="border-t border-r border-slate-200 dark:border-zinc-800 p-2 h-28 md:h-32 flex flex-col cursor-pointer transition-colors relative"
+                                    whileHover={{ backgroundColor: 'rgba(139, 92, 246, 0.05)' }}
+                                >
+                                    <div className="self-end">
+                                        <span className={dayNumberClasses}>{day.getDate()}</span>
+                                    </div>
+                                    <div className="flex-grow overflow-hidden mt-1">
+                                        <AnimatePresence>
+                                        <motion.div className="flex flex-wrap gap-1">
+                                            {eventsForDay.slice(0, 4).map((event, i) => {
+                                                const { colors } = getEventVisuals(event);
+                                                return <motion.div 
+                                                    key={event.id}
+                                                    initial={{scale: 0}}
+                                                    animate={{scale: 1}}
+                                                    transition={{delay: i * 0.1}}
+                                                    className={`w-2 h-2 rounded-full ${colors.dot}`} 
+                                                    title={event.title} 
+                                                />;
+                                            })}
+                                        </motion.div>
+                                        </AnimatePresence>
+                                        {eventsForDay.length > 4 && (
+                                            <p className="text-xs text-light-text-secondary dark:text-text-secondary mt-1">
+                                                +{eventsForDay.length - 4} more
+                                            </p>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </Card>
+            
+            <AnimatePresence>
+                {modalData && (
+                    <DayDetailsModal
+                        onClose={() => setModalData(null)}
+                        events={modalData.events}
+                        date={modalData.date}
+                    />
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+export default CalendarPage;
