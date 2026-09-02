@@ -74,6 +74,22 @@ export interface SavingsGoal {
   deadlineDate?: string; // ISO string
 }
 
+export interface FamilyInvite {
+  id: string;
+  inviterUid: string;
+  inviterName: string;
+  inviterEmail?: string;
+  memberId: string;
+  memberName: string;
+  recipientEmail: string;
+  relation: string;
+  status: 'pending' | 'accepted' | 'cancelled';
+  createdAt: string;
+  acceptedAt?: string;
+  acceptedByUid?: string;
+  acceptedByEmail?: string;
+}
+
 export interface FamilyMember {
   id: string;
   name: string;
@@ -82,7 +98,9 @@ export interface FamilyMember {
   avatar: string;
   email?: string;
   inviteStatus?: 'none' | 'invited' | 'accepted';
+  inviteId?: string;
   inviteSentAt?: string;
+  linkedUid?: string;
 }
 
 export interface MedicineSchedule {

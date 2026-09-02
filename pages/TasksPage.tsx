@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import Modal from '../components/ui/Modal';
+import PageHeader from '../components/ui/PageHeader';
+import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { Task, TaskList as ITaskList } from '../types';
-import { HiOutlineTrash, HiPlus, HiOutlineCalendarDays } from 'react-icons/hi2';
+import { HiOutlineTrash, HiPlus, HiOutlineCalendarDays, HiOutlineQueueList, HiOutlineCheckBadge } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import Skeleton from '../components/ui/Skeleton';
 import { useTranslation } from '../hooks/useTranslation';
 
@@ -172,9 +174,30 @@ const TasksPage: React.FC = () => {
     </div>
   );
 
+  const fabActions: SpeedDialAction[] = [
+    {
+      id: 'new_list',
+      label: t('tasks.createList') || 'New List',
+      icon: HiOutlineQueueList,
+      color: 'rose',
+      onClick: () => setCreateModalOpen(true),
+    },
+  ];
+
   return (
     <div className="relative min-h-[calc(100vh-10rem)]">
-      <h1 className="text-3xl font-bold text-light-text-primary dark:text-text-primary mb-6">{t('tasks.title')}</h1>
+      <PageHeader
+        title={t('tasks.title')}
+        action={
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-primary text-white font-semibold rounded-xl flex items-center gap-1.5 shadow-sm hover:opacity-90 transition-opacity text-xs sm:text-sm whitespace-nowrap"
+          >
+            <HiPlus className="h-4 w-4" />
+            <span>{t('tasks.createList')}</span>
+          </button>
+        }
+      />
       
       {loading ? (
         renderSkeleton()
@@ -200,15 +223,12 @@ const TasksPage: React.FC = () => {
         </div>
       )}
       
-      <motion.button 
-        onClick={() => setCreateModalOpen(true)}
-        className="fixed bottom-24 right-6 h-14 w-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        aria-label={t('tasks.createList')}
-      >
-        <HiPlus className="h-7 w-7" />
-      </motion.button>
+      {/* SPEED DIAL FLOATING ACTION BUTTON */}
+      <SpeedDialFAB
+        actions={fabActions}
+        onSingleAction={() => setCreateModalOpen(true)}
+        mainLabel={t('tasks.createList') || 'New List'}
+      />
       
       {/* Create List Modal */}
       <Modal isOpen={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} title={t('tasks.modal.title')}>
@@ -218,11 +238,12 @@ const TasksPage: React.FC = () => {
                 value={newListName}
                 onChange={(e) => setNewListName(e.target.value)}
                 placeholder={t('tasks.modal.placeholder')}
-                className="w-full mt-1 p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"
+                className="w-full mt-1 p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                autoFocus
             />
             <button
                 onClick={handleCreateList}
-                className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90"
+                className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 transition-colors text-sm"
             >
                 {t('tasks.modal.createBtn')}
             </button>
@@ -238,13 +259,13 @@ const TasksPage: React.FC = () => {
           <div className="flex justify-end gap-4">
               <button
                   onClick={() => setDeleteModalOpen(false)}
-                  className="px-4 py-2 bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-text-primary font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-zinc-600"
+                  className="px-4 py-2 bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-text-primary font-semibold rounded-xl hover:bg-slate-300 dark:hover:bg-zinc-600 text-sm"
               >
                   {t('tasks.deleteModal.cancel')}
               </button>
               <button
                   onClick={confirmDeleteList}
-                  className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600"
+                  className="px-4 py-2 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 text-sm"
               >
                   {t('tasks.deleteModal.confirm')}
               </button>

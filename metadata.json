@@ -1,9 +1,7 @@
 {
   "name": "Sprout - Unified Home & Family Care",
-  "description": "A smart unified home, family, finance, and health management app powered by Firebase authentication (sprout-live), real-time notifications, Google Calendar synchronization, and Gmail family invitations.",
-  "requestFramePermissions": [
-    "camera"
-  ],
+  "description": "A smart unified home, family, finance, and health management app with real-time notifications, cloud synchronization, Google Calendar integration, and Gmail family invitations.",
+  "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

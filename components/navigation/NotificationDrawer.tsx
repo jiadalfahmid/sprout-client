@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { Notification } from '../../types';
@@ -15,8 +15,10 @@ import {
   HiOutlineCheck,
   HiOutlineArrowRight,
   HiOutlineSpeakerWave,
-  HiOutlineBeaker
+  HiOutlineBeaker,
+  HiOutlineTrash
 } from 'react-icons/hi2';
+import toast from 'react-hot-toast';
 import { useTranslation } from '../../hooks/useTranslation';
 
 interface NotificationDrawerProps {
@@ -31,9 +33,6 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
     markAllAsRead, 
     clearNotifications, 
     deleteNotification,
-    notificationSettings,
-    requestBrowserNotifications,
-    sendTestNotification,
     logDose
   } = useAppContext();
   const { t } = useTranslation();
@@ -112,6 +111,11 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
     );
   };
 
+  const handleClearAll = () => {
+    clearNotifications();
+    toast.success('All notifications cleared!');
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -146,41 +150,30 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
                   </p>
                 </div>
               </div>
-              <button 
-                onClick={onClose} 
-                className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary"
-              >
-                <HiXMark className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Quick System Status Bar */}
-            <div className="px-4 py-2 bg-emerald-50/70 dark:bg-emerald-950/20 border-b border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between text-[11px]">
-              <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Live Alert Engine Active</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {!notificationSettings.browserPushEnabled && (
+              <div className="flex items-center gap-1">
+                {notifications.length > 0 && (
                   <button
-                    onClick={() => requestBrowserNotifications()}
-                    className="text-emerald-700 dark:text-emerald-300 underline font-semibold hover:text-emerald-800"
+                    onClick={handleClearAll}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
+                    title="Clear All Notifications"
                   >
-                    Enable Push
+                    <HiOutlineTrash className="h-3.5 w-3.5" />
+                    <span>Clear All</span>
                   </button>
                 )}
-                <button
-                  onClick={sendTestNotification}
-                  className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 font-semibold hover:bg-emerald-200 dark:hover:bg-emerald-800/60"
+                <button 
+                  onClick={onClose} 
+                  className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary"
+                  aria-label="Close"
                 >
-                  Test Alert
+                  <HiXMark className="h-5 w-5" />
                 </button>
               </div>
             </div>
 
             {/* Filter Pills */}
             <div className="p-3 flex gap-2 overflow-x-auto border-b border-slate-200 dark:border-zinc-700 no-scrollbar">
-              <FilterButton type="all" label={t('notifications.filterAll')} />
+              <FilterButton type="all" label={t('notifications.all') || 'All'} />
               <FilterButton type="health" icon={HiOutlineHeart} label={t('nav.health')} />
               <FilterButton type="finance" icon={HiOutlineCurrencyDollar} label={t('nav.finance')} />
               <FilterButton type="system" icon={HiOutlineSparkles} label="System" />
@@ -256,12 +249,12 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
                   {t('notifications.markAllRead')}
                 </button>
               )}
-              {filteredNotifications.length > 0 && (
+              {notifications.length > 0 && (
                 <button
-                  onClick={clearNotifications}
-                  className="flex-1 py-2 text-xs font-semibold text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
+                  onClick={handleClearAll}
+                  className="flex-1 py-2 text-xs font-semibold text-center text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl transition-colors"
                 >
-                  Clear Read
+                  Clear All
                 </button>
               )}
             </div>

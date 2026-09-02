@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="ogBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="60%" stop-color="#1E1B4B"/>
+      <stop offset="100%" stop-color="#064E3B"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#34D399"/>
+    </linearGradient>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="50%" stop-color="#6D28D9"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+    <filter id="ogGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="24" flood-color="#8B5CF6" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1200" height="630" fill="url(#ogBg)"/>
+
+  <!-- Decorative Ambient Glow Circles -->
+  <circle cx="1050" cy="150" r="300" fill="#8B5CF6" fill-opacity="0.12" filter="blur(60px)"/>
+  <circle cx="150" cy="500" r="250" fill="#10B981" fill-opacity="0.1" filter="blur(50px)"/>
+
+  <!-- Grid overlay -->
+  <g stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1">
+    <line x1="100" y1="0" x2="100" y2="630"/>
+    <line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="500" y1="0" x2="500" y2="630"/>
+    <line x1="700" y1="0" x2="700" y2="630"/>
+    <line x1="900" y1="0" x2="900" y2="630"/>
+    <line x1="1100" y1="0" x2="1100" y2="630"/>
+    <line x1="0" y1="100" x2="1200" y2="100"/>
+    <line x1="0" y1="300" x2="1200" y2="300"/>
+    <line x1="0" y1="500" x2="1200" y2="500"/>
+  </g>
+
+  <!-- App Icon on Left -->
+  <g transform="translate(100, 115)" filter="url(#ogGlow)">
+    <rect width="140" height="140" rx="36" fill="url(#iconGrad)"/>
+    <rect x="5" y="5" width="130" height="130" rx="31" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="2"/>
+    
+    <!-- Sprout Icon Graphic -->
+    <g transform="translate(0, 4)">
+      <path d="M42 105 C49 93 91 93 98 105 C85 113 55 113 42 105 Z" fill="#FFFFFF" fill-opacity="0.25"/>
+      <path d="M70 102 C70 72 68 55 70 44" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+      <path d="M70 72 C79 72 101 66 104 47 C85 44 74 58 70 72 Z" fill="#34D399" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M70 60 C60 60 39 53 36 34 C55 31 66 45 70 60 Z" fill="#6EE7B7" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M70 37 C68 33 62 32 59 36 C55 41 60 48 70 55 C80 48 85 41 81 36 C78 32 72 33 70 37 Z" fill="#F472B6" stroke="#FFFFFF" stroke-width="2"/>
+    </g>
+  </g>
+
+  <!-- Brand & Category Badge -->
+  <g transform="translate(265, 135)">
+    <rect width="210" height="34" rx="17" fill="#8B5CF6" fill-opacity="0.2" stroke="#8B5CF6" stroke-opacity="0.4"/>
+    <text x="105" y="22" fill="#C4B5FD" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" text-anchor="middle" letter-spacing="1">HOME &amp; FAMILY CARE</text>
+  </g>
+
+  <!-- Main Headline -->
+  <text x="265" y="225" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-size="52" font-weight="800" letter-spacing="-1">
+    Sprout
+  </text>
+  <text x="440" y="225" fill="url(#accentGrad)" font-family="system-ui, -apple-system, sans-serif" font-size="52" font-weight="800" letter-spacing="-1">
+    Family Care
+  </text>
+
+  <!-- Tagline / Description -->
+  <text x="100" y="320" fill="#CBD5E1" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="500">
+    The unified operating system for your household.
+  </text>
+  <text x="100" y="358" fill="#94A3B8" font-family="system-ui, -apple-system, sans-serif" font-size="19" font-weight="400">
+    Smart Medication Tracking • Family Health Records • Household Budgeting • Calendar Sync
+  </text>
+
+  <!-- Feature Pill Badges -->
+  <g transform="translate(100, 440)">
+    <!-- Pill 1: Health & Meds -->
+    <g transform="translate(0, 0)">
+      <rect width="210" height="52" rx="16" fill="#1E293B" stroke="#334155" stroke-width="1.5"/>
+      <circle cx="32" cy="26" r="12" fill="#10B981" fill-opacity="0.2"/>
+      <text x="32" y="31" fill="#34D399" font-family="system-ui" font-size="14" text-anchor="middle">💊</text>
+      <text x="56" y="32" fill="#F8FAFC" font-family="system-ui, sans-serif" font-size="15" font-weight="600">Health &amp; Meds</text>
+    </g>
+
+    <!-- Pill 2: Family Finances -->
+    <g transform="translate(230, 0)">
+      <rect width="230" height="52" rx="16" fill="#1E293B" stroke="#334155" stroke-width="1.5"/>
+      <circle cx="32" cy="26" r="12" fill="#8B5CF6" fill-opacity="0.2"/>
+      <text x="32" y="31" fill="#A78BFA" font-family="system-ui" font-size="14" text-anchor="middle">💰</text>
+      <text x="56" y="32" fill="#F8FAFC" font-family="system-ui, sans-serif" font-size="15" font-weight="600">Smart Finances</text>
+    </g>
+
+    <!-- Pill 3: Google Sync -->
+    <g transform="translate(480, 0)">
+      <rect width="250" height="52" rx="16" fill="#1E293B" stroke="#334155" stroke-width="1.5"/>
+      <circle cx="32" cy="26" r="12" fill="#3B82F6" fill-opacity="0.2"/>
+      <text x="32" y="31" fill="#60A5FA" font-family="system-ui" font-size="14" text-anchor="middle">📅</text>
+      <text x="56" y="32" fill="#F8FAFC" font-family="system-ui, sans-serif" font-size="15" font-weight="600">Google Calendar</text>
+    </g>
+
+    <!-- Pill 4: Offline Ready -->
+    <g transform="translate(750, 0)">
+      <rect width="210" height="52" rx="16" fill="#1E293B" stroke="#334155" stroke-width="1.5"/>
+      <circle cx="32" cy="26" r="12" fill="#F59E0B" fill-opacity="0.2"/>
+      <text x="32" y="31" fill="#FBBF24" font-family="system-ui" font-size="14" text-anchor="middle">⚡</text>
+      <text x="56" y="32" fill="#F8FAFC" font-family="system-ui, sans-serif" font-size="15" font-weight="600">Offline Ready</text>
+    </g>
+  </g>
+
+  <!-- Bottom App URL / Watermark -->
+  <text x="100" y="565" fill="#64748B" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="500">
+    sproutfamily.app • Private, encrypted, and family-first.
+  </text>
+</svg>

@@ -1,10 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { GoogleGenAI } from "@google/genai";
-
-// This is a placeholder for the real API key which is injected by the environment
-process.env.API_KEY = "YOUR_API_KEY";
+import { registerServiceWorker } from './services/serviceWorkerRegistration';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -17,3 +14,6 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+// Register service worker for offline shell caching and network resilience
+registerServiceWorker();

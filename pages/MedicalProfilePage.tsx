@@ -4,6 +4,7 @@ import { useAppContext } from '../context/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
+import PageHeader from '../components/ui/PageHeader';
 import { Medicine, MedicalReportCategory, MedicalReport } from '../types';
 import { uploadImage } from '../utils/imageUploader';
 import toast from 'react-hot-toast';
@@ -21,16 +22,19 @@ const MedicalProfilePage: React.FC = () => {
     const memberReports = useMemo(() => medicalReports.filter(r => r.memberId === memberId), [medicalReports, memberId]);
     const memberAppointments = useMemo(() => appointments.filter(a => a.memberId === memberId && a.status === 'upcoming'), [appointments, memberId]);
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <div>{t('common.loading')}</div>;
     if (!member) return <Navigate to="/family" replace />;
     
     // Member Header Component
     const MemberHeader = () => (
         <Card className="flex items-center gap-4 mb-6">
             <img src={member.avatar} alt={member.name} className="w-20 h-20 rounded-full object-cover border-4 border-primary" />
-            <div>
-                <h1 className="text-3xl font-bold text-light-text-primary dark:text-text-primary">{member.name}</h1>
-                <p className="text-light-text-secondary dark:text-text-secondary">{member.relation} - {member.age} {t('family.yearsOld')}</p>
+            <div className="flex-1">
+                <PageHeader 
+                    title={member.name}
+                    subtitle={`${member.relation} - ${member.age} ${t('family.yearsOld')}`}
+                    className="!mb-0"
+                />
             </div>
         </Card>
     );

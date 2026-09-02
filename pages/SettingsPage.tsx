@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
+import PageHeader from '../components/ui/PageHeader';
 import Skeleton from '../components/ui/Skeleton';
 import AuthModal from '../components/ui/AuthModal';
 import { uploadImage } from '../utils/imageUploader';
 import { 
   HiOutlineUsers, 
+  HiOutlineUserGroup,
+  HiOutlineClipboardDocumentList,
   HiOutlinePaintBrush, 
   HiOutlineCurrencyDollar, 
   HiOutlineLanguage, 
@@ -21,7 +24,10 @@ import {
   HiOutlineSpeakerWave,
   HiOutlineSparkles,
   HiOutlineShieldCheck,
-  HiOutlineArrowPath
+  HiOutlineDocumentText,
+  HiOutlineArrowPath,
+  HiOutlineArrowsPointingOut,
+  HiOutlineArrowsPointingIn
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import { useTranslation } from '../hooks/useTranslation';
@@ -48,7 +54,9 @@ const SettingsPage = () => {
     isCalendarSyncing,
     seedSampleDataToCloud,
     clearAllUserData,
-    logout
+    logout,
+    familyMembers,
+    tasks
   } = useAppContext();
   const { t } = useTranslation();
   
@@ -59,6 +67,32 @@ const SettingsPage = () => {
   const [name, setName] = useState(user.name);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  const [isFullscreen, setIsFullscreen] = useState(() => 
+    typeof document !== 'undefined' ? Boolean(document.fullscreenElement) : false
+  );
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if ((document.documentElement as any).webkitRequestFullscreen) {
+          await (document.documentElement as any).webkitRequestFullscreen();
+        }
+        setIsFullscreen(true);
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+        setIsFullscreen(false);
+      }
+    } catch (e) {
+      console.warn('Fullscreen toggle failed:', e);
+    }
+  };
 
   const selectedCurrency = useMemo(() => availableCurrencies.find(c => c.code === currency), [currency, availableCurrencies]);
   const selectedLanguage = useMemo(() => availableLanguages.find(l => l.code === language), [language, availableLanguages]);
@@ -96,6 +130,8 @@ const SettingsPage = () => {
     { icon: HiOutlineUsers, label: t("settings.manageFamily"), to: "/family" },
     { icon: HiOutlineBeaker, label: t("settings.manageMedicines"), to: "/settings/medicines"},
     { icon: HiOutlineCalendarDays, label: t("settings.manageAppointments"), to: "/settings/appointments"},
+    { icon: HiOutlineShieldCheck, label: "Privacy Policy", to: "/privacy"},
+    { icon: HiOutlineDocumentText, label: "Terms of Service", to: "/terms"},
   ];
 
   const SettingItemWrapper: React.FC<{icon: React.ElementType, children: React.ReactNode}> = ({ icon: Icon, children }) => (
@@ -109,7 +145,9 @@ const SettingsPage = () => {
 
   return (
     <div className="space-y-6 pb-8">
-      <h1 className="text-3xl font-bold text-light-text-primary dark:text-text-primary">{t('settings.title')}</h1>
+      <PageHeader 
+        title={t('settings.title')}
+      />
 
       {/* User Profile Card */}
       {loading ? (
@@ -146,6 +184,67 @@ const SettingsPage = () => {
         </Card>
       )}
 
+      {/* Quick Access Hub: Family & Tasks (2-tap accessibility from anywhere) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Link 
+          to="/family" 
+          className="group block p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-xs hover:border-primary/40 dark:hover:border-primary/40 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-pink-500/10 text-pink-600 dark:text-pink-400 group-hover:scale-105 transition-transform">
+                <HiOutlineUserGroup className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-sm text-light-text-primary dark:text-text-primary">
+                    {t('settings.familyHub')}
+                  </h3>
+                  {familyMembers?.length > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-pink-100 dark:bg-pink-950/40 text-pink-600 dark:text-pink-300">
+                      {familyMembers.length}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-light-text-secondary dark:text-text-secondary">
+                  {t('settings.familyHubDesc')}
+                </p>
+              </div>
+            </div>
+            <HiChevronRight className="h-5 w-5 text-light-text-secondary dark:text-text-secondary group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+          </div>
+        </Link>
+
+        <Link 
+          to="/tasks" 
+          className="group block p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-xs hover:border-primary/40 dark:hover:border-primary/40 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform">
+                <HiOutlineClipboardDocumentList className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-sm text-light-text-primary dark:text-text-primary">
+                    {t('settings.tasksHub')}
+                  </h3>
+                  {tasks?.filter(t => !t.completed).length > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300">
+                      {tasks.filter(t => !t.completed).length}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-light-text-secondary dark:text-text-secondary">
+                  {t('settings.tasksHubDesc')}
+                </p>
+              </div>
+            </div>
+            <HiChevronRight className="h-5 w-5 text-light-text-secondary dark:text-text-secondary group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+          </div>
+        </Link>
+      </div>
+
       {/* Firebase Cloud Authentication & Sync Section */}
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
@@ -155,10 +254,10 @@ const SettingsPage = () => {
             </div>
             <div>
               <h3 className="font-semibold text-light-text-primary dark:text-text-primary text-sm">
-                Firebase Authentication & Cloud Database
+                Cloud Sync & Account Security
               </h3>
               <p className="text-xs text-light-text-secondary dark:text-text-secondary">
-                Project: <code className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400">sprout-live</code>
+                {isGoogleAuthenticated ? 'Real-time multi-device synchronization active' : 'Sign in to enable automatic cloud backup'}
               </p>
             </div>
           </div>
@@ -167,23 +266,23 @@ const SettingsPage = () => {
             onClick={() => setAuthModalOpen(true)}
             className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary-focus transition-colors shadow-xs"
           >
-            {isGoogleAuthenticated ? 'Manage Account' : 'Sign In / Connect'}
+            {isGoogleAuthenticated ? t('settings.manageAccount') : t('settings.signInConnect')}
           </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700/70">
-            <span className="text-light-text-secondary dark:text-text-secondary block mb-1">Firestore DB</span>
+            <span className="text-light-text-secondary dark:text-text-secondary block mb-1">{t('settings.cloudSync')}</span>
             <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              {isGoogleAuthenticated ? 'Live Sync Active' : 'Offline / Local Ready'}
+              {isGoogleAuthenticated ? t('settings.active') : t('settings.offlineLocal')}
             </span>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700/70">
-            <span className="text-light-text-secondary dark:text-text-secondary block mb-1">Google Calendar</span>
+            <span className="text-light-text-secondary dark:text-text-secondary block mb-1">{t('settings.googleCalendar')}</span>
             <span className="font-semibold text-light-text-primary dark:text-text-primary flex items-center justify-between">
-              <span>{isGoogleAuthenticated ? 'Connected' : 'Sign in to sync'}</span>
+              <span>{isGoogleAuthenticated ? t('settings.connected') : t('settings.signInToSync')}</span>
               {isGoogleAuthenticated && (
                 <button
                   onClick={() => fetchGoogleEvents()}
@@ -191,16 +290,16 @@ const SettingsPage = () => {
                   className="text-primary hover:underline flex items-center gap-1"
                 >
                   <HiOutlineArrowPath className={`w-3.5 h-3.5 ${isCalendarSyncing ? 'animate-spin' : ''}`} />
-                  Sync
+                  {t('settings.sync')}
                 </button>
               )}
             </span>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700/70">
-            <span className="text-light-text-secondary dark:text-text-secondary block mb-1">Gmail Invitations</span>
+            <span className="text-light-text-secondary dark:text-text-secondary block mb-1">{t('settings.familyInvites')}</span>
             <span className="font-semibold text-light-text-primary dark:text-text-primary">
-              {isGoogleAuthenticated ? 'Ready to Send' : 'Sign in to send'}
+              {isGoogleAuthenticated ? t('settings.readyToSend') : t('settings.signInToSend')}
             </span>
           </div>
         </div>
@@ -320,8 +419,8 @@ const SettingsPage = () => {
                 type="checkbox" 
                 id="bill-alerts-toggle" 
                 className="sr-only peer" 
-                checked={notificationSettings.billDueAlerts} 
-                onChange={(e) => updateNotificationSettings({ billDueAlerts: e.target.checked })} 
+                checked={notificationSettings.billAlerts} 
+                onChange={(e) => updateNotificationSettings({ billAlerts: e.target.checked })} 
               />
               <div className="w-11 h-6 bg-slate-200 dark:bg-zinc-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-primary peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
             </label>
@@ -365,6 +464,29 @@ const SettingsPage = () => {
                 <input type="checkbox" id="theme-toggle" className="sr-only peer" checked={theme === 'dark'} onChange={toggleTheme} />
                 <div className="w-11 h-6 bg-slate-200 dark:bg-zinc-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-primary peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
               </label>
+          </li>
+
+          <li className="py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1 -mx-1" onClick={toggleFullscreen}>
+             <SettingItemWrapper icon={isFullscreen ? HiOutlineArrowsPointingIn : HiOutlineArrowsPointingOut}>
+                <div>
+                  <span className="font-semibold text-light-text-primary dark:text-text-primary block">Fullscreen Mode</span>
+                  <span className="text-xs text-light-text-secondary dark:text-text-secondary">Expand view to fill entire display</span>
+                </div>
+             </SettingItemWrapper>
+             <button
+               type="button"
+               onClick={(e) => {
+                 e.stopPropagation();
+                 toggleFullscreen();
+               }}
+               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                 isFullscreen
+                   ? 'bg-primary text-white'
+                   : 'bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-text-primary'
+               }`}
+             >
+               {isFullscreen ? 'Active' : 'Enable'}
+             </button>
           </li>
           
           <li className="py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1 -mx-1" onClick={() => setCurrencyModalOpen(true)}>
@@ -410,15 +532,15 @@ const SettingsPage = () => {
               </div>
               <div>
                 <h3 className="font-bold text-sm text-light-text-primary dark:text-text-primary">
-                  Firebase Cloud Storage & Backup
+                  {t('settings.dataBackupTitle')}
                 </h3>
                 <p className="text-xs text-light-text-secondary dark:text-text-secondary">
-                  Project: <code className="font-mono text-emerald-600 dark:text-emerald-400">sprout-live</code> • Encrypted Firestore
+                  {t('settings.encryptedSync')}
                 </p>
               </div>
             </div>
             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-              Live Cloud Active
+              {t('settings.syncedBadge')}
             </span>
           </div>
 
@@ -428,7 +550,7 @@ const SettingsPage = () => {
               className="py-2.5 px-4 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition flex items-center justify-center gap-2"
             >
               <HiOutlineSparkles className="w-4 h-4 text-emerald-500" />
-              <span>Load Starter Sample Records</span>
+              <span>{t('settings.loadSampleData')}</span>
             </button>
 
             <button
@@ -439,7 +561,7 @@ const SettingsPage = () => {
               }}
               className="py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700 transition"
             >
-              Clear Session Cache
+              {t('settings.resetSession')}
             </button>
           </div>
 
@@ -448,8 +570,21 @@ const SettingsPage = () => {
               onClick={logout}
               className="w-full py-3 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/40 transition flex items-center justify-center gap-2"
             >
-              <span>Sign Out of Account</span>
+              <span>{t('common.signOut')}</span>
             </button>
+          </div>
+
+          <div className="pt-4 border-t border-slate-200 dark:border-zinc-700/60 text-center text-xs text-light-text-secondary dark:text-text-secondary space-y-1">
+            <div className="flex items-center justify-center gap-3">
+              <Link to="/privacy" className="hover:text-primary underline-offset-4 hover:underline">
+                Privacy Policy
+              </Link>
+              <span>•</span>
+              <Link to="/terms" className="hover:text-primary underline-offset-4 hover:underline">
+                Terms of Service
+              </Link>
+            </div>
+            <p className="text-[11px] opacity-75">Sprout v1.0.0 • Production Ready</p>
           </div>
         </div>
       </Card>

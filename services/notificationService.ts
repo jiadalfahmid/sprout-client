@@ -3,7 +3,7 @@ import type { Notification as AppNotification, Medicine, Bill, Appointment, Task
 export const defaultNotificationSettings: NotificationSettings = {
   browserPushEnabled: false,
   medicineReminders: true,
-  billDueAlerts: true,
+  billAlerts: true,
   appointmentReminders: true,
   taskAlerts: true,
   lowStockAlerts: true,
@@ -197,7 +197,7 @@ export const generateSystemAlerts = ({
   }
 
   // 3. Bill Due Date Alerts (Due Today, Tomorrow, or Overdue)
-  if (settings.billDueAlerts) {
+  if (settings.billAlerts) {
     bills.forEach((bill) => {
       if (!bill.paid) {
         const dueDate = new Date(bill.dueDate);

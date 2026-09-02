@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
+import PageHeader from '../components/ui/PageHeader';
 import { HiArrowLeft, HiArrowDownTray, HiCheckCircle } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import { useTranslation } from '../hooks/useTranslation';
@@ -71,13 +72,16 @@ const RestockPage: React.FC = () => {
     return (
         <div>
              <div className="flex items-center gap-4 mb-6">
-                <button onClick={() => step === 'cart' ? navigate(-1) : setStep('cart')} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700">
+                <button onClick={() => step === 'cart' ? navigate(-1) : setStep('cart')} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 transition">
                     <HiArrowLeft className="h-6 w-6"/>
                 </button>
-                <h1 className="text-3xl font-bold text-light-text-primary dark:text-text-primary">{step === 'cart' ? t('restock.cartTitle') : t('restock.listTitle')}</h1>
+                <PageHeader 
+                    title={step === 'cart' ? t('restock.cartTitle') : t('restock.listTitle')}
+                    className="!mb-0 flex-1"
+                />
              </div>
              
-             {step === 'cart' ? (
+            {step === 'cart' ? (
                 <div className="space-y-4">
                     <Card>
                         <ul className="divide-y divide-slate-200 dark:divide-zinc-700">
@@ -141,7 +145,7 @@ const RestockPage: React.FC = () => {
                            <HiArrowDownTray className="h-5 w-5"/> {t('restock.download')}
                          </button>
                          <button onClick={handleDone} className="w-full py-3 bg-primary text-white font-semibold rounded-lg flex items-center justify-center gap-2">
-                           <HiCheckCircle className="h-5 w-5"/> {t('restock.done')}
+                           <HiCheckCircle className="h-5 w-5"/> {t('restock.finishRestock')}
                          </button>
                     </div>
                 </div>

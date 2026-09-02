@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { HiOutlineHome, HiOutlineChartPie, HiOutlineHeart, HiOutlineCog6Tooth, HiOutlineCalendarDays } from 'react-icons/hi2';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useTranslation } from '../../hooks/useTranslation';
 
 const BottomNav: React.FC = () => {

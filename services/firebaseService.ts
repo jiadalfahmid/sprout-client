@@ -12,7 +12,10 @@ import {
   signOut
 } from 'firebase/auth';
 import {
+  initializeFirestore,
   getFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   doc,
   setDoc,
   getDoc,
@@ -28,10 +31,22 @@ import firebaseConfig from '../firebase-applet-config.json';
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 
-// Initialize Firestore with specific database ID if present in config
-export const db = firebaseConfig.firestoreDatabaseId 
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+// Initialize Firestore with robust multi-tab persistent offline cache
+export const db = (() => {
+  try {
+    const databaseId = firebaseConfig.firestoreDatabaseId || undefined;
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    }, databaseId);
+  } catch (err) {
+    console.info('Using fallback getFirestore instance:', err);
+    return firebaseConfig.firestoreDatabaseId 
+      ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+      : getFirestore(app);
+  }
+})();
 
 // Configure Google OAuth Provider with Google Workspace Scopes
 export const SCOPES = [
@@ -63,7 +78,7 @@ export const getAccessToken = async (): Promise<string | null> => {
 /**
  * Sign in with Google Popup
  */
-export const signInWithGoogle = async (): Promise<{ user: FirebaseUser; accessToken: string }> => {
+export const signInWithGoogle = async (): Promise<{ user: FirebaseUser | null; accessToken: string; cancelled?: boolean }> => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -72,23 +87,24 @@ export const signInWithGoogle = async (): Promise<{ user: FirebaseUser; accessTo
     }
     return {
       user: result.user,
-      accessToken: cachedAccessToken || ''
+      accessToken: cachedAccessToken || '',
+      cancelled: false
     };
   } catch (error: any) {
-    console.warn('Google Sign-In notice:', error.code || error.message);
+    if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+      // User dismissed or cancelled the popup dialog - gracefully return cancelled flag
+      return {
+        user: null,
+        accessToken: '',
+        cancelled: true
+      };
+    }
     if (error.code === 'auth/popup-blocked') {
       const friendlyErr = new Error('The sign-in popup was blocked by your browser. Please allow popups for this site, or use Email Sign In.');
       (friendlyErr as any).code = 'auth/popup-blocked';
       throw friendlyErr;
-    } else if (error.code === 'auth/popup-closed-by-user') {
-      const friendlyErr = new Error('Sign in window was closed before completing.');
-      (friendlyErr as any).code = 'auth/popup-closed-by-user';
-      throw friendlyErr;
-    } else if (error.code === 'auth/cancelled-popup-request') {
-      const friendlyErr = new Error('Authentication request was cancelled.');
-      (friendlyErr as any).code = 'auth/cancelled-popup-request';
-      throw friendlyErr;
     }
+    console.warn('Google Sign-In notice:', error.code || error.message);
     throw error;
   }
 };
@@ -137,6 +153,51 @@ export const saveUserDocument = async (userId: string, subcollection: string, do
     return true;
   } catch (err) {
     console.error(`Error saving document to users/${userId}/${subcollection}/${docId}:`, err);
+    return false;
+  }
+};
+
+/**
+ * Firestore Helper: Save or Update a Family Invite document
+ */
+export const saveInviteDocument = async (inviteId: string, data: any) => {
+  try {
+    const inviteRef = doc(db, 'family_invites', inviteId);
+    await setDoc(inviteRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    return true;
+  } catch (err) {
+    console.error(`Error saving invite to family_invites/${inviteId}:`, err);
+    return false;
+  }
+};
+
+/**
+ * Firestore Helper: Get a Family Invite document
+ */
+export const getInviteDocument = async (inviteId: string) => {
+  try {
+    const inviteRef = doc(db, 'family_invites', inviteId);
+    const snap = await getDoc(inviteRef);
+    if (snap.exists()) {
+      return { id: snap.id, ...snap.data() };
+    }
+    return null;
+  } catch (err) {
+    console.error(`Error fetching invite from family_invites/${inviteId}:`, err);
+    return null;
+  }
+};
+
+/**
+ * Firestore Helper: Update a Family Invite document
+ */
+export const updateInviteDocument = async (inviteId: string, data: any) => {
+  try {
+    const inviteRef = doc(db, 'family_invites', inviteId);
+    await setDoc(inviteRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    return true;
+  } catch (err) {
+    console.error(`Error updating invite family_invites/${inviteId}:`, err);
     return false;
   }
 };

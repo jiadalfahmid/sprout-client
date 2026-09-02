@@ -1,13 +1,17 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect, RefObject } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
+import PageHeader from '../components/ui/PageHeader';
 import { Transaction, TransactionType, Bill, BillCategory, Borrowing, Lending, SavingsGoal, Repayment, Return } from '../types';
 import { HiPlus, HiPencil, HiTrash, HiChevronLeft, HiChevronRight, HiOutlineArrowTrendingUp, HiOutlineArrowTrendingDown, HiOutlineBanknotes, HiOutlineScale, HiOutlineReceiptRefund, HiOutlineWifi, HiOutlineHome, HiOutlineCreditCard, HiOutlineQuestionMarkCircle, HiOutlineMagnifyingGlass, HiOutlineChevronUpDown, HiOutlinePresentationChartBar, HiOutlineClipboardDocumentList, HiOutlineArrowsRightLeft, HiOutlineFlag, HiOutlineTrophy, HiOutlinePlusCircle, HiEllipsisVertical } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+
+import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 
 type FinanceView = 'dashboard' | 'transactions' | 'bills' | 'borrow_lend' | 'savings';
 type ModalType = 'none' | 'transaction' | 'bill' | 'borrowing' | 'lending' | 'repayment' | 'return' | 'savings_goal' | 'deposit' | 'delete_goal' | 'edit_goal' | 'edit_borrowing' | 'edit_lending' | 'delete_borrowing' | 'delete_lending';
@@ -45,9 +49,88 @@ const FinancePage: React.FC = () => {
     } = useAppContext();
     const { t, language } = useTranslation();
     
+    const [searchParams] = useSearchParams();
+    const queryView = searchParams.get('view') as FinanceView | null;
+    
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [activeView, setActiveView] = useState<FinanceView>('dashboard');
+    const [activeView, setActiveView] = useState<FinanceView>(() => {
+        if (queryView && ['dashboard', 'transactions', 'bills', 'borrow_lend', 'savings'].includes(queryView)) {
+            return queryView;
+        }
+        return 'dashboard';
+    });
+
+    useEffect(() => {
+        if (queryView && ['dashboard', 'transactions', 'bills', 'borrow_lend', 'savings'].includes(queryView)) {
+            setActiveView(queryView);
+        }
+    }, [queryView]);
+
+    const [pendingAction, setPendingAction] = useState<{ type: string; timestamp: number } | null>(null);
     const currencySymbol = useMemo(() => availableCurrencies.find(c => c.code === currency)?.symbol || '$', [currency, availableCurrencies]);
+
+    const fabActions: SpeedDialAction[] = [
+        {
+            id: 'income',
+            label: t('finance.addIncome') || 'Add Income',
+            icon: HiOutlineArrowTrendingUp,
+            color: 'emerald',
+            onClick: () => {
+                setActiveView('transactions');
+                setPendingAction({ type: 'income', timestamp: Date.now() });
+            },
+        },
+        {
+            id: 'expense',
+            label: t('finance.addExpense') || 'Add Expense',
+            icon: HiOutlineArrowTrendingDown,
+            color: 'rose',
+            onClick: () => {
+                setActiveView('transactions');
+                setPendingAction({ type: 'expense', timestamp: Date.now() });
+            },
+        },
+        {
+            id: 'bill',
+            label: t('finance.addRecurringBill') || 'Add Bill',
+            icon: HiOutlineReceiptRefund,
+            color: 'blue',
+            onClick: () => {
+                setActiveView('bills');
+                setPendingAction({ type: 'bill', timestamp: Date.now() });
+            },
+        },
+        {
+            id: 'borrow',
+            label: t('finance.modal.addBorrowing') || 'Add Borrowing (Debt)',
+            icon: HiOutlineArrowsRightLeft,
+            color: 'amber',
+            onClick: () => {
+                setActiveView('borrow_lend');
+                setPendingAction({ type: 'borrowing', timestamp: Date.now() });
+            },
+        },
+        {
+            id: 'lend',
+            label: t('finance.modal.addLending') || 'Add Lending (Loan)',
+            icon: HiOutlineBanknotes,
+            color: 'teal',
+            onClick: () => {
+                setActiveView('borrow_lend');
+                setPendingAction({ type: 'lending', timestamp: Date.now() });
+            },
+        },
+        {
+            id: 'goal',
+            label: t('finance.modal.addGoal') || 'New Goal',
+            icon: HiOutlineFlag,
+            color: 'indigo',
+            onClick: () => {
+                setActiveView('savings');
+                setPendingAction({ type: 'goal', timestamp: Date.now() });
+            },
+        },
+    ];
 
     const changeMonth = (offset: number) => {
         setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
@@ -64,46 +147,40 @@ const FinancePage: React.FC = () => {
     const renderView = () => {
         switch(activeView) {
             case 'dashboard': return <DashboardView currentDate={currentDate} currencySymbol={currencySymbol} />;
-            case 'transactions': return <TransactionsView currentDate={currentDate} currencySymbol={currencySymbol} />;
-            case 'bills': return <BillsView currentDate={currentDate} currencySymbol={currencySymbol} />;
-            case 'borrow_lend': return <BorrowLendView currencySymbol={currencySymbol} />;
-            case 'savings': return <SavingsView currencySymbol={currencySymbol} />;
+            case 'transactions': return <TransactionsView currentDate={currentDate} currencySymbol={currencySymbol} triggerAction={pendingAction?.type === 'income' || pendingAction?.type === 'expense' ? (pendingAction as any) : null} />;
+            case 'bills': return <BillsView currentDate={currentDate} currencySymbol={currencySymbol} triggerAction={pendingAction?.type === 'bill' ? (pendingAction as any) : null} />;
+            case 'borrow_lend': return <BorrowLendView currencySymbol={currencySymbol} triggerAction={pendingAction?.type === 'borrowing' || pendingAction?.type === 'lending' ? (pendingAction as any) : null} />;
+            case 'savings': return <SavingsView currencySymbol={currencySymbol} triggerAction={pendingAction?.type === 'goal' ? (pendingAction as any) : null} />;
             default: return null;
         }
     }
     
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center w-full">
+            <PageHeader
+                title={t('finance.title')}
+                action={
+                    <div className="flex items-center justify-center bg-light-surface dark:bg-surface rounded-lg px-2 py-1 gap-1 w-full sm:w-auto border border-slate-200 dark:border-zinc-700">
+                        <button
+                            onClick={() => changeMonth(-1)}
+                            className="p-2 sm:p-1 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-700"
+                        >
+                            <HiChevronLeft className="h-5 w-5" />
+                        </button>
 
-                {/* Title */}
-                <h1 className="text-2xl sm:text-3xl font-bold text-light-text-primary dark:text-text-primary text-center sm:text-left">
-                    {t('finance.title')}
-                </h1>
+                        <h2 className="text-sm font-semibold w-32 sm:w-28 text-center truncate">
+                            {currentDate.toLocaleString(language, { month: 'long', year: 'numeric' })}
+                        </h2>
 
-                {/* Month Selector */}
-                <div className="flex items-center justify-center bg-light-surface dark:bg-surface rounded-lg px-2 py-1 gap-1 w-full sm:w-auto">
-                    <button
-                    onClick={() => changeMonth(-1)}
-                    className="p-2 sm:p-1 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-700"
-                    >
-                    <HiChevronLeft className="h-5 w-5" />
-                    </button>
-
-                    <h2 className="text-sm font-semibold w-32 sm:w-28 text-center truncate">
-                    {currentDate.toLocaleString(language, { month: 'long', year: 'numeric' })}
-                    </h2>
-
-                    <button
-                    onClick={() => changeMonth(1)}
-                    className="p-2 sm:p-1 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-700"
-                    >
-                    <HiChevronRight className="h-5 w-5" />
-                    </button>
-                </div>
-
-                </div>
-
+                        <button
+                            onClick={() => changeMonth(1)}
+                            className="p-2 sm:p-1 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-700"
+                        >
+                            <HiChevronRight className="h-5 w-5" />
+                        </button>
+                    </div>
+                }
+            />
 
             <div className="overflow-x-auto">
                 <div className="flex justify-center sm:justify-center gap-2 bg-slate-100 dark:bg-surface p-1 rounded-full min-w-max">
@@ -127,6 +204,12 @@ const FinancePage: React.FC = () => {
                     {renderView()}
                 </motion.div>
             </AnimatePresence>
+
+            {/* SPEED DIAL FLOATING ACTION BUTTON */}
+            <SpeedDialFAB
+                actions={fabActions}
+                mainLabel="Finance Actions"
+            />
         </div>
     );
 };
@@ -239,7 +322,11 @@ const DashboardView: React.FC<{ currentDate: Date, currencySymbol: string }> = (
     );
 };
 
-const TransactionsView: React.FC<{ currentDate: Date, currencySymbol: string }> = ({ currentDate, currencySymbol }) => {
+const TransactionsView: React.FC<{ 
+    currentDate: Date; 
+    currencySymbol: string;
+    triggerAction?: { type: 'income' | 'expense'; timestamp: number } | null;
+}> = ({ currentDate, currencySymbol, triggerAction }) => {
     const { transactions, addTransaction, updateTransaction, deleteTransaction } = useAppContext();
     const { t } = useTranslation();
     const [isTransactionModalOpen, setTransactionModalOpen] = useState(false);
@@ -260,7 +347,7 @@ const TransactionsView: React.FC<{ currentDate: Date, currencySymbol: string }> 
         setDate(new Date().toISOString().split('T')[0]);
     }, []);
 
-    const handleOpenTransactionModal = (type: TransactionType, transaction: Transaction | null = null) => {
+    const handleOpenTransactionModal = useCallback((type: TransactionType, transaction: Transaction | null = null) => {
         setTransactionType(type);
         if (transaction) {
             setEditingTransaction(transaction);
@@ -272,7 +359,17 @@ const TransactionsView: React.FC<{ currentDate: Date, currencySymbol: string }> 
             resetTransactionForm();
         }
         setTransactionModalOpen(true);
-    };
+    }, [resetTransactionForm]);
+
+    useEffect(() => {
+        if (triggerAction) {
+            if (triggerAction.type === 'income') {
+                handleOpenTransactionModal(TransactionType.INCOME);
+            } else if (triggerAction.type === 'expense') {
+                handleOpenTransactionModal(TransactionType.EXPENSE);
+            }
+        }
+    }, [triggerAction, handleOpenTransactionModal]);
 
     const handleSaveTransaction = () => {
         if (description && amount && category && date) {
@@ -382,47 +479,125 @@ const TransactionsView: React.FC<{ currentDate: Date, currencySymbol: string }> 
     );
 };
 
-const BillsView: React.FC<{ currentDate: Date, currencySymbol: string }> = ({ currentDate, currencySymbol }) => {
-    const { bills, addBill, updateBill } = useAppContext();
+const BillsView: React.FC<{ 
+    currentDate: Date; 
+    currencySymbol: string;
+    triggerAction?: { type: 'bill'; timestamp: number } | null;
+}> = ({ currentDate, currencySymbol, triggerAction }) => {
+    const { bills, addBill, updateBill, deleteBill } = useAppContext();
     const { t, language } = useTranslation();
     const [isBillModalOpen, setBillModalOpen] = useState(false);
-    const [billForm, setBillForm] = useState({ name: '', amount: '', category: BillCategory.UTILITIES, dueDate: '', recurrence: 'monthly' as Bill['recurrence'] });
+    const [editingBill, setEditingBill] = useState<Bill | null>(null);
+    const [deletingBill, setDeletingBill] = useState<Bill | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [billForm, setBillForm] = useState({ 
+        name: '', 
+        amount: '', 
+        category: BillCategory.UTILITIES, 
+        dueDate: '', 
+        recurrence: 'monthly' as Bill['recurrence'],
+        paid: false
+    });
 
-    const monthlyBills = useMemo(() => {
+    const openBillModal = (bill?: Bill) => {
+        if (bill) {
+            setEditingBill(bill);
+            setBillForm({
+                name: bill.name,
+                amount: bill.amount.toString(),
+                category: bill.category,
+                dueDate: bill.dueDate.split('T')[0],
+                recurrence: bill.recurrence,
+                paid: bill.paid
+            });
+        } else {
+            setEditingBill(null);
+            setBillForm({ 
+                name: '', 
+                amount: '', 
+                category: BillCategory.UTILITIES, 
+                dueDate: new Date().toISOString().split('T')[0], 
+                recurrence: 'monthly',
+                paid: false
+            });
+        }
+        setBillModalOpen(true);
+    };
+
+    useEffect(() => {
+        if (triggerAction && triggerAction.type === 'bill') {
+            openBillModal();
+        }
+    }, [triggerAction]);
+
+    const filteredBills = useMemo(() => {
         return bills.filter(b => {
-            const dueDate = new Date(b.dueDate);
-            return dueDate.getFullYear() === currentDate.getFullYear() && dueDate.getMonth() === currentDate.getMonth();
+            const matchesSearch = b.name.toLowerCase().includes(searchQuery.toLowerCase()) || b.category.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesCategory = selectedCategory === 'all' || b.category === selectedCategory;
+            return matchesSearch && matchesCategory;
         });
-    }, [bills, currentDate]);
+    }, [bills, searchQuery, selectedCategory]);
 
-    const upcomingBills = monthlyBills.filter(b => !b.paid).sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-    const paidBills = monthlyBills.filter(b => b.paid).sort((a,b) => new Date(b.paidOn!).getTime() - new Date(a.paidOn!).getTime());
+    const upcomingBills = filteredBills.filter(b => !b.paid).sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    const paidBills = filteredBills.filter(b => b.paid).sort((a,b) => new Date(b.paidOn || b.dueDate).getTime() - new Date(a.paidOn || a.dueDate).getTime());
 
-    const handlePayBill = (bill: Bill) => {
-        if (updateBill({ ...bill, paid: true })) {
-            toast.success(t('finance.billPaidSuccess'));
+    const handleTogglePaid = (bill: Bill) => {
+        const updatedPaid = !bill.paid;
+        if (updateBill({ 
+            ...bill, 
+            paid: updatedPaid,
+            paidOn: updatedPaid ? new Date().toISOString() : undefined
+        })) {
+            toast.success(updatedPaid ? t('finance.billPaidSuccess') : t('finance.modal.markUnpaid'));
         }
     };
 
-    const handleAddBill = () => {
+    const handleSaveBill = () => {
         if(billForm.name && billForm.amount && billForm.dueDate) {
-            addBill({
-                name: billForm.name,
-                amount: parseFloat(billForm.amount),
-                category: billForm.category,
-                dueDate: new Date(billForm.dueDate).toISOString(),
-                recurrence: billForm.recurrence
-            });
-            toast.success(t('finance.modal.billAdded'));
+            if (editingBill) {
+                updateBill({
+                    ...editingBill,
+                    name: billForm.name,
+                    amount: parseFloat(billForm.amount),
+                    category: billForm.category,
+                    dueDate: new Date(billForm.dueDate).toISOString(),
+                    recurrence: billForm.recurrence,
+                    paid: billForm.paid,
+                    paidOn: billForm.paid ? (editingBill.paidOn || new Date().toISOString()) : undefined
+                });
+                toast.success(t('finance.modal.billUpdated'));
+            } else {
+                addBill({
+                    name: billForm.name,
+                    amount: parseFloat(billForm.amount),
+                    category: billForm.category,
+                    dueDate: new Date(billForm.dueDate).toISOString(),
+                    recurrence: billForm.recurrence
+                });
+                toast.success(t('finance.modal.billAdded'));
+            }
             setBillModalOpen(false);
-            setBillForm({ name: '', amount: '', category: BillCategory.UTILITIES, dueDate: '', recurrence: 'monthly' });
+            setEditingBill(null);
+            setBillForm({ name: '', amount: '', category: BillCategory.UTILITIES, dueDate: '', recurrence: 'monthly', paid: false });
         } else {
             toast.error(t('finance.modal.fillFieldsError'));
         }
-    }
+    };
 
-    // FIX: Explicitly type component as React.FC to resolve key prop type error.
+    const handleDeleteBill = () => {
+        if (deletingBill) {
+            deleteBill(deletingBill.id);
+            toast.success(t('finance.modal.billDeleted'));
+            setDeletingBill(null);
+        }
+    };
+
     const BillItem: React.FC<{ bill: Bill }> = ({ bill }) => {
+        const [menuOpen, setMenuOpen] = useState(false);
+        const menuRef = useRef<HTMLDivElement>(null);
+        useOnClickOutside(menuRef, () => setMenuOpen(false));
+
         const today = new Date();
         today.setHours(0,0,0,0);
         const dueDate = new Date(bill.dueDate);
@@ -441,54 +616,174 @@ const BillsView: React.FC<{ currentDate: Date, currencySymbol: string }> = ({ cu
                 statusText = t('finance.bills.dueIn', { days: diffDays });
             }
         } else {
-            statusText = t('finance.bills.paidOn', { date: new Date(bill.paidOn!).toLocaleDateString() });
+            statusText = t('finance.bills.paidOn', { date: new Date(bill.paidOn || bill.dueDate).toLocaleDateString() });
             statusColor = 'text-green-500';
         }
 
         return (
-            <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3 bg-light-background dark:bg-background rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <div>
-                    <p className="font-bold text-light-text-primary dark:text-text-primary">{bill.name}</p>
-                    <p className={`text-sm font-semibold ${statusColor}`}>{statusText}</p>
+            <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3.5 bg-light-background dark:bg-background rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border border-slate-100 dark:border-zinc-800">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                        <p className="font-bold text-light-text-primary dark:text-text-primary">{bill.name}</p>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-zinc-700 text-light-text-secondary dark:text-text-secondary capitalize font-medium">{bill.category}</span>
+                        {bill.recurrence !== 'none' && (
+                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize font-medium">{bill.recurrence}</span>
+                        )}
+                    </div>
+                    <p className={`text-xs font-semibold mt-1 ${statusColor}`}>{statusText}</p>
                 </div>
-                <div className="flex items-center gap-4 self-end sm:self-auto">
-                     <p className="font-bold text-lg text-light-text-primary dark:text-text-primary">{currencySymbol}{bill.amount.toFixed(2)}</p>
-                    {!bill.paid && <button onClick={() => handlePayBill(bill)} className="px-4 py-1.5 bg-primary text-white text-sm font-semibold rounded-full">{t('finance.bills.pay')}</button>}
+                <div className="flex items-center justify-between sm:justify-end gap-3 self-stretch sm:self-auto">
+                    <p className="font-bold text-lg text-light-text-primary dark:text-text-primary">{currencySymbol}{bill.amount.toFixed(2)}</p>
+                    
+                    <div className="flex items-center gap-1.5">
+                        <button 
+                            onClick={() => handleTogglePaid(bill)} 
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${bill.paid ? 'bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-text-primary hover:bg-slate-300' : 'bg-primary text-white hover:bg-primary/90'}`}
+                        >
+                            {bill.paid ? t('finance.modal.markUnpaid') : t('finance.bills.pay')}
+                        </button>
+                        
+                        <div className="relative" ref={menuRef}>
+                            <button onClick={() => setMenuOpen(p => !p)} className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
+                                <HiEllipsisVertical className="h-5 w-5" />
+                            </button>
+                            <AnimatePresence>
+                                {menuOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: -5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                                        className="absolute right-0 top-8 w-44 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-20 p-1.5 space-y-1"
+                                    >
+                                        <button onClick={() => { openBillModal(bill); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                            <HiPencil className="h-3.5 w-3.5" /> {t('finance.modal.actions.edit')}
+                                        </button>
+                                        <button onClick={() => { setDeletingBill(bill); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md text-red-500 hover:bg-red-500/10">
+                                            <HiTrash className="h-3.5 w-3.5" /> {t('finance.modal.actions.delete')}
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </div>
                 </div>
             </motion.div>
-        )
-    }
+        );
+    };
 
     return (
         <div className="space-y-4">
-            <button onClick={() => setBillModalOpen(true)} className="w-full p-3 bg-primary/10 text-primary rounded-lg flex items-center justify-center text-sm font-semibold hover:bg-primary/20 transition-colors">
-                <HiPlus className="h-5 w-5 mr-2"/>{t('finance.addRecurringBill')}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full sm:w-72">
+                    <HiOutlineMagnifyingGlass className="absolute top-1/2 left-3 -translate-y-1/2 h-4 w-4 text-light-text-secondary dark:text-text-secondary" />
+                    <input 
+                        type="text" 
+                        placeholder={t('finance.searchPlaceholder')} 
+                        value={searchQuery} 
+                        onChange={(e) => setSearchQuery(e.target.value)} 
+                        className="w-full text-sm p-2 pl-9 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-700 focus:ring-1 focus:ring-primary"
+                    />
+                </div>
+                <button onClick={() => openBillModal()} className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-lg flex items-center justify-center text-sm font-semibold hover:bg-opacity-90 transition-colors shrink-0">
+                    <HiPlus className="h-4 w-4 mr-1.5"/>{t('finance.addRecurringBill')}
+                </button>
+            </div>
+
+            {/* Category Chips */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs">
+                {['all', ...Object.values(BillCategory)].map(cat => (
+                    <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-3 py-1.5 rounded-full capitalize whitespace-nowrap font-medium transition-colors ${selectedCategory === cat ? 'bg-primary text-white' : 'bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700 text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
+                    >
+                        {cat}
+                    </button>
+                ))}
+            </div>
+
             <Card>
-                <h3 className="text-lg font-semibold mb-3">{t('finance.bills.upcoming')}</h3>
-                {upcomingBills.length > 0 ? <div className="space-y-2"><AnimatePresence>{upcomingBills.map(b => <BillItem key={b.id} bill={b}/>)}</AnimatePresence></div> : <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.noBills')}</p>}
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-lg font-semibold">{t('finance.bills.upcoming')}</h3>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500 font-semibold">{upcomingBills.length}</span>
+                </div>
+                {upcomingBills.length > 0 ? (
+                    <div className="space-y-2"><AnimatePresence>{upcomingBills.map(b => <BillItem key={b.id} bill={b}/>)}</AnimatePresence></div>
+                ) : (
+                    <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.noBills')}</p>
+                )}
             </Card>
-             <Card>
-                <h3 className="text-lg font-semibold mb-3">{t('finance.bills.paid')}</h3>
-                {paidBills.length > 0 ? <div className="space-y-2"><AnimatePresence>{paidBills.map(b => <BillItem key={b.id} bill={b}/>)}</AnimatePresence></div> : <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.noPaidBills')}</p>}
+
+            <Card>
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-lg font-semibold">{t('finance.bills.paid')}</h3>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 font-semibold">{paidBills.length}</span>
+                </div>
+                {paidBills.length > 0 ? (
+                    <div className="space-y-2"><AnimatePresence>{paidBills.map(b => <BillItem key={b.id} bill={b}/>)}</AnimatePresence></div>
+                ) : (
+                    <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.noPaidBills')}</p>
+                )}
             </Card>
-             <Modal isOpen={isBillModalOpen} onClose={() => setBillModalOpen(false)} title={t('finance.modal.addBill')}>
+
+            {/* Add / Edit Bill Modal */}
+            <Modal isOpen={isBillModalOpen} onClose={() => setBillModalOpen(false)} title={editingBill ? t('finance.modal.editBill') : t('finance.modal.addBill')}>
                 <div className="space-y-4">
-                    <input type="text" placeholder={t('finance.modal.billName')} value={billForm.name} onChange={e => setBillForm(s => ({...s, name: e.target.value}))} className="w-full mt-1 p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                    <div className="grid grid-cols-2 gap-4">
-                        <input type="number" placeholder={t('finance.modal.amount')} value={billForm.amount} onChange={e => setBillForm(s => ({...s, amount: e.target.value}))} className="w-full mt-1 p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                        <input type="date" value={billForm.dueDate} onChange={e => setBillForm(s => ({...s, dueDate: e.target.value}))} className="w-full mt-1 p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.billName')}</label>
+                        <input type="text" placeholder={t('finance.modal.billName')} value={billForm.name} onChange={e => setBillForm(s => ({...s, name: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
                     </div>
-                     <select value={billForm.category} onChange={e => setBillForm(s => ({...s, category: e.target.value as BillCategory}))} className="w-full mt-1 p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
-                        {Object.values(BillCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
-                     <select value={billForm.recurrence} onChange={e => setBillForm(s => ({...s, recurrence: e.target.value as any}))} className="w-full mt-1 p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
-                        <option value="monthly">{t('finance.modal.recurrenceOptions.monthly')}</option>
-                        <option value="weekly">{t('finance.modal.recurrenceOptions.weekly')}</option>
-                        <option value="yearly">{t('finance.modal.recurrenceOptions.yearly')}</option>
-                         <option value="none">{t('finance.modal.recurrenceOptions.none')}</option>
-                    </select>
-                    <button onClick={handleAddBill} className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90">{t('finance.modal.addBillBtn')}</button>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.amount')}</label>
+                            <input type="number" placeholder="0.00" value={billForm.amount} onChange={e => setBillForm(s => ({...s, amount: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.dueDate')}</label>
+                            <input type="date" value={billForm.dueDate} onChange={e => setBillForm(s => ({...s, dueDate: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.category')}</label>
+                            <select value={billForm.category} onChange={e => setBillForm(s => ({...s, category: e.target.value as BillCategory}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
+                                {Object.values(BillCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.recurrence')}</label>
+                            <select value={billForm.recurrence} onChange={e => setBillForm(s => ({...s, recurrence: e.target.value as any}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
+                                <option value="monthly">{t('finance.modal.recurrenceOptions.monthly')}</option>
+                                <option value="weekly">{t('finance.modal.recurrenceOptions.weekly')}</option>
+                                <option value="yearly">{t('finance.modal.recurrenceOptions.yearly')}</option>
+                                <option value="none">{t('finance.modal.recurrenceOptions.none')}</option>
+                            </select>
+                        </div>
+                    </div>
+                    {editingBill && (
+                        <label className="flex items-center gap-2 text-sm font-medium cursor-pointer pt-1">
+                            <input type="checkbox" checked={billForm.paid} onChange={e => setBillForm(s => ({ ...s, paid: e.target.checked }))} className="h-4 w-4 rounded text-primary focus:ring-primary" />
+                            <span>{t('finance.modal.markPaid')}</span>
+                        </label>
+                    )}
+                    <button onClick={handleSaveBill} className="w-full py-2.5 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 transition-colors">
+                        {editingBill ? t('finance.modal.saveChanges') : t('finance.modal.addBillBtn')}
+                    </button>
+                </div>
+            </Modal>
+
+            {/* Delete Bill Confirmation Modal */}
+            <Modal isOpen={!!deletingBill} onClose={() => setDeletingBill(null)} title={t('finance.modal.deleteBill')}>
+                <div className="space-y-4">
+                    <p className="text-light-text-secondary dark:text-text-secondary">
+                        {t('finance.modal.deleteBillConfirm', { billName: deletingBill?.name || '' })}
+                    </p>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button onClick={() => setDeletingBill(null)} className="px-4 py-2 bg-slate-200 dark:bg-zinc-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-zinc-600 text-sm">
+                            {t('tasks.deleteModal.cancel')}
+                        </button>
+                        <button onClick={handleDeleteBill} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 text-sm">
+                            {t('tasks.deleteModal.confirm')}
+                        </button>
+                    </div>
                 </div>
             </Modal>
         </div>
@@ -501,16 +796,19 @@ const BorrowLendItemCard: React.FC<{
     onLogPayment: (item: Borrowing | Lending) => void;
     onEdit: (item: Borrowing | Lending) => void;
     onDelete: (item: Borrowing | Lending) => void;
+    onDeletePayment?: (itemId: string, index: number, isBorrowing: boolean) => void;
     onWriteOff?: (id: string) => void;
-}> = ({ item, currencySymbol, onLogPayment, onEdit, onDelete, onWriteOff }) => {
+}> = ({ item, currencySymbol, onLogPayment, onEdit, onDelete, onDeletePayment, onWriteOff }) => {
     const { t } = useTranslation();
     const [menuOpen, setMenuOpen] = useState(false);
+    const [historyOpen, setHistoryOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     useOnClickOutside(menuRef, () => setMenuOpen(false));
     
     const isBorrowing = 'lenderName' in item;
-    const totalPaid = isBorrowing ? item.repayments.reduce((s, r) => s + r.amount, 0) : item.returns.reduce((s, r) => s + r.amount, 0);
-    const remaining = item.amount - totalPaid;
+    const paymentsList = isBorrowing ? (item.repayments || []) : (item.returns || []);
+    const totalPaid = paymentsList.reduce((s, r) => s + r.amount, 0);
+    const remaining = Math.max(0, item.amount - totalPaid);
     const percentage = item.amount > 0 ? Math.min(Math.round((totalPaid / item.amount) * 100), 100) : 100;
     const dueDate = isBorrowing ? item.dueDate : item.returnDate;
     const isOverdue = item.status === 'outstanding' && new Date(dueDate) < new Date();
@@ -522,36 +820,36 @@ const BorrowLendItemCard: React.FC<{
     const progressColor = isBorrowing ? 'bg-orange-500' : 'bg-green-500';
 
     return (
-        <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 bg-light-background dark:bg-background rounded-2xl space-y-3">
+        <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 bg-light-background dark:bg-background rounded-2xl space-y-3 border border-slate-100 dark:border-zinc-800">
             <div className="flex justify-between items-start">
                 <div>
                     <p className="font-bold text-light-text-primary dark:text-text-primary">{isBorrowing ? item.lenderName : item.borrowerName}</p>
                     <p className="text-xs text-light-text-secondary dark:text-text-secondary">{t(isBorrowing ? 'finance.borrowLend.lender' : 'finance.borrowLend.borrower')}</p>
                 </div>
                 <div className="relative" ref={menuRef}>
-                    <button onClick={() => setMenuOpen(p => !p)} className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700">
+                    <button onClick={() => setMenuOpen(p => !p)} className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
                         <HiEllipsisVertical className="h-5 w-5" />
                     </button>
                     <AnimatePresence>
                         {menuOpen && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-                                className="absolute top-8 right-0 w-48 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-10 p-2 space-y-1"
+                                className="absolute top-8 right-0 w-48 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-10 p-1.5 space-y-1"
                             >
-                                <button onClick={() => { onLogPayment(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
-                                    <HiPlus /> {t(isBorrowing ? 'finance.borrowLend.logRepayment' : 'finance.borrowLend.logReturn')}
+                                <button onClick={() => { onLogPayment(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                    <HiPlus className="h-3.5 w-3.5" /> {t(isBorrowing ? 'finance.borrowLend.logRepayment' : 'finance.borrowLend.logReturn')}
                                 </button>
-                                <button onClick={() => { onEdit(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
-                                    <HiPencil /> {t('finance.modal.actions.edit')}
+                                <button onClick={() => { onEdit(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                    <HiPencil className="h-3.5 w-3.5" /> {t('finance.modal.actions.edit')}
                                 </button>
                                 {!isBorrowing && onWriteOff && (
-                                     <button onClick={() => { onWriteOff(item.id); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
-                                        <HiOutlineReceiptRefund /> {t('finance.borrowLend.writeOff')}
+                                     <button onClick={() => { onWriteOff(item.id); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                        <HiOutlineReceiptRefund className="h-3.5 w-3.5" /> {t('finance.borrowLend.writeOff')}
                                     </button>
                                 )}
                                 <div className="h-px bg-slate-200 dark:bg-zinc-700 my-1"></div>
-                                <button onClick={() => { onDelete(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-md text-red-500 hover:bg-red-500/10">
-                                    <HiTrash /> {t('finance.modal.actions.delete')}
+                                <button onClick={() => { onDelete(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md text-red-500 hover:bg-red-500/10">
+                                    <HiTrash className="h-3.5 w-3.5" /> {t('finance.modal.actions.delete')}
                                 </button>
                             </motion.div>
                         )}
@@ -572,28 +870,75 @@ const BorrowLendItemCard: React.FC<{
 
             <div>
                 <div className="flex justify-between text-xs font-medium text-light-text-secondary dark:text-text-secondary mb-1">
-                    <span>{currencySymbol}{totalPaid.toFixed(2)}</span>
+                    <span>{currencySymbol}{totalPaid.toFixed(2)} {t('finance.borrowLend.paid')}</span>
                     <span>{percentage}%</span>
                 </div>
-                <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-2"><div className={`${progressColor} h-2 rounded-full`} style={{ width: `${percentage}%` }}/></div>
+                <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-2">
+                    <div className={`${progressColor} h-2 rounded-full transition-all duration-300`} style={{ width: `${percentage}%` }}/>
+                </div>
             </div>
             
-            <div className="flex justify-between items-center text-sm text-light-text-secondary dark:text-text-secondary">
+            <div className="flex justify-between items-center text-xs text-light-text-secondary dark:text-text-secondary pt-1">
                 <p>{t('finance.borrowLend.dueDate')} <span className={`font-semibold ${isOverdue ? 'text-red-500' : 'text-light-text-primary dark:text-text-primary'}`}>{new Date(dueDate).toLocaleDateString()}</span></p>
-                {isOverdue && <span className="px-2 py-0.5 bg-red-500/20 text-red-500 text-xs font-semibold rounded-full">{t('finance.borrowLend.overdue')}</span>}
+                {isOverdue && <span className="px-2 py-0.5 bg-red-500/20 text-red-500 text-[10px] font-bold rounded-full">{t('finance.borrowLend.overdue')}</span>}
             </div>
+
+            {/* Payment History Accordion */}
+            {paymentsList.length > 0 && (
+                <div className="pt-2 border-t border-slate-200 dark:border-zinc-700/60">
+                    <button 
+                        onClick={() => setHistoryOpen(p => !p)} 
+                        className="text-xs font-semibold text-primary flex items-center justify-between w-full hover:underline"
+                    >
+                        <span>{isBorrowing ? 'Repayments Log' : 'Returns Log'} ({paymentsList.length})</span>
+                        <span>{historyOpen ? '▲ Hide' : '▼ View'}</span>
+                    </button>
+
+                    <AnimatePresence>
+                        {historyOpen && (
+                            <motion.div 
+                                initial={{ opacity: 0, height: 0 }} 
+                                animate={{ opacity: 1, height: 'auto' }} 
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-2 space-y-1.5 overflow-hidden"
+                            >
+                                {paymentsList.map((p, idx) => (
+                                    <div key={idx} className="flex justify-between items-center text-xs bg-light-surface dark:bg-surface p-2 rounded-lg border border-slate-200 dark:border-zinc-700">
+                                        <div>
+                                            <span className="font-semibold text-light-text-primary dark:text-text-primary">{currencySymbol}{p.amount.toFixed(2)}</span>
+                                            <span className="text-light-text-secondary dark:text-text-secondary ml-2">{new Date(p.date).toLocaleDateString()}</span>
+                                        </div>
+                                        {onDeletePayment && (
+                                            <button 
+                                                onClick={() => onDeletePayment(item.id, idx, isBorrowing)} 
+                                                className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-red-500/10 transition-colors"
+                                                title="Delete this payment record"
+                                            >
+                                                <HiTrash className="h-3.5 w-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            )}
         </motion.div>
     );
 };
 
-const BorrowLendView: React.FC<{ currencySymbol: string }> = ({ currencySymbol }) => {
-    const { borrowings, lendings, addBorrowing, updateBorrowing, deleteBorrowing, addLending, updateLending, deleteLending, addRepayment, addReturn, writeOffLending } = useAppContext();
+const BorrowLendView: React.FC<{ 
+    currencySymbol: string;
+    triggerAction?: { type: 'borrowing' | 'lending'; timestamp: number } | null;
+}> = ({ currencySymbol, triggerAction }) => {
+    const { borrowings, lendings, addBorrowing, updateBorrowing, deleteBorrowing, addLending, updateLending, deleteLending, addRepayment, deleteRepayment, addReturn, deleteReturn, writeOffLending } = useAppContext();
     const { t } = useTranslation();
     const [modal, setModal] = useState<ModalType>('none');
     const [selectedItem, setSelectedItem] = useState<Borrowing | Lending | null>(null);
     const [form, setForm] = useState({ name: '', amount: '', date: new Date().toISOString().split('T')[0], returnDate: new Date().toISOString().split('T')[0], notes: '' });
 
-    const openModal = (type: ModalType, item: Borrowing | Lending | null = null) => {
+    const openModal = useCallback((type: ModalType, item: Borrowing | Lending | null = null) => {
         setModal(type);
         setSelectedItem(item);
         if ((type === 'edit_borrowing' || type === 'edit_lending') && item) {
@@ -608,7 +953,17 @@ const BorrowLendView: React.FC<{ currencySymbol: string }> = ({ currencySymbol }
         } else {
              setForm({ name: '', amount: '', date: new Date().toISOString().split('T')[0], returnDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0], notes: '' });
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (triggerAction) {
+            if (triggerAction.type === 'borrowing') {
+                openModal('borrowing');
+            } else if (triggerAction.type === 'lending') {
+                openModal('lending');
+            }
+        }
+    }, [triggerAction, openModal]);
 
     const handleSave = () => {
         // Logic for logging payments (repayment/return)
@@ -628,7 +983,7 @@ const BorrowLendView: React.FC<{ currencySymbol: string }> = ({ currencySymbol }
                 }
             }
             openModal('none');
-            return; // Exit after handling
+            return;
         }
         
         // Logic for adding/editing borrowing/lending records
@@ -677,22 +1032,70 @@ const BorrowLendView: React.FC<{ currencySymbol: string }> = ({ currencySymbol }
         openModal('none');
     };
 
+    const handleDeletePayment = (itemId: string, index: number, isBorrowing: boolean) => {
+        if (isBorrowing) {
+            deleteRepayment(itemId, index);
+            toast.success(t('finance.modal.paymentDeleted'));
+        } else {
+            deleteReturn(itemId, index);
+            toast.success(t('finance.modal.paymentDeleted'));
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="text-lg font-semibold">{t('finance.borrowLend.youOwe')}</h3>
-                    <button onClick={() => openModal('borrowing')} className="p-1.5 bg-primary/10 text-primary rounded-full"><HiPlus/></button>
+                    <button onClick={() => openModal('borrowing')} className="p-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"><HiPlus/></button>
                 </div>
-                {borrowings.filter(b => b.status === 'outstanding').length > 0 ? <div className="space-y-2"><AnimatePresence>{borrowings.filter(b => b.status === 'outstanding').map(b => <BorrowLendItemCard key={b.id} item={b} currencySymbol={currencySymbol} onLogPayment={(item) => openModal('repayment', item)} onEdit={(item) => openModal('edit_borrowing', item)} onDelete={(item) => openModal('delete_borrowing', item)} />)}</AnimatePresence></div> : <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.borrowLend.noBorrowings')}</p>}
+                {borrowings.filter(b => b.status === 'outstanding').length > 0 ? (
+                    <div className="space-y-3">
+                        <AnimatePresence>
+                            {borrowings.filter(b => b.status === 'outstanding').map(b => (
+                                <BorrowLendItemCard 
+                                    key={b.id} 
+                                    item={b} 
+                                    currencySymbol={currencySymbol} 
+                                    onLogPayment={(item) => openModal('repayment', item)} 
+                                    onEdit={(item) => openModal('edit_borrowing', item)} 
+                                    onDelete={(item) => openModal('delete_borrowing', item)} 
+                                    onDeletePayment={handleDeletePayment}
+                                />
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                ) : (
+                    <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.borrowLend.noBorrowings')}</p>
+                )}
             </Card>
             <Card>
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="text-lg font-semibold">{t('finance.borrowLend.owedToYou')}</h3>
-                    <button onClick={() => openModal('lending')} className="p-1.5 bg-primary/10 text-primary rounded-full"><HiPlus/></button>
+                    <button onClick={() => openModal('lending')} className="p-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"><HiPlus/></button>
                 </div>
-                {lendings.filter(l => l.status === 'outstanding').length > 0 ? <div className="space-y-2"><AnimatePresence>{lendings.filter(l => l.status === 'outstanding').map(l => <BorrowLendItemCard key={l.id} item={l} currencySymbol={currencySymbol} onLogPayment={(item) => openModal('return', item)} onEdit={(item) => openModal('edit_lending', item)} onDelete={(item) => openModal('delete_lending', item)} onWriteOff={writeOffLending}/>)}</AnimatePresence></div> : <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.borrowLend.noLendings')}</p>}
+                {lendings.filter(l => l.status === 'outstanding').length > 0 ? (
+                    <div className="space-y-3">
+                        <AnimatePresence>
+                            {lendings.filter(l => l.status === 'outstanding').map(l => (
+                                <BorrowLendItemCard 
+                                    key={l.id} 
+                                    item={l} 
+                                    currencySymbol={currencySymbol} 
+                                    onLogPayment={(item) => openModal('return', item)} 
+                                    onEdit={(item) => openModal('edit_lending', item)} 
+                                    onDelete={(item) => openModal('delete_lending', item)} 
+                                    onDeletePayment={handleDeletePayment}
+                                    onWriteOff={writeOffLending}
+                                />
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                ) : (
+                    <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.borrowLend.noLendings')}</p>
+                )}
             </Card>
+
             {/* Add/Edit Modals */}
              <Modal 
                 isOpen={['borrowing', 'lending', 'edit_borrowing', 'edit_lending'].includes(modal)} 
@@ -769,12 +1172,13 @@ const SavingsGoalCard: React.FC<{
     goal: SavingsGoal;
     currencySymbol: string;
     onAddDeposit: () => void;
+    onWithdraw: () => void;
     onEdit: () => void;
     onDelete: () => void;
-}> = ({ goal, currencySymbol, onAddDeposit, onEdit, onDelete }) => {
+}> = ({ goal, currencySymbol, onAddDeposit, onWithdraw, onEdit, onDelete }) => {
     const { t } = useTranslation();
-    const percentage = Math.min(Math.round((goal.currentAmount / goal.targetAmount) * 100), 100);
-    const remaining = goal.targetAmount - goal.currentAmount;
+    const percentage = goal.targetAmount > 0 ? Math.min(Math.round((goal.currentAmount / goal.targetAmount) * 100), 100) : 100;
+    const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     useOnClickOutside(menuRef, () => setMenuOpen(false));
@@ -785,8 +1189,7 @@ const SavingsGoalCard: React.FC<{
                 <div className="flex justify-between items-start">
                     <h3 className="text-lg font-bold text-light-text-primary dark:text-text-primary pr-8">{goal.title}</h3>
                     <div className="relative" ref={menuRef}>
-                        <button onClick={() => setMenuOpen(prev => !prev)} className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700">
-                            {/* FIX: Replaced HiDotsVertical with HiEllipsisVertical to match the updated import. */}
+                        <button onClick={() => setMenuOpen(prev => !prev)} className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
                             <HiEllipsisVertical className="h-5 w-5" />
                         </button>
                         <AnimatePresence>
@@ -795,11 +1198,21 @@ const SavingsGoalCard: React.FC<{
                                     initial={{ opacity: 0, scale: 0.95, y: -10 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                    className="absolute top-8 right-0 w-40 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-10 p-2 space-y-1"
+                                    className="absolute top-8 right-0 w-44 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-10 p-1.5 space-y-1"
                                 >
-                                    <button onClick={() => { onAddDeposit(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50"><HiPlus /> {t('finance.savingsPage.addDeposit')}</button>
-                                    <button onClick={() => { onEdit(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50"><HiPencil /> {t('finance.modal.actions.edit')}</button>
-                                    <button onClick={() => { onDelete(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-md text-red-500 hover:bg-red-500/10"><HiTrash /> {t('finance.modal.actions.delete')}</button>
+                                    <button onClick={() => { onAddDeposit(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                        <HiPlus className="h-3.5 w-3.5 text-green-500" /> {t('finance.savingsPage.addDeposit')}
+                                    </button>
+                                    <button onClick={() => { onWithdraw(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                        <HiOutlineReceiptRefund className="h-3.5 w-3.5 text-orange-500" /> {t('finance.modal.withdraw')}
+                                    </button>
+                                    <button onClick={() => { onEdit(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                        <HiPencil className="h-3.5 w-3.5" /> {t('finance.modal.actions.edit')}
+                                    </button>
+                                    <div className="h-px bg-slate-200 dark:bg-zinc-700 my-1"></div>
+                                    <button onClick={() => { onDelete(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md text-red-500 hover:bg-red-500/10">
+                                        <HiTrash className="h-3.5 w-3.5" /> {t('finance.modal.actions.delete')}
+                                    </button>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -820,6 +1233,26 @@ const SavingsGoalCard: React.FC<{
                     <p className="text-sm font-semibold text-teal">
                         {t('finance.savingsPage.remaining')}: {currencySymbol}{remaining.toLocaleString()}
                     </p>
+                    {goal.deadlineDate && (
+                        <p className="text-xs text-light-text-secondary dark:text-text-secondary">
+                            {t('finance.modal.deadline')}: {new Date(goal.deadlineDate).toLocaleDateString()}
+                        </p>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-200 dark:border-zinc-750">
+                    <button 
+                        onClick={onAddDeposit}
+                        className="w-full py-1.5 px-2 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors"
+                    >
+                        <HiPlus className="h-3.5 w-3.5" /> {t('finance.savingsPage.addDeposit')}
+                    </button>
+                    <button 
+                        onClick={onWithdraw}
+                        className="w-full py-1.5 px-2 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors"
+                    >
+                        <HiOutlineReceiptRefund className="h-3.5 w-3.5" /> {t('finance.modal.withdraw')}
+                    </button>
                 </div>
             </div>
         </Card>
@@ -844,30 +1277,41 @@ const CreateGoalCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
     );
 };
 
-
-const SavingsView: React.FC<{ currencySymbol: string }> = ({ currencySymbol }) => {
-    const { savingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, addSavingsDeposit } = useAppContext();
+const SavingsView: React.FC<{ 
+    currencySymbol: string;
+    triggerAction?: { type: 'goal'; timestamp: number } | null;
+}> = ({ currencySymbol, triggerAction }) => {
+    const { savingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, addSavingsDeposit, withdrawSavingsDeposit } = useAppContext();
     const { t } = useTranslation();
-    const [modal, setModal] = useState<{type: ModalType, goal: SavingsGoal | null}>({ type: 'none', goal: null });
-    const [form, setForm] = useState({ title: '', targetAmount: '', initialDeposit: '', deadlineDate: '' });
+    const [modal, setModal] = useState<{type: ModalType | 'withdraw', goal: SavingsGoal | null}>({ type: 'none', goal: null });
+    const [form, setForm] = useState({ title: '', targetAmount: '', initialDeposit: '', currentAmount: '', deadlineDate: '' });
     const [depositAmount, setDepositAmount] = useState('');
+    const [withdrawAmount, setWithdrawAmount] = useState('');
 
-    const openModal = (type: ModalType, goal: SavingsGoal | null = null) => {
-        setModal({ type, goal });
+    const openModal = useCallback((type: ModalType | 'withdraw', goal: SavingsGoal | null = null) => {
+        setModal({ type: type as any, goal });
 
         if ((type === 'savings_goal' || type === 'edit_goal') && goal) {
             setForm({
                 title: goal.title,
                 targetAmount: goal.targetAmount.toString(),
-                initialDeposit: '', // Not editable for existing goals
+                initialDeposit: '',
+                currentAmount: goal.currentAmount.toString(),
                 deadlineDate: goal.deadlineDate ? new Date(goal.deadlineDate).toISOString().split('T')[0] : ''
             });
         } else {
-             setForm({ title: '', targetAmount: '', initialDeposit: '', deadlineDate: '' });
+             setForm({ title: '', targetAmount: '', initialDeposit: '', currentAmount: '', deadlineDate: '' });
         }
        
         setDepositAmount('');
-    }
+        setWithdrawAmount('');
+    }, []);
+
+    useEffect(() => {
+        if (triggerAction && triggerAction.type === 'goal') {
+            openModal('savings_goal');
+        }
+    }, [triggerAction, openModal]);
 
     const handleSaveGoal = () => {
         if (!form.title || !form.targetAmount) { toast.error(t('finance.modal.fillFieldsError')); return; }
@@ -877,6 +1321,7 @@ const SavingsView: React.FC<{ currencySymbol: string }> = ({ currencySymbol }) =
                 ...modal.goal,
                 title: form.title,
                 targetAmount: parseFloat(form.targetAmount),
+                currentAmount: form.currentAmount !== '' ? parseFloat(form.currentAmount) : modal.goal.currentAmount,
                 deadlineDate: form.deadlineDate || undefined,
             };
             updateSavingsGoal(updatedGoal);
@@ -892,15 +1337,37 @@ const SavingsView: React.FC<{ currencySymbol: string }> = ({ currencySymbol }) =
             toast.success(t('finance.modal.goalAdded'));
         }
         openModal('none');
-    }
+    };
 
     const handleSaveDeposit = () => {
         if (modal.goal && depositAmount) {
-            addSavingsDeposit(modal.goal.id, parseFloat(depositAmount));
+            const amount = parseFloat(depositAmount);
+            if (amount <= 0 || isNaN(amount)) {
+                toast.error(t('finance.modal.fillFieldsError'));
+                return;
+            }
+            addSavingsDeposit(modal.goal.id, amount);
             toast.success(t('finance.modal.depositAdded'));
             openModal('none');
         }
-    }
+    };
+
+    const handleWithdraw = () => {
+        if (modal.goal && withdrawAmount) {
+            const amount = parseFloat(withdrawAmount);
+            if (amount <= 0 || isNaN(amount)) {
+                toast.error(t('finance.modal.fillFieldsError'));
+                return;
+            }
+            if (amount > modal.goal.currentAmount) {
+                toast.error("Withdrawal amount cannot exceed current saved amount.");
+                return;
+            }
+            withdrawSavingsDeposit(modal.goal.id, amount);
+            toast.success(t('finance.modal.depositWithdrawn'));
+            openModal('none');
+        }
+    };
     
     const handleDeleteGoal = () => {
         if(modal.goal) {
@@ -920,6 +1387,7 @@ const SavingsView: React.FC<{ currencySymbol: string }> = ({ currencySymbol }) =
                                 goal={goal}
                                 currencySymbol={currencySymbol}
                                 onAddDeposit={() => openModal('deposit', goal)}
+                                onWithdraw={() => openModal('withdraw', goal)}
                                 onEdit={() => openModal('edit_goal', goal)}
                                 onDelete={() => openModal('delete_goal', goal)}
                             />
@@ -929,31 +1397,76 @@ const SavingsView: React.FC<{ currencySymbol: string }> = ({ currencySymbol }) =
                  <CreateGoalCard onClick={() => openModal('savings_goal')} />
             </div>
 
+            {/* Add / Edit Goal Modal */}
             <Modal isOpen={modal.type === 'savings_goal' || modal.type === 'edit_goal'} onClose={() => openModal('none')} title={t(modal.type === 'edit_goal' ? 'finance.modal.editGoal' : 'finance.modal.addGoal')}>
                 <div className="space-y-4">
-                    <input type="text" placeholder={t('finance.modal.goalTitle')} value={form.title} onChange={e => setForm(s => ({...s, title: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                    <input type="number" placeholder={t('finance.modal.targetAmount')} value={form.targetAmount} onChange={e => setForm(s => ({...s, targetAmount: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.goalTitle')}</label>
+                        <input type="text" placeholder={t('finance.modal.goalTitle')} value={form.title} onChange={e => setForm(s => ({...s, title: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.targetAmount')}</label>
+                            <input type="number" placeholder="0.00" value={form.targetAmount} onChange={e => setForm(s => ({...s, targetAmount: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.deadline')}</label>
+                            <input type="date" value={form.deadlineDate} onChange={e => setForm(s => ({...s, deadlineDate: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                        </div>
+                    </div>
+
                     {modal.type === 'savings_goal' && (
-                         <input type="number" placeholder={t('finance.modal.initialDeposit')} value={form.initialDeposit} onChange={e => setForm(s => ({...s, initialDeposit: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.initialDeposit')}</label>
+                            <input type="number" placeholder="0.00" value={form.initialDeposit} onChange={e => setForm(s => ({...s, initialDeposit: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                        </div>
                     )}
-                    <input type="date" value={form.deadlineDate} onChange={e => setForm(s => ({...s, deadlineDate: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                    <button onClick={handleSaveGoal} className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90">{t(modal.type === 'edit_goal' ? 'finance.modal.saveChanges' : 'finance.modal.addRecord')}</button>
+
+                    {modal.type === 'edit_goal' && (
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">Current Saved Amount (Balance Adjustment)</label>
+                            <input type="number" placeholder="0.00" value={form.currentAmount} onChange={e => setForm(s => ({...s, currentAmount: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                        </div>
+                    )}
+
+                    <button onClick={handleSaveGoal} className="w-full py-2.5 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 transition-colors">
+                        {t(modal.type === 'edit_goal' ? 'finance.modal.saveChanges' : 'finance.modal.addRecord')}
+                    </button>
                 </div>
             </Modal>
             
+            {/* Add Deposit Modal */}
             <Modal isOpen={modal.type === 'deposit'} onClose={() => openModal('none')} title={t('finance.modal.addDeposit', { goalName: modal.goal?.title })}>
                  <div className="space-y-4">
-                    <input type="number" placeholder={t('finance.modal.depositAmount')} value={depositAmount} onChange={e => setDepositAmount(e.target.value)} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                    <button onClick={handleSaveDeposit} className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90">{t('finance.savingsPage.addDeposit')}</button>
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.depositAmount')}</label>
+                        <input type="number" placeholder="0.00" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                    </div>
+                    <button onClick={handleSaveDeposit} className="w-full py-2.5 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 transition-colors">{t('finance.savingsPage.addDeposit')}</button>
                 </div>
             </Modal>
 
+            {/* Withdraw Modal */}
+            <Modal isOpen={modal.type === 'withdraw'} onClose={() => openModal('none')} title={t('finance.modal.withdrawDeposit', { goalName: modal.goal?.title || '' })}>
+                 <div className="space-y-4">
+                    <p className="text-xs text-light-text-secondary dark:text-text-secondary">
+                        Available saved balance: <span className="font-semibold text-light-text-primary dark:text-text-primary">{currencySymbol}{modal.goal?.currentAmount.toFixed(2) || '0.00'}</span>
+                    </p>
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.withdrawAmount')}</label>
+                        <input type="number" placeholder="0.00" max={modal.goal?.currentAmount || 0} value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                    </div>
+                    <button onClick={handleWithdraw} className="w-full py-2.5 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors">{t('finance.modal.withdraw')}</button>
+                </div>
+            </Modal>
+
+            {/* Delete Goal Confirmation Modal */}
             <Modal isOpen={modal.type === 'delete_goal'} onClose={() => openModal('none')} title={t('finance.modal.deleteGoal')}>
                  <div className="space-y-6">
                     <p className="text-light-text-secondary dark:text-text-secondary">{t('finance.modal.deleteGoalConfirm', { goalName: modal.goal?.title || '' })}</p>
                     <div className="flex justify-end gap-4">
-                        <button onClick={() => openModal('none')} className="px-4 py-2 bg-slate-200 dark:bg-zinc-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-zinc-600">{t('tasks.deleteModal.cancel')}</button>
-                        <button onClick={handleDeleteGoal} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600">{t('tasks.deleteModal.confirm')}</button>
+                        <button onClick={() => openModal('none')} className="px-4 py-2 bg-slate-200 dark:bg-zinc-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-zinc-600 text-sm">{t('tasks.deleteModal.cancel')}</button>
+                        <button onClick={handleDeleteGoal} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 text-sm">{t('tasks.deleteModal.confirm')}</button>
                     </div>
                 </div>
             </Modal>

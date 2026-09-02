@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { HiOutlineSparkles, HiOutlineBell, HiArrowLeft } from 'react-icons/hi2';
+import { 
+  HiOutlineSparkles, 
+  HiOutlineBell, 
+  HiArrowLeft, 
+  HiOutlineArrowsPointingOut, 
+  HiOutlineArrowsPointingIn 
+} from 'react-icons/hi2';
 import { useAppContext } from '../../context/AppContext';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useTranslation } from '../../hooks/useTranslation';
 import AuthModal from '../ui/AuthModal';
 
@@ -22,28 +28,42 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const getPageTitle = (pathname: string): string => {
-    if (pathname.startsWith('/family/')) {
-        return t('medicalProfile.title');
-    }
-    const pageTitles: { [key: string]: string } = {
-      '/finance': t('nav.finance'),
-      '/calendar': t('nav.calendar'),
-      '/health': t('nav.health'),
-      '/settings': t('nav.settings'),
-      '/family': t('family.title'),
-      '/tasks': t('tasks.title'),
-      '/restock': t('restock.cartTitle'),
-      '/settings/medicines': t('settings.manageMedicines'),
-      '/settings/appointments': t('settings.manageAppointments'),
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
     };
-    return pageTitles[pathname] || '';
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if ((document.documentElement as any).webkitRequestFullscreen) {
+          await (document.documentElement as any).webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+      }
+    } catch (e) {
+      console.warn('Fullscreen toggle request was prevented or not permitted in current context:', e);
+    }
   };
 
   const isHomePage = location.pathname === '/home' || location.pathname === '/';
-  const pageTitle = getPageTitle(location.pathname);
 
   const renderUserAuthButton = () => (
     <div className="relative">
@@ -51,7 +71,7 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsAuthModalOpen(true)}
-        className="flex items-center gap-2 p-1 pl-2 pr-1 rounded-full border border-slate-200 dark:border-zinc-700 bg-light-surface/60 dark:bg-surface/60 hover:bg-slate-100 dark:hover:bg-zinc-700/70 transition-colors"
+        className="flex items-center gap-2 p-0.5 sm:p-1 sm:pl-2 sm:pr-1 rounded-full border-0 sm:border sm:border-slate-200 dark:sm:border-zinc-700 bg-transparent sm:bg-light-surface/60 dark:sm:bg-surface/60 hover:bg-slate-100 dark:hover:bg-zinc-700/70 transition-colors"
         title={isGoogleAuthenticated ? `Signed in as ${user.email || user.name}` : 'Sign in / Account'}
       >
         <span className="text-xs font-medium hidden sm:inline-block max-w-[100px] truncate text-light-text-primary dark:text-text-primary">
@@ -64,13 +84,13 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
             className="w-7 h-7 rounded-full bg-surface border border-primary/50 object-cover" 
           />
           {isGoogleAuthenticated ? (
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-800" title="Firebase & Google Connected">
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-800" title="Account connected & synced">
               <svg className="w-2 h-2 text-white" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
               </svg>
             </span>
           ) : (
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-800" title="Local / Guest" />
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-800" title="Guest mode — not synced" />
           )}
         </div>
       </motion.button>
@@ -104,6 +124,20 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
                   {isGoogleLoading ? t('auth.connecting') : t('auth.googleSignIn')}
                 </motion.button>
               )}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={toggleFullscreen}
+                className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary transition-colors"
+                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
+              >
+                {isFullscreen ? (
+                  <HiOutlineArrowsPointingIn className="h-5 w-5" />
+                ) : (
+                  <HiOutlineArrowsPointingOut className="h-5 w-5" />
+                )}
+              </motion.button>
               <motion.button 
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -123,11 +157,11 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-3 items-center h-full px-4 md:px-6">
-            <div className="justify-self-start">
+          <div className="flex items-center justify-between h-full px-4 md:px-6">
+            <div className="flex items-center gap-2">
               <motion.button 
                 onClick={() => navigate(-1)} 
-                className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700"
+                className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-primary dark:text-text-primary transition-colors"
                 aria-label="Go back"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -135,15 +169,26 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
                 <HiArrowLeft className="h-6 w-6" />
               </motion.button>
             </div>
-            <div className="justify-self-center text-center">
-              <h1 className="text-xl font-bold text-light-text-primary dark:text-text-primary truncate">{pageTitle}</h1>
-            </div>
-            <div className="justify-self-end flex items-center gap-3">
+            <div className="flex items-center gap-3">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={toggleFullscreen}
+                className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary transition-colors"
+                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
+              >
+                {isFullscreen ? (
+                  <HiOutlineArrowsPointingIn className="h-5 w-5" />
+                ) : (
+                  <HiOutlineArrowsPointingOut className="h-5 w-5" />
+                )}
+              </motion.button>
               <motion.button 
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={onNotificationClick} 
-                className="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700"
+                className="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-primary dark:text-text-primary transition-colors"
                 aria-label="Open notifications"
               >
                 <HiOutlineBell className="h-6 w-6" />

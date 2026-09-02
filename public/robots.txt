@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /privacy
+Allow: /terms
+Allow: /landing
+
+# Host & Sitemap
+Sitemap: /sitemap.xml

@@ -4,9 +4,11 @@ import { useTranslation } from '../hooks/useTranslation';
 import { Appointment } from '../types';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
+import PageHeader from '../components/ui/PageHeader';
+import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { uploadImage } from '../utils/imageUploader';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
     HiPlus, HiOutlinePencil, HiOutlineTrash, HiOutlineCheckCircle, 
     HiOutlineXCircle, HiOutlineCloudArrowUp, HiOutlineCalendarDays,
@@ -130,11 +132,11 @@ const AppointmentsPage: React.FC = () => {
 
         setSyncingApptId(appointmentId);
         try {
-            const res = await syncAppointmentToGoogle(appointmentId);
-            if (res.success) {
+            const ok = await syncAppointmentToGoogle(appointmentId);
+            if (ok) {
                 toast.success('Synced to Google Calendar!');
             } else {
-                toast.error(res.error || 'Failed to sync to Google Calendar');
+                toast.error('Failed to sync to Google Calendar');
             }
         } finally {
             setSyncingApptId(null);
@@ -175,7 +177,7 @@ const AppointmentsPage: React.FC = () => {
                     <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-bold text-lg text-light-text-primary dark:text-text-primary">{appointment.purpose}</p>
-                            {appointment.googleCalendarEventId && (
+                            {appointment.googleEventId && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/40">
                                     <HiOutlineCalendarDays className="w-3.5 h-3.5" />
                                     Google Calendar
@@ -193,7 +195,7 @@ const AppointmentsPage: React.FC = () => {
                         <p className={`text-sm font-bold capitalize ${statusColor}`}>{appointment.status}</p>
                         
                         {/* Google Calendar Sync Button */}
-                        {!appointment.googleCalendarEventId && appointment.status === 'upcoming' && (
+                        {!appointment.googleEventId && appointment.status === 'upcoming' && (
                             <button
                                 onClick={(e) => handleSyncToGoogle(appointment.id, e)}
                                 disabled={syncingApptId === appointment.id}
@@ -224,19 +226,40 @@ const AppointmentsPage: React.FC = () => {
         );
     };
 
+    const fabActions: SpeedDialAction[] = [
+        {
+            id: 'book_appt',
+            label: t('appointments.add') || 'Book Appointment',
+            icon: HiPlus,
+            color: 'purple',
+            onClick: () => handleOpenModal(),
+        },
+        {
+            id: 'sync_gcal',
+            label: isGoogleAuthenticated ? 'Google Calendar Synced' : 'Connect Google Calendar',
+            icon: HiOutlineArrowPath,
+            color: 'cyan',
+            onClick: () => {
+                if (!isGoogleAuthenticated) {
+                    loginWithGoogle();
+                } else {
+                    toast.success('Google Calendar is connected!');
+                }
+            },
+        },
+    ];
+
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold">{t('appointments.title')}</h1>
-                    <p className="text-sm text-light-text-secondary dark:text-text-secondary mt-1">
-                        Track medical consultations and keep schedules synced with your Google Calendar.
-                    </p>
-                </div>
-                <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-primary text-white font-semibold rounded-xl flex items-center gap-2 shadow-sm shrink-0">
-                    <HiPlus /> {t('appointments.add')}
-                </button>
-            </div>
+            <PageHeader
+                title={t('appointments.title')}
+                subtitle={t('appointments.subtitle')}
+                action={
+                    <button onClick={() => handleOpenModal()} className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-primary text-white font-semibold rounded-xl flex items-center gap-1.5 shadow-sm shrink-0 text-xs sm:text-sm whitespace-nowrap hover:opacity-90 transition-opacity">
+                        <HiPlus className="w-4 h-4" /> {t('appointments.add')}
+                    </button>
+                }
+            />
 
             <div className="flex justify-center items-center gap-2 mb-8 bg-slate-100 dark:bg-surface p-1 rounded-full max-w-md mx-auto">
                 <button onClick={() => setActiveTab('upcoming')} className={`w-1/2 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${activeTab === 'upcoming' ? 'bg-primary text-white shadow-lg' : 'text-light-text-secondary dark:text-text-secondary'}`}>{t('appointments.upcomingTitle')}</button>
@@ -258,6 +281,12 @@ const AppointmentsPage: React.FC = () => {
                     )}
                 </AnimatePresence>
             </div>
+
+            {/* SPEED DIAL FLOATING ACTION BUTTON */}
+            <SpeedDialFAB
+                actions={fabActions}
+                mainLabel="Appointment Actions"
+            />
             
             <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)} title={editingAppointment ? t('appointments.modal.editTitle') : t('appointments.modal.addTitle')}>
                 <div className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
@@ -307,7 +336,7 @@ const AppointmentsPage: React.FC = () => {
 
                     <div>
                         <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
-                            Prescription or Document (Optional)
+                            {t('appointments.modal.prescriptionOrDoc')}
                         </label>
                         <label className="block w-full cursor-pointer p-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-50 dark:hover:bg-zinc-800 transition">
                             <div className="flex flex-col items-center justify-center">

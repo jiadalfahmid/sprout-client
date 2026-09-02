@@ -2,9 +2,82 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Icons & Favicons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.svg" />
+    <link rel="mask-icon" href="/favicon.svg" color="#8B5CF6" />
+    
+    <!-- Mobile & Viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Sprout" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    <meta name="application-name" content="Sprout" />
+    <meta name="theme-color" content="#8B5CF6" />
+    <meta name="msapplication-TileColor" content="#8B5CF6" />
+
+    <!-- Standard Primary SEO Meta Tags -->
     <title>Sprout - Unified Home & Family Care</title>
+    <meta name="title" content="Sprout - Unified Home & Family Care" />
+    <meta name="description" content="A smart unified home, family, finance, and health management app with real-time notifications, cloud synchronization, Google Calendar integration, and Gmail family invitations." />
+    <meta name="keywords" content="family care app, household manager, medicine tracker, medication reminder, family budget, chore organizer, Google calendar sync, health log, household inventory" />
+    <meta name="author" content="Sprout Family Care" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://ais-dev-i4rajlr6exmnibajvxgizb-87145698673.asia-east1.run.app/" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph / Facebook / LinkedIn / Discord -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sprout - Unified Home & Family Care" />
+    <meta property="og:url" content="https://ais-dev-i4rajlr6exmnibajvxgizb-87145698673.asia-east1.run.app/" />
+    <meta property="og:title" content="Sprout - Unified Home & Family Care" />
+    <meta property="og:description" content="A smart unified home, family, finance, and health management app with real-time notifications, cloud synchronization, Google Calendar integration, and Gmail family invitations." />
+    <meta property="og:image" content="/og-image.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Sprout Unified Home & Family Care App Dashboard Preview" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://ais-dev-i4rajlr6exmnibajvxgizb-87145698673.asia-east1.run.app/" />
+    <meta name="twitter:title" content="Sprout - Unified Home & Family Care" />
+    <meta name="twitter:description" content="A smart unified home, family, finance, and health management app with real-time notifications, cloud synchronization, Google Calendar integration, and Gmail family invitations." />
+    <meta name="twitter:image" content="/og-image.svg" />
+    <meta name="twitter:image:alt" content="Sprout Unified Home & Family Care App Dashboard Preview" />
+
+    <!-- Structured Data (Schema.org JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Sprout - Unified Home & Family Care",
+      "alternateName": "Sprout",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "All",
+      "description": "A smart unified home, family, finance, and health management app with real-time notifications, cloud synchronization, Google Calendar integration, and Gmail family invitations.",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "url": "https://ais-dev-i4rajlr6exmnibajvxgizb-87145698673.asia-east1.run.app/",
+      "image": "/og-image.svg",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Family Profiles and Medical Care Logs",
+        "Smart Medication Schedules & Restock Alerts",
+        "Household Expense & Budget Tracking",
+        "Google Calendar Two-Way Synchronization",
+        "Gmail Family Member Invitation Workflows",
+        "Offline-First Data Storage with Cloud Backup"
+      ]
+    }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -62,22 +135,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-icons/": "https://aistudiocdn.com/react-icons@^5.2.1/",
-    "framer-motion": "https://aistudiocdn.com/framer-motion@^11.3.11",
-    "react-hot-toast": "https://aistudiocdn.com/react-hot-toast@^2.4.1",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.25.0"
-  }
-}
-</script>
-<style>
+    <style>
       /* Custom scrollbar for WebKit browsers (Chrome, Safari, Edge) */
       ::-webkit-scrollbar {
         width: 6px;

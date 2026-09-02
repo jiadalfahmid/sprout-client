@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
+import PageHeader from '../components/ui/PageHeader';
 import Skeleton from '../components/ui/Skeleton';
+import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { Medicine } from '../types';
 import { HiPlus, HiPencil, HiTrash, HiOutlineShoppingCart } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
 
 const MedicinesSettingsPage: React.FC = () => {
@@ -134,22 +136,41 @@ const MedicinesSettingsPage: React.FC = () => {
       </div>
     );
 
+    const fabActions: SpeedDialAction[] = [
+        {
+            id: 'add_medicine',
+            label: t('medicines.add') || 'Add Medicine',
+            icon: HiPlus,
+            color: 'blue',
+            onClick: () => handleOpenModal(),
+        },
+        {
+            id: 'view_cart',
+            label: `${t('medicines.cart') || 'Cart'} (${cart.length})`,
+            icon: HiOutlineShoppingCart,
+            color: 'orange',
+            onClick: () => navigate('/restock'),
+        },
+    ];
+
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-light-text-primary dark:text-text-primary">{t('medicines.title')}</h1>
-                <div className="flex gap-2">
-                    {cart.length > 0 && 
-                        <button onClick={() => navigate('/restock')} className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-opacity-90 transition flex items-center gap-2">
-                            <HiOutlineShoppingCart className="h-5 w-5" />
-                            {t('medicines.cart')} ({cart.length})
+            <PageHeader
+                title={t('medicines.title')}
+                action={
+                    <div className="flex items-center gap-2">
+                        {cart.length > 0 && 
+                            <button onClick={() => navigate('/restock')} className="px-3 py-2 sm:px-3.5 sm:py-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl transition flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap shadow-xs">
+                                <HiOutlineShoppingCart className="h-4 w-4" />
+                                {t('medicines.cart')} ({cart.length})
+                            </button>
+                        }
+                        <button onClick={() => handleOpenModal()} className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-primary text-white font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm text-xs sm:text-sm whitespace-nowrap">
+                            <HiPlus className="h-4 w-4" /> {t('medicines.add')}
                         </button>
-                    }
-                    <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 transition flex items-center gap-2">
-                        <HiPlus className="h-5 w-5" /> {t('medicines.add')}
-                    </button>
-                </div>
-            </div>
+                    </div>
+                }
+            />
 
             {loading ? renderSkeleton() : (
                 <div className="space-y-4">
@@ -211,10 +232,10 @@ const MedicinesSettingsPage: React.FC = () => {
                         <div>
                            <label htmlFor="doseForm" className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('medicines.modal.form')}</label>
                            <select id="doseForm" value={formState.doseForm} onChange={e => setFormState(s => ({...s, doseForm: e.target.value as any}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
-                               <option value="Tablet">Tablet</option>
-                               <option value="Capsule">Capsule</option>
-                               <option value="Drops">Drops</option>
-                               <option value="Spoon">Spoon</option>
+                               <option value="Tablet">{t('medicines.forms.tablet')}</option>
+                               <option value="Capsule">{t('medicines.forms.capsule')}</option>
+                               <option value="Drops">{t('medicines.forms.drops')}</option>
+                               <option value="Spoon">{t('medicines.forms.spoon')}</option>
                            </select>
                         </div>
                     </div>
@@ -282,6 +303,12 @@ const MedicinesSettingsPage: React.FC = () => {
                     <button onClick={handleSaveMedicine} className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 mt-2">{editingMedicine ? t('finance.modal.saveChanges') : t('medicines.add')}</button>
                 </div>
             </Modal>
+
+            {/* SPEED DIAL FLOATING ACTION BUTTON */}
+            <SpeedDialFAB
+                actions={fabActions}
+                mainLabel="Medicine Actions"
+            />
         </div>
     );
 };

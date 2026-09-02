@@ -7,6 +7,7 @@ export interface SendInviteParams {
   inviterEmail?: string;
   relation: string;
   customMessage?: string;
+  inviteLink?: string;
 }
 
 /**
@@ -33,6 +34,8 @@ function createMimeMessage(params: SendInviteParams): string {
   const fromHeader = params.inviterEmail 
     ? `${params.inviterName} <${params.inviterEmail}>` 
     : `${params.inviterName} via Sprout`;
+
+  const inviteUrl = params.inviteLink || (typeof window !== 'undefined' ? window.location.origin : 'https://sprout-family.app');
 
   const htmlBody = `
 <!DOCTYPE html>
@@ -83,13 +86,13 @@ function createMimeMessage(params: SendInviteParams): string {
       </div>
 
       <div class="btn-container">
-        <a href="${typeof window !== 'undefined' ? window.location.origin : 'https://sprout-family.app'}" class="btn" target="_blank">
-          Open Sprout Family Care
+        <a href="${inviteUrl}" class="btn" target="_blank">
+          Accept Invitation &amp; Open Sprout
         </a>
       </div>
 
       <p class="paragraph" style="font-size: 13px; color: #64748b; text-align: center;">
-        Sign in with your Google account (<strong>${params.toEmail}</strong>) to automatically link with ${params.inviterName}'s family circle.
+        Click the button above and sign in with your account (<strong>${params.toEmail}</strong>) to automatically link with ${params.inviterName}'s family circle.
       </p>
     </div>
     <div class="footer">
@@ -120,13 +123,14 @@ function createMimeMessage(params: SendInviteParams): string {
  */
 export function createMailtoUrl(params: SendInviteParams): string {
   const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://sprout-live.firebaseapp.com';
+  const inviteUrl = params.inviteLink || appOrigin;
   const subject = `Family Invitation: Join ${params.inviterName} on Sprout Care`;
   const body = `Hi ${params.recipientName || 'there'},
 
 ${params.inviterName} has invited you to join their family care circle on Sprout.
 
-${params.customMessage ? `"${params.customMessage}"\n\n` : ''}Click the link below to open Sprout and access shared calendars, health logs, medicines, and family tasks:
-${appOrigin}
+${params.customMessage ? `"${params.customMessage}"\n\n` : ''}Click the link below to accept the invitation and link your account with ${params.inviterName}'s family circle:
+${inviteUrl}
 
 Best regards,
 ${params.inviterName}`;

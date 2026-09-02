@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { 
     Transaction, TransactionType, Bill, FamilyMember, Medicine, Task, Note, User, Notification, 
     NotificationSettings, CalendarEvent, CartItem, HealthRecord, Currency, Language, MedicalReport,
-    Borrowing, Lending, SavingsGoal, Repayment, Return, Appointment, TaskList
+    Borrowing, Lending, SavingsGoal, Repayment, Return, Appointment, TaskList, FamilyInvite
 } from '../types';
 import { 
     mockUser, mockFamilyMembers, mockTransactions, mockBills, mockMedicines, mockTasks, mockNotes, mockNotifications, mockMedicalReports,
@@ -17,6 +17,9 @@ import {
   logoutFirebase,
   saveUserDocument,
   deleteUserDocument,
+  saveInviteDocument,
+  getInviteDocument,
+  updateInviteDocument,
   subscribeToUserSubcollection,
   saveUserProfile,
   getUserProfile,
@@ -86,8 +89,11 @@ interface AppContextType {
   syncAppointmentToGoogle: (appointmentId: string) => Promise<boolean>;
   syncBillToGoogle: (billId: string) => Promise<boolean>;
   syncAllToGoogleCalendar: () => Promise<{ appointmentsSynced: number; billsSynced: number }>;
-  // Gmail Family Invite
+  // Gmail Family Invite & Linking
+  pendingInvite: FamilyInvite | null;
   sendFamilyInvite: (memberId: string, email: string, customMessage?: string) => Promise<{ success: boolean; error?: string; mailtoFallback?: string }>;
+  cancelFamilyInvite: (memberId: string) => Promise<boolean>;
+  acceptPendingInvite: (invite?: FamilyInvite) => Promise<void>;
   // Notification System
   notifications: Notification[];
   notificationSettings: NotificationSettings;
@@ -148,16 +154,19 @@ interface AppContextType {
   updateBorrowing: (item: Borrowing) => void;
   deleteBorrowing: (id: string) => void;
   addRepayment: (borrowingId: string, repayment: Repayment) => boolean;
+  deleteRepayment: (borrowingId: string, repaymentIndex: number) => void;
   settleBorrowing: (borrowingId: string) => void;
   lendings: Lending[];
   addLending: (item: Omit<Lending, 'id' | 'returns' | 'status'>) => void;
   updateLending: (item: Lending) => void;
   deleteLending: (id: string) => void;
   addReturn: (lendingId: string, returnItem: Return) => boolean;
+  deleteReturn: (lendingId: string, returnIndex: number) => void;
   writeOffLending: (lendingId: string) => void;
   savingsGoals: SavingsGoal[];
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'currentAmount'> & { initialDeposit?: number }) => void;
   addSavingsDeposit: (goalId: string, amount: number) => void;
+  withdrawSavingsDeposit: (goalId: string, amount: number) => void;
   updateSavingsGoal: (goal: SavingsGoal) => void;
   deleteSavingsGoal: (goalId: string) => void;
   appointments: Appointment[];
@@ -224,14 +233,58 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [googleFirebaseUser, setGoogleFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isGoogleAuthenticated, setIsGoogleAuthenticated] = useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
-  const [isGuestMode, setIsGuestMode] = useLocalStorage<boolean>('isGuestMode', false);
+  const [isGuestMode, setIsGuestMode] = useLocalStorage<boolean>('isGuestMode', true);
   const [includeGoogleCalendar, setIncludeGoogleCalendar] = useLocalStorage<boolean>('includeGoogleCalendar', true);
   const [isCalendarSyncing, setIsCalendarSyncing] = useState<boolean>(false);
   const [googleCalendarEvents, setGoogleCalendarEvents] = useState<CalendarEvent[]>([]);
 
+  // Family Invite Pending State
+  const [pendingInvite, setPendingInvite] = useState<FamilyInvite | null>(() => {
+    try {
+      const saved = localStorage.getItem('sprout_pending_invite');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   // UI State
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const previousAlertIdsRef = useRef<Set<string>>(new Set());
+
+  // URL Invitation Parameter Scanner
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const inviteId = params.get('inviteId');
+      if (inviteId) {
+        const invitePayload: FamilyInvite = {
+          id: inviteId,
+          inviterUid: params.get('inviterUid') || '',
+          inviterName: decodeURIComponent(params.get('inviterName') || 'Family Admin'),
+          inviterEmail: params.get('inviterEmail') || undefined,
+          memberId: params.get('memberId') || '',
+          memberName: decodeURIComponent(params.get('memberName') || 'Family Member'),
+          recipientEmail: decodeURIComponent(params.get('recipientEmail') || ''),
+          relation: decodeURIComponent(params.get('relation') || 'Family Member'),
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
+        setPendingInvite(invitePayload);
+        localStorage.setItem('sprout_pending_invite', JSON.stringify(invitePayload));
+        // Clean URL to prevent repeated prompts on refresh
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        toast(`🌱 Family invite from ${invitePayload.inviterName} detected! Sign in or register to join.`, {
+          icon: '💌',
+          duration: 6000,
+        });
+      }
+    } catch (err) {
+      console.warn('Error reading invite link parameters:', err);
+    }
+  }, []);
 
   // Firebase Auth State Listener & Real-time Cloud Sync
   useEffect(() => {
@@ -367,8 +420,13 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, [googleFirebaseUser, notifications, setNotifications]);
 
   const clearNotifications = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }, [setNotifications]);
+    setNotifications([]);
+    if (googleFirebaseUser?.uid) {
+      notifications.forEach(n => {
+        deleteUserDocument(googleFirebaseUser.uid, 'notifications', n.id);
+      });
+    }
+  }, [googleFirebaseUser, notifications, setNotifications]);
 
   const deleteNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -480,6 +538,10 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     try {
       setIsGoogleLoading(true);
       const res = await signInWithGoogle();
+      if (res?.cancelled) {
+        // User closed or dismissed the popup
+        return false;
+      }
       if (res?.user) {
         setGoogleFirebaseUser(res.user);
         setIsGoogleAuthenticated(true);
@@ -505,7 +567,10 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       }
       return false;
     } catch (err: any) {
-      console.error('Google Sign In failed:', err);
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        return false;
+      }
+      console.warn('Google Sign In:', err?.message || err);
       throw err;
     } finally {
       setIsGoogleLoading(false);
@@ -639,7 +704,8 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       }
     } catch (err: any) {
       toast.dismiss();
-      toast.error('Failed to populate data: ' + err.message);
+      console.error('Failed to populate data:', err);
+      toast.error('Failed to populate data');
       return false;
     }
   };
@@ -770,37 +836,231 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     return { appointmentsSynced: apptCount, billsSynced: billCount };
   };
 
+  // -------------------------------------------------------------
+  // FAMILY INVITATION, JOINING & MEMBER MANAGEMENT
+  // -------------------------------------------------------------
+  const acceptPendingInvite = useCallback(async (inviteToAccept?: FamilyInvite) => {
+    const targetInvite = inviteToAccept || pendingInvite;
+    if (!targetInvite) return;
+    const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid;
+    if (!currentUid) return;
+
+    try {
+      const now = new Date().toISOString();
+      const userEmail = googleFirebaseUser?.email || user.email || targetInvite.recipientEmail;
+      const userName = user.name || googleFirebaseUser?.displayName || targetInvite.memberName;
+
+      // 1. Update family_invites/{inviteId} in Firestore
+      await updateInviteDocument(targetInvite.id, {
+        status: 'accepted',
+        acceptedAt: now,
+        acceptedByUid: currentUid,
+        acceptedByEmail: userEmail,
+        acceptedByName: userName,
+      });
+
+      // 2. Update inviter's familyMembers document in Firestore
+      if (targetInvite.inviterUid && targetInvite.memberId) {
+        await saveUserDocument(targetInvite.inviterUid, 'familyMembers', targetInvite.memberId, {
+          inviteStatus: 'accepted',
+          linkedUid: currentUid,
+          email: userEmail,
+          inviteId: targetInvite.id,
+          updatedAt: now,
+        });
+      }
+
+      // 3. Create or link this member in the joined user's local and Firestore state
+      const memberRecord: FamilyMember = {
+        id: targetInvite.memberId || uuidv4(),
+        name: userName,
+        relation: targetInvite.relation,
+        age: 28,
+        avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        email: userEmail,
+        inviteStatus: 'accepted',
+        inviteId: targetInvite.id,
+        linkedUid: currentUid,
+      };
+
+      setFamilyMembers(prev => {
+        const exists = prev.some(m => m.id === memberRecord.id || (m.email && m.email.toLowerCase() === userEmail.toLowerCase()));
+        if (exists) {
+          return prev.map(m => (m.id === memberRecord.id || (m.email && m.email.toLowerCase() === userEmail.toLowerCase())) ? {
+            ...m,
+            inviteStatus: 'accepted' as const,
+            linkedUid: currentUid,
+            inviteId: targetInvite.id,
+          } : m);
+        }
+        return [...prev, memberRecord];
+      });
+
+      if (currentUid) {
+        saveUserDocument(currentUid, 'familyMembers', memberRecord.id, memberRecord);
+      }
+
+      // 4. Clear pending invite
+      setPendingInvite(null);
+      localStorage.removeItem('sprout_pending_invite');
+
+      toast.success(`🎉 You've joined ${targetInvite.inviterName}'s family circle as ${targetInvite.memberName}!`, {
+        duration: 7000,
+      });
+
+      addNotification({
+        message: `Joined ${targetInvite.inviterName}'s family circle as ${targetInvite.memberName} (${targetInvite.relation})`,
+        type: 'success',
+        domain: 'system',
+        path: '/family',
+      });
+    } catch (err: any) {
+      console.error('Error accepting family invite:', err);
+      toast.error('Failed to link family account');
+    }
+  }, [pendingInvite, googleFirebaseUser, user, setFamilyMembers, addNotification]);
+
+  // Automatically link invite when authenticated and pendingInvite exists
+  useEffect(() => {
+    if (googleFirebaseUser?.uid && pendingInvite && pendingInvite.status === 'pending') {
+      acceptPendingInvite(pendingInvite);
+    }
+  }, [googleFirebaseUser?.uid, pendingInvite, acceptPendingInvite]);
+
   const sendFamilyInvite = async (memberId: string, email: string, customMessage?: string): Promise<{ success: boolean; error?: string; mailtoFallback?: string }> => {
     const member = familyMembers.find(m => m.id === memberId);
     if (!member) {
       return { success: false, error: 'Family member not found' };
     }
 
+    const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid || 'organizer';
+    const inviterName = user.name || 'Family Organizer';
+    const inviteId = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const now = new Date().toISOString();
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sprout-family.app';
+    const inviteLink = `${origin}/?inviteId=${inviteId}&inviterUid=${encodeURIComponent(currentUid)}&memberId=${encodeURIComponent(memberId)}&inviterName=${encodeURIComponent(inviterName)}&memberName=${encodeURIComponent(member.name)}&recipientEmail=${encodeURIComponent(email)}&relation=${encodeURIComponent(member.relation)}`;
+
+    // Store in Firestore family_invites collection
+    const inviteRecord: FamilyInvite = {
+      id: inviteId,
+      inviterUid: currentUid,
+      inviterName,
+      inviterEmail: user.email,
+      memberId: member.id,
+      memberName: member.name,
+      recipientEmail: email,
+      relation: member.relation,
+      status: 'pending',
+      createdAt: now,
+    };
+    await saveInviteDocument(inviteId, inviteRecord);
+
     const result = await sendFamilyInviteViaGmail({
       toEmail: email,
       recipientName: member.name,
-      inviterName: user.name || 'Family Organizer',
+      inviterName,
       inviterEmail: user.email,
       relation: member.relation,
       customMessage: customMessage || undefined,
+      inviteLink,
     });
 
-    if (result.success) {
-      const now = new Date().toISOString();
-      const updatedMember = { ...member, email: email, inviteStatus: 'invited' as const, inviteSentAt: now };
+    if (result.success || result.mailtoFallback) {
+      const updatedMember: FamilyMember = { 
+        ...member, 
+        email: email, 
+        inviteStatus: 'invited', 
+        inviteId: inviteId, 
+        inviteSentAt: now 
+      };
       setFamilyMembers(prev => prev.map(m => m.id === memberId ? updatedMember : m));
       if (googleFirebaseUser?.uid) {
         saveUserDocument(googleFirebaseUser.uid, 'familyMembers', memberId, updatedMember);
       }
-      addNotification({
-        message: `Family invite sent to ${member.name} (${email}) via Gmail!`,
-        type: 'success',
-        domain: 'system',
-        path: '/family',
-      });
+      if (result.success) {
+        addNotification({
+          message: `Family invite sent to ${member.name} (${email}) via Gmail!`,
+          type: 'success',
+          domain: 'system',
+          path: '/family',
+        });
+      }
     }
 
     return result;
+  };
+
+  const cancelFamilyInvite = async (memberId: string): Promise<boolean> => {
+    const member = familyMembers.find(m => m.id === memberId);
+    if (!member) return false;
+
+    try {
+      if (member.inviteId) {
+        await updateInviteDocument(member.inviteId, { status: 'cancelled' });
+      }
+
+      const updatedMember: FamilyMember = {
+        ...member,
+        inviteStatus: 'none',
+        inviteId: undefined,
+        inviteSentAt: undefined,
+      };
+
+      setFamilyMembers(prev => prev.map(m => m.id === memberId ? updatedMember : m));
+      if (googleFirebaseUser?.uid) {
+        await saveUserDocument(googleFirebaseUser.uid, 'familyMembers', memberId, updatedMember);
+      }
+
+      toast.success(`Cancelled invitation for ${member.name}.`);
+      addNotification({
+        message: `Invitation for ${member.name} was cancelled.`,
+        type: 'info',
+        domain: 'system',
+        path: '/family',
+      });
+      return true;
+    } catch (err: any) {
+      console.error('Error cancelling invite:', err);
+      toast.error('Failed to cancel invite');
+      return false;
+    }
+  };
+
+  const deleteFamilyMember = async (id: string) => {
+    const member = familyMembers.find(m => m.id === id);
+    if (member?.inviteId) {
+      try {
+        await updateInviteDocument(member.inviteId, { status: 'cancelled' });
+      } catch (err) {
+        console.warn('Could not cancel invite record:', err);
+      }
+    }
+
+    setFamilyMembers(prev => prev.filter(m => m.id !== id));
+    // Clean up medicines and appointments assigned to this member
+    setMedicines(prev => prev.filter(med => med.memberId !== id));
+    setAppointments(prev => prev.filter(appt => appt.memberId !== id));
+
+    if (googleFirebaseUser?.uid) {
+      await deleteUserDocument(googleFirebaseUser.uid, 'familyMembers', id);
+      const memberMeds = medicines.filter(med => med.memberId === id);
+      for (const med of memberMeds) {
+        await deleteUserDocument(googleFirebaseUser.uid, 'medicines', med.id);
+      }
+      const memberAppts = appointments.filter(a => a.memberId === id);
+      for (const appt of memberAppts) {
+        await deleteUserDocument(googleFirebaseUser.uid, 'appointments', appt.id);
+      }
+    }
+
+    toast.success(`${member ? member.name : 'Member'} removed from your family.`);
+    addNotification({
+      message: `${member ? member.name : 'Member'} was removed from your family circle.`,
+      type: 'info',
+      domain: 'system',
+      path: '/family',
+    });
   };
 
   // -------------------------------------------------------------
@@ -832,13 +1092,6 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setFamilyMembers(prev => prev.map(m => m.id === member.id ? member : m));
     if (googleFirebaseUser?.uid) {
       saveUserDocument(googleFirebaseUser.uid, 'familyMembers', member.id, member);
-    }
-  };
-
-  const deleteFamilyMember = (id: string) => {
-    setFamilyMembers(prev => prev.filter(m => m.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'familyMembers', id);
     }
   };
   
@@ -1077,6 +1330,24 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     return success;
   };
 
+  const deleteRepayment = (borrowingId: string, repaymentIndex: number) => {
+    let updatedBorrowing: Borrowing | null = null;
+    setBorrowings(prev => prev.map(b => {
+      if (b.id === borrowingId) {
+        const newRepayments = b.repayments.filter((_, idx) => idx !== repaymentIndex);
+        const totalRepaid = newRepayments.reduce((sum, r) => sum + r.amount, 0);
+        const newStatus = totalRepaid >= b.amount ? 'settled' : 'outstanding';
+        updatedBorrowing = { ...b, repayments: newRepayments, status: newStatus };
+        return updatedBorrowing;
+      }
+      return b;
+    }));
+
+    if (updatedBorrowing && googleFirebaseUser?.uid) {
+      saveUserDocument(googleFirebaseUser.uid, 'borrowings', borrowingId, updatedBorrowing);
+    }
+  };
+
   const settleBorrowing = (borrowingId: string) => {
     setBorrowings(prev => {
       const updated = prev.map(b => b.id === borrowingId ? { ...b, status: 'settled' as const } : b);
@@ -1138,6 +1409,24 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     return success;
   };
 
+  const deleteReturn = (lendingId: string, returnIndex: number) => {
+    let updatedLending: Lending | null = null;
+    setLendings(prev => prev.map(l => {
+      if (l.id === lendingId) {
+        const newReturns = l.returns.filter((_, idx) => idx !== returnIndex);
+        const totalReturned = newReturns.reduce((sum, r) => sum + r.amount, 0);
+        const newStatus = totalReturned >= l.amount ? 'returned' : 'outstanding';
+        updatedLending = { ...l, returns: newReturns, status: newStatus };
+        return updatedLending;
+      }
+      return l;
+    }));
+
+    if (updatedLending && googleFirebaseUser?.uid) {
+      saveUserDocument(googleFirebaseUser.uid, 'lendings', lendingId, updatedLending);
+    }
+  };
+
   const writeOffLending = (lendingId: string) => {
     setLendings(prev => {
       const updated = prev.map(l => l.id === lendingId ? { ...l, status: 'written_off' as const } : l);
@@ -1186,6 +1475,35 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         amount: amount,
         type: TransactionType.EXPENSE,
         category: 'Savings',
+        date: new Date().toISOString()
+      });
+    }
+
+    if (updatedGoal && googleFirebaseUser?.uid) {
+      saveUserDocument(googleFirebaseUser.uid, 'savingsGoals', goalId, updatedGoal);
+    }
+  };
+
+  const withdrawSavingsDeposit = (goalId: string, amount: number) => {
+    let goalTitle = '';
+    let updatedGoal: SavingsGoal | null = null;
+
+    setSavingsGoals(prev => prev.map(g => {
+      if (g.id === goalId) {
+        goalTitle = g.title;
+        const newAmount = Math.max(0, g.currentAmount - amount);
+        updatedGoal = { ...g, currentAmount: newAmount };
+        return updatedGoal;
+      }
+      return g;
+    }));
+
+    if (goalTitle) {
+      addTransaction({
+        description: `Withdrawal from ${goalTitle}`,
+        amount: amount,
+        type: TransactionType.INCOME,
+        category: 'Savings Withdrawal',
         date: new Date().toISOString()
       });
     }
@@ -1439,7 +1757,11 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     syncAppointmentToGoogle,
     syncBillToGoogle,
     syncAllToGoogleCalendar,
+    // Family Invites & Linking
+    pendingInvite,
     sendFamilyInvite,
+    cancelFamilyInvite,
+    acceptPendingInvite,
     // Notifications
     notifications,
     notificationSettings,
@@ -1464,9 +1786,9 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     currency, updateCurrency, availableCurrencies,
     language, updateLanguage, availableLanguages,
     medicalReports, addMedicalReport, deleteMedicalReport,
-    borrowings, addBorrowing, updateBorrowing, deleteBorrowing, addRepayment, settleBorrowing,
-    lendings, addLending, updateLending, deleteLending, addReturn, writeOffLending,
-    savingsGoals, addSavingsGoal, addSavingsDeposit, updateSavingsGoal, deleteSavingsGoal,
+    borrowings, addBorrowing, updateBorrowing, deleteBorrowing, addRepayment, deleteRepayment, settleBorrowing,
+    lendings, addLending, updateLending, deleteLending, addReturn, deleteReturn, writeOffLending,
+    savingsGoals, addSavingsGoal, addSavingsDeposit, withdrawSavingsDeposit, updateSavingsGoal, deleteSavingsGoal,
     appointments, addAppointment, updateAppointment, deleteAppointment,
     isDrawerOpen, openDrawer, closeDrawer,
   };

@@ -2,10 +2,11 @@ import React, { useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
+import PageHeader from '../components/ui/PageHeader';
 import { TransactionType } from '../types';
 import { ResponsiveContainer, RadialBarChart, RadialBar, Legend, Tooltip, Cell, PolarAngleAxis } from 'recharts';
 import { useTranslation } from '../hooks/useTranslation';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import {
   HiOutlineTrash, HiOutlineCalendarDays,
   HiOutlineClipboardDocumentList, HiOutlineReceiptPercent,
@@ -112,10 +113,10 @@ const HomePage: React.FC = () => {
     { label: t('home.actions.appointment'), icon: HiOutlineCalendar, path: '/settings/appointments', color: 'indigo' },
     { label: t('home.actions.buyMedicine'), icon: HiOutlineShoppingCart, path: '/restock', color: 'orange' },
     
-    { label: t('home.actions.transactions'), icon: HiOutlineArrowsUpDown, path: '/finance', color: 'emerald' },
-    { label: t('home.actions.bills'), icon: HiOutlineReceiptRefund, path: '/finance', color: 'yellow' },
-    { label: t('home.actions.borrowLend'), icon: HiOutlineArrowsRightLeft, path: '/finance', color: 'lime' },
-    { label: t('home.actions.savings'), icon: HiOutlineFlag, path: '/finance', color: 'green' },
+    { label: t('home.actions.transactions'), icon: HiOutlineArrowsUpDown, path: '/finance?view=transactions', color: 'emerald' },
+    { label: t('home.actions.bills'), icon: HiOutlineReceiptRefund, path: '/finance?view=bills', color: 'yellow' },
+    { label: t('home.actions.borrowLend'), icon: HiOutlineArrowsRightLeft, path: '/finance?view=borrow_lend', color: 'lime' },
+    { label: t('home.actions.savings'), icon: HiOutlineFlag, path: '/finance?view=savings', color: 'green' },
     
     { label: t('home.actions.quickNotes'), icon: HiOutlinePencil, onClick: handleQuickNotesClick, color: 'slate' },
     { label: t('home.actions.newChore'), icon: HiOutlineClipboardDocumentCheck, path: '/tasks', color: 'rose' },
@@ -155,11 +156,13 @@ const HomePage: React.FC = () => {
     };
     
     return (
-      <button onClick={handleClick} className="bg-transparent p-0 rounded-2xl flex flex-col items-center justify-start space-y-2 text-center group h-24">
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 ${colorClasses[color] || colorClasses.gray}`}>
-          <Icon className="h-7 w-7" />
+      <button onClick={handleClick} className="bg-transparent p-0 rounded-2xl flex flex-col items-center justify-start space-y-1.5 sm:space-y-2 text-center group h-20 sm:h-24 w-full max-w-[76px] sm:max-w-[90px]">
+        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 ${colorClasses[color] || colorClasses.gray}`}>
+          <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
         </div>
-        <span className="text-xs font-semibold text-light-text-primary dark:text-text-primary leading-tight px-1">{label}</span>
+        <span className="text-[11px] sm:text-xs font-semibold text-light-text-primary dark:text-text-primary leading-tight px-0.5 whitespace-nowrap truncate w-full" title={label}>
+          {label}
+        </span>
       </button>
     );
   };
@@ -168,12 +171,10 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-light-text-primary dark:text-text-primary mb-1">
-          {t('home.greeting', { name: user.name.split(' ')[0] })}
-        </h1>
-        <p className="text-light-text-secondary dark:text-text-secondary">{t('home.greetingSubtitle')}</p>
-      </div>
+      <PageHeader 
+        title={t('home.greeting', { name: user.name.split(' ')[0] })}
+        subtitle={t('home.greetingSubtitle')}
+      />
 
       <Card>
         <motion.div layout>

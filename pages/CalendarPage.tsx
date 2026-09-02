@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
+import PageHeader from '../components/ui/PageHeader';
+import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { 
     HiChevronLeft, HiChevronRight, HiOutlineBeaker, HiOutlineCurrencyDollar, 
     HiOutlineCheckCircle, HiMagnifyingGlass, HiOutlineXMark, HiOutlineArrowPath,
@@ -8,7 +11,7 @@ import {
 } from 'react-icons/hi2';
 import { FaUserDoctor } from 'react-icons/fa6';
 import { CalendarEvent } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
 import toast from 'react-hot-toast';
 
@@ -104,7 +107,7 @@ const TimelineEventCard: React.FC<{ event: CalendarEvent; onSyncToGoogle?: (id: 
                         {event.type === 'bill' && `${currencySymbol}${event.details?.amount?.toFixed(2)} - ${event.status}`}
                         {event.type === 'task' && `${t('calendar.modal.status')}: ${event.status}`}
                         {event.type === 'appointment' && `Doctor: ${event.details?.doctorName} • ${event.details?.clinicName || ''}`}
-                        {event.type === 'google_event' && (event.location ? `📍 ${event.location}` : 'Synced from your Google Calendar')}
+                        {event.type === 'google_event' && (event.location ? `${event.location}` : 'Synced from your Google Calendar')}
                     </p>
                 </div>
             </div>
@@ -220,6 +223,7 @@ const DayDetailsModal: React.FC<{
 // --- Main Calendar Page Component ---
 
 const CalendarPage: React.FC = () => {
+    const navigate = useNavigate();
     const { 
         familyMembers, 
         getCalendarEvents, 
@@ -299,62 +303,40 @@ const CalendarPage: React.FC = () => {
             if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
                 return;
             }
-            toast.error(err.message || 'Google Calendar sync failed.');
+            console.error(err);
+            toast.error('Google Calendar sync failed.');
         }
     };
 
+    const fabActions: SpeedDialAction[] = [
+        {
+            id: 'book_appointment',
+            label: 'Book Appointment',
+            icon: FaUserDoctor,
+            color: 'indigo',
+            onClick: () => navigate('/settings/appointments'),
+        },
+        {
+            id: 'add_task',
+            label: 'Create Task',
+            icon: HiOutlineCheckCircle,
+            color: 'purple',
+            onClick: () => navigate('/tasks'),
+        },
+        {
+            id: 'sync_gcal',
+            label: isCalendarSyncing ? 'Syncing...' : (isGoogleAuthenticated ? 'Sync Google Calendar' : 'Connect Google Calendar'),
+            icon: HiOutlineArrowPath,
+            color: 'cyan',
+            onClick: handleSyncCalendar,
+        },
+    ];
+
     return (
         <div className="space-y-6">
-            {/* Top Google Calendar Sync Bar */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-primary/5 to-transparent border border-emerald-200 dark:border-emerald-800/40">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm shrink-0 border border-slate-200 dark:border-zinc-700">
-                        <svg className="w-6 h-6" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
-                            <path fill="#34A853" d="M7 10h5v5H7z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-light-text-primary dark:text-text-primary">
-                                {t('googleServices.calendarSyncTitle')}
-                            </h3>
-                            {isGoogleAuthenticated && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/40">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                    {googleCalendarEvents.length} Events Synced
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-xs text-light-text-secondary dark:text-text-secondary mt-0.5">
-                            {t('googleServices.calendarSyncDesc')}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                    {isGoogleAuthenticated && (
-                        <label className="flex items-center gap-2 cursor-pointer text-xs text-light-text-secondary dark:text-text-secondary">
-                            <input
-                                type="checkbox"
-                                checked={includeGoogleCalendar}
-                                onChange={(e) => setIncludeGoogleCalendar(e.target.checked)}
-                                className="rounded text-primary focus:ring-primary h-4 w-4"
-                            />
-                            <span className="hidden md:inline">{t('googleServices.includeGoogleEvents')}</span>
-                        </label>
-                    )}
-
-                    <button
-                        onClick={handleSyncCalendar}
-                        disabled={isCalendarSyncing}
-                        className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary-focus transition-all flex items-center gap-2 shadow-sm shrink-0 disabled:opacity-60"
-                    >
-                        <HiOutlineArrowPath className={`w-4 h-4 ${isCalendarSyncing ? 'animate-spin' : ''}`} />
-                        {isCalendarSyncing ? t('googleServices.syncing') : t('googleServices.syncNow')}
-                    </button>
-                </div>
-            </div>
+            <PageHeader 
+                title={t('calendar.title')}
+            />
 
             <Card className="!p-0 overflow-hidden">
                 <div className="flex flex-col md:flex-row justify-between items-center p-4 border-b border-slate-200 dark:border-zinc-700 gap-4">
@@ -448,6 +430,12 @@ const CalendarPage: React.FC = () => {
                     />
                 )}
             </AnimatePresence>
+
+            {/* SPEED DIAL FLOATING ACTION BUTTON */}
+            <SpeedDialFAB
+                actions={fabActions}
+                mainLabel="Calendar Actions"
+            />
         </div>
     );
 };

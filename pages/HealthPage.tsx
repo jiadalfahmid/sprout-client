@@ -1,11 +1,22 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Skeleton from '../components/ui/Skeleton';
-import { motion } from 'framer-motion';
+import Modal from '../components/ui/Modal';
+import PageHeader from '../components/ui/PageHeader';
+import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
+import { motion } from 'motion/react';
 import { PiPill, PiDrop } from 'react-icons/pi';
 import { FaCapsules, FaSpoon } from 'react-icons/fa6';
 import toast from 'react-hot-toast';
-import { HiOutlineCheckCircle, HiOutlineExclamationCircle } from 'react-icons/hi2';
+import { 
+    HiOutlineCheckCircle, 
+    HiOutlineExclamationCircle, 
+    HiOutlineHeart, 
+    HiOutlineShoppingCart,
+    HiOutlineCog6Tooth,
+    HiPlus
+} from 'react-icons/hi2';
 import { useTranslation } from '../hooks/useTranslation';
 
 type Dose = {
@@ -109,10 +120,86 @@ const MedicineCard: React.FC<{ dose: Dose; onMarkAsTaken: (medId: string, time: 
 
 
 const HealthPage: React.FC = () => {
-    const { loading, familyMembers, medicines, logDose } = useAppContext();
+    const { loading, familyMembers, medicines, logDose, addMedicine, addNote } = useAppContext();
+    const navigate = useNavigate();
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<ActiveTab>('all');
     const [selectedMemberId, setSelectedMemberId] = useState('all');
+
+    // Quick Action Modals
+    const [isAddMedModalOpen, setIsAddMedModalOpen] = useState(false);
+    const [isVitalModalOpen, setIsVitalModalOpen] = useState(false);
+
+    // Quick Medicine Form
+    const [medForm, setMedForm] = useState({
+        memberId: familyMembers.length > 0 ? familyMembers[0].id : '',
+        name: '',
+        dosage: '',
+        unit: 'mg',
+        doseQuantity: '1',
+        doseForm: 'Tablet' as 'Tablet' | 'Capsule' | 'Drops' | 'Spoon',
+        times: ['09:00'],
+        mealRelation: 'after' as 'before' | 'after',
+        stock: '30'
+    });
+
+    // Quick Vital Form
+    const [vitalForm, setVitalForm] = useState({
+        memberId: familyMembers.length > 0 ? familyMembers[0].id : '',
+        type: 'Blood Pressure',
+        value: '',
+        notes: ''
+    });
+
+    const handleSaveMedicine = () => {
+        if (!medForm.name || !medForm.memberId || medForm.times.length === 0) {
+            toast.error(t('settings.fillRequiredFields') || 'Please fill required fields');
+            return;
+        }
+        addMedicine({
+            memberId: medForm.memberId,
+            name: medForm.name,
+            dosage: parseFloat(medForm.dosage) || 1,
+            unit: medForm.unit,
+            doseQuantity: parseInt(medForm.doseQuantity) || 1,
+            doseForm: medForm.doseForm,
+            stock: parseInt(medForm.stock) || 0,
+            times: medForm.times,
+            mealRelation: medForm.mealRelation,
+            schedule: { type: 'daily' }
+        });
+        toast.success(t('settings.medicineAdded') || 'Medicine added successfully!');
+        setIsAddMedModalOpen(false);
+        setMedForm({
+            memberId: familyMembers.length > 0 ? familyMembers[0].id : '',
+            name: '',
+            dosage: '',
+            unit: 'mg',
+            doseQuantity: '1',
+            doseForm: 'Tablet',
+            times: ['09:00'],
+            mealRelation: 'after',
+            stock: '30'
+        });
+    };
+
+    const handleSaveVital = () => {
+        if (!vitalForm.value) {
+            toast.error('Please enter a measurement value');
+            return;
+        }
+        const member = familyMembers.find(m => m.id === vitalForm.memberId);
+        const logContent = `🩺 Vital Log [${vitalForm.type}]: ${vitalForm.value}${vitalForm.notes ? ` (${vitalForm.notes})` : ''} - For ${member?.name || 'Family'}`;
+        addNote({ content: logContent });
+        toast.success('Health measurement logged!');
+        setIsVitalModalOpen(false);
+        setVitalForm({
+            memberId: familyMembers.length > 0 ? familyMembers[0].id : '',
+            type: 'Blood Pressure',
+            value: '',
+            notes: ''
+        });
+    };
 
     const handleMarkAsTaken = (medId: string, time: Date) => {
         const medName = logDose(medId, time.toISOString());
@@ -214,20 +301,50 @@ const HealthPage: React.FC = () => {
             ))}
         </div>
     );
+
+    const fabActions: SpeedDialAction[] = [
+        {
+            id: 'add_med',
+            label: t('settings.addNewMedicine') || 'Add Medicine',
+            icon: PiPill,
+            color: 'blue',
+            onClick: () => setIsAddMedModalOpen(true),
+        },
+        {
+            id: 'log_vital',
+            label: 'Record Health Vital',
+            icon: HiOutlineHeart,
+            color: 'rose',
+            onClick: () => setIsVitalModalOpen(true),
+        },
+        {
+            id: 'restock',
+            label: t('restock.cartTitle') || 'Restock Shopping Cart',
+            icon: HiOutlineShoppingCart,
+            color: 'orange',
+            onClick: () => navigate('/restock'),
+        },
+        {
+            id: 'manage',
+            label: t('settings.manageMedicines') || 'Manage All Medicines',
+            icon: HiOutlineCog6Tooth,
+            color: 'teal',
+            onClick: () => navigate('/settings/medicines'),
+        },
+    ];
     
     return (
         <div>
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-                 <div>
-                    <h1 className="text-3xl font-bold text-light-text-primary dark:text-text-primary mb-2">{t('health.title')}</h1>
-                    <p className="text-light-text-secondary dark:text-text-secondary">{t('health.subtitle')}</p>
-                </div>
-                <select value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-surface dark:bg-surface border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-sm font-medium">
-                    <option value="all">{t('health.allMembers')}</option>
-                    {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
-            </div>
-
+            <PageHeader
+                title={t('health.title')}
+                subtitle={t('health.subtitle')}
+                action={
+                    <select value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)} className="w-full sm:w-auto p-2 border rounded-xl bg-light-surface dark:bg-surface border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-sm font-medium">
+                        <option value="all">{t('health.allMembers')}</option>
+                        {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                }
+            />
 
             <div className="flex justify-center items-center gap-2 mb-8 bg-slate-100 dark:bg-surface p-1 rounded-full">
                 <TabButton tabName="all" label={t('health.tabs.all')} />
@@ -268,6 +385,175 @@ const HealthPage: React.FC = () => {
                 )}
             </div>
             )}
+
+            {/* SPEED DIAL FLOATING ACTION BUTTON */}
+            <SpeedDialFAB
+                actions={fabActions}
+                mainLabel="Health Actions"
+            />
+
+            {/* QUICK ADD MEDICINE MODAL */}
+            <Modal isOpen={isAddMedModalOpen} onClose={() => setIsAddMedModalOpen(false)} title={t('settings.addNewMedicine') || 'Add Medicine'}>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">Family Member *</label>
+                        <select 
+                            value={medForm.memberId} 
+                            onChange={e => setMedForm(s => ({...s, memberId: e.target.value}))}
+                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                        >
+                            {familyMembers.map(m => (
+                                <option key={m.id} value={m.id}>{m.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">Medicine Name *</label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Paracetamol, Metformin" 
+                            value={medForm.name} 
+                            onChange={e => setMedForm(s => ({...s, name: e.target.value}))} 
+                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.dosage')}</label>
+                            <input 
+                                type="text" 
+                                placeholder="e.g. 500" 
+                                value={medForm.dosage} 
+                                onChange={e => setMedForm(s => ({...s, dosage: e.target.value}))} 
+                                className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.unit')}</label>
+                            <select 
+                                value={medForm.unit} 
+                                onChange={e => setMedForm(s => ({...s, unit: e.target.value}))} 
+                                className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            >
+                                <option value="mg">mg</option>
+                                <option value="ml">ml</option>
+                                <option value="tablet">tablet</option>
+                                <option value="drops">drops</option>
+                                <option value="pills">pills</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.form')}</label>
+                            <select 
+                                value={medForm.doseForm} 
+                                onChange={e => setMedForm(s => ({...s, doseForm: e.target.value as any}))} 
+                                className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            >
+                                <option value="Tablet">{t('medicines.forms.tablet')}</option>
+                                <option value="Capsule">{t('medicines.forms.capsule')}</option>
+                                <option value="Drops">{t('medicines.forms.drops')}</option>
+                                <option value="Spoon">{t('medicines.forms.spoon')}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.mealRelation')}</label>
+                            <select 
+                                value={medForm.mealRelation} 
+                                onChange={e => setMedForm(s => ({...s, mealRelation: e.target.value as any}))} 
+                                className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            >
+                                <option value="after">{t('health.afterMeal')}</option>
+                                <option value="before">{t('health.beforeMeal')}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.reminderTime')}</label>
+                        <input 
+                            type="time" 
+                            value={medForm.times[0] || '09:00'} 
+                            onChange={e => setMedForm(s => ({...s, times: [e.target.value]}))} 
+                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                        />
+                    </div>
+
+                    <button 
+                        onClick={handleSaveMedicine} 
+                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md transition-colors text-sm"
+                    >
+                        Save Medicine
+                    </button>
+                </div>
+            </Modal>
+
+            {/* QUICK LOG VITAL MODAL */}
+            <Modal isOpen={isVitalModalOpen} onClose={() => setIsVitalModalOpen(false)} title={t('health.vitalModalTitle')}>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('appointments.modal.member')}</label>
+                        <select 
+                            value={vitalForm.memberId} 
+                            onChange={e => setVitalForm(s => ({...s, memberId: e.target.value}))}
+                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                        >
+                            {familyMembers.map(m => (
+                                <option key={m.id} value={m.id}>{m.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.metricType')}</label>
+                        <select 
+                            value={vitalForm.type} 
+                            onChange={e => setVitalForm(s => ({...s, type: e.target.value}))}
+                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                        >
+                            <option value="Blood Pressure">{t('health.bloodPressure')}</option>
+                            <option value="Blood Sugar">{t('health.bloodSugar')}</option>
+                            <option value="Weight">{t('health.weight')}</option>
+                            <option value="Heart Rate">{t('health.heartRate')}</option>
+                            <option value="Temperature">{t('health.temperature')}</option>
+                            <option value="General Health Note">{t('health.generalNote')}</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.valueReading')} *</label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. 120/80, 95 mg/dL, 70 kg" 
+                            value={vitalForm.value} 
+                            onChange={e => setVitalForm(s => ({...s, value: e.target.value}))} 
+                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.additionalNotes')}</label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Taken before breakfast, feeling energetic" 
+                            value={vitalForm.notes} 
+                            onChange={e => setVitalForm(s => ({...s, notes: e.target.value}))} 
+                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                        />
+                    </div>
+
+                    <button 
+                        onClick={handleSaveVital} 
+                        className="w-full py-3 bg-rose-600 text-white font-semibold rounded-xl hover:bg-rose-700 shadow-md transition-colors text-sm"
+                    >
+                        {t('health.saveVital')}
+                    </button>
+                </div>
+            </Modal>
         </div>
     );
 };

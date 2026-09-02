@@ -1,0 +1,32 @@
+{
+  "short_name": "Sprout",
+  "name": "Sprout - Unified Home & Family Care",
+  "description": "A smart unified home, family, finance, and health management app with real-time notifications, cloud synchronization, Google Calendar integration, and Gmail family invitations.",
+  "categories": ["lifestyle", "productivity", "health", "finance"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/#/home",
+  "background_color": "#18181B",
+  "theme_color": "#8B5CF6",
+  "display": "standalone",
+  "orientation": "any",
+  "screenshots": []
+}
