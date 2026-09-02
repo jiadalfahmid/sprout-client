@@ -85,34 +85,34 @@ const RestockPage: React.FC = () => {
                 <div className="space-y-4">
                     <Card>
                         <ul className="divide-y divide-slate-200 dark:divide-zinc-700">
-                           {cartDetails.map(item => item && (
-                               <li key={item.medicineId} className="py-4">
-                                   <div className="flex justify-between items-start">
-                                       <div>
+                            {cartDetails.map(item => item && (
+                                <li key={item.medicineId} className="py-4">
+                                    <div className="flex justify-between items-start">
+                                        <div>
                                             <p className="font-semibold text-light-text-primary dark:text-text-primary">{item.medicine.name}</p>
                                             <p className="text-xs text-light-text-secondary dark:text-text-secondary">{currencySymbol}{item.pricePerPiece.toFixed(2)}{t('restock.perPiece')}</p>
-                                       </div>
-                                       <p className="font-bold text-lg text-light-text-primary dark:text-text-primary">{currencySymbol}{item.itemTotal.toFixed(2)}</p>
-                                   </div>
-                                   <div className="flex items-center gap-4 mt-2">
-                                       <div className="flex-1">
-                                           <label className="text-xs">{t('restock.strips')}</label>
-                                           <input type="number" min="0" value={item.strips} onChange={e => updateCartItemQuantity(item.medicineId, parseInt(e.target.value), item.pieces)} className="w-full p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600"/>
-                                       </div>
-                                        <div className="flex-1">
-                                           <label className="text-xs">{t('restock.pieces')}</label>
-                                           <input type="number" min="0" value={item.pieces} onChange={e => updateCartItemQuantity(item.medicineId, item.strips, parseInt(e.target.value))} className="w-full p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600"/>
-                                       </div>
-                                   </div>
-                               </li>
-                           ))}
+                                        </div>
+                                        <p className="font-bold text-lg text-light-text-primary dark:text-text-primary">{currencySymbol}{item.itemTotal.toFixed(2)}</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 mt-3">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('restock.strips')}</label>
+                                            <input type="number" min="0" value={item.strips} onChange={e => updateCartItemQuantity(item.medicineId, parseInt(e.target.value) || 0, item.pieces)} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"/>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('restock.pieces')}</label>
+                                            <input type="number" min="0" value={item.pieces} onChange={e => updateCartItemQuantity(item.medicineId, item.strips, parseInt(e.target.value) || 0)} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"/>
+                                        </div>
+                                    </div>
+                                </li>
+                            ))}
                         </ul>
                     </Card>
                      <Card className="flex justify-between items-center">
                         <p className="font-semibold">{t('restock.totalPrice')}</p>
                         <p className="text-2xl font-bold text-primary">{currencySymbol}{grandTotal.toFixed(2)}</p>
                     </Card>
-                    <button onClick={() => setStep('list')} className="w-full py-3 bg-primary text-white font-semibold rounded-lg">
+                    <button onClick={() => setStep('list')} className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md active:scale-[0.99] transition-colors text-sm">
                         {t('restock.generateList')}
                     </button>
                 </div>

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
@@ -44,7 +44,7 @@ const ThemedApp = () => {
           },
         }}
       />
-      <HashRouter>
+      <BrowserRouter>
         <Layout>
           <Routes>
             <Route path="/" element={<Navigate to="/home" replace />} />
@@ -65,7 +65,7 @@ const ThemedApp = () => {
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </Layout>
-      </HashRouter>
+      </BrowserRouter>
     </>
   );
 };

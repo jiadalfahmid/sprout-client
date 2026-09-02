@@ -103,10 +103,10 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
         {isHomePage ? (
           <div className="flex items-center justify-between h-full px-4 md:px-6">
             <div className="flex items-center gap-2">
-              <HiOutlineSparkles className="h-7 w-7 text-primary" />
-              <span className="text-xl font-bold text-light-text-primary dark:text-text-primary">{t('appName')}</span>
+              <HiOutlineSparkles className="h-6 w-6 text-primary" />
+              <span className="text-lg font-bold text-light-text-primary dark:text-text-primary">{t('appName')}</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {!isGoogleAuthenticated && (
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -142,14 +142,14 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={onNotificationClick} 
-                className="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700"
+                className="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-primary dark:text-text-primary transition-colors"
                 aria-label="Open notifications"
               >
-                <HiOutlineBell className="h-6 w-6" />
+                <HiOutlineBell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 flex h-3 w-3">
+                  <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                   </span>
                 )}
               </motion.button>
@@ -166,10 +166,10 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <HiArrowLeft className="h-6 w-6" />
+                <HiArrowLeft className="h-5 w-5" />
               </motion.button>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -191,11 +191,11 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
                 className="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-primary dark:text-text-primary transition-colors"
                 aria-label="Open notifications"
               >
-                <HiOutlineBell className="h-6 w-6" />
+                <HiOutlineBell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 flex h-3 w-3">
+                  <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                   </span>
                 )}
               </motion.button>

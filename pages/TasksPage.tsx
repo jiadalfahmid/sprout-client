@@ -232,18 +232,23 @@ const TasksPage: React.FC = () => {
       
       {/* Create List Modal */}
       <Modal isOpen={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} title={t('tasks.modal.title')}>
-        <div className="space-y-4">
-            <input
-                type="text"
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-                placeholder={t('tasks.modal.placeholder')}
-                className="w-full mt-1 p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
-                autoFocus
-            />
+        <div className="space-y-4 py-1">
+            <div>
+                <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                  List Name *
+                </label>
+                <input
+                    type="text"
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    placeholder="e.g. Weekend Groceries, Home Chores, Packing List"
+                    className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                    autoFocus
+                />
+            </div>
             <button
                 onClick={handleCreateList}
-                className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 transition-colors text-sm"
+                className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 transition-colors text-sm shadow-md active:scale-[0.99]"
             >
                 {t('tasks.modal.createBtn')}
             </button>

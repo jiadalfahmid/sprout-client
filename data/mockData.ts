@@ -1,4 +1,5 @@
-import { Transaction, TransactionType, Bill, BillCategory, FamilyMember, Medicine, Task, Note, User, Notification, MedicalReport, MedicalReportCategory, Borrowing, Lending, SavingsGoal, Appointment, TaskList } from '../types';
+import { Transaction, TransactionType, Bill, BillCategory, FamilyMember, Medicine, Task, Note, User, Notification, MedicalReport, MedicalReportCategory, Borrowing, Lending, SavingsGoal, Appointment, TaskList, TransactionCategory } from '../types';
+import { DEFAULT_TRANSACTION_CATEGORIES } from '../utils/categoryIcons';
 
 const uuidv4 = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -6,6 +7,8 @@ const uuidv4 = () => {
     return v.toString(16);
   });
 }
+
+export const mockTransactionCategories: TransactionCategory[] = DEFAULT_TRANSACTION_CATEGORIES;
 
 export const mockUser: User = {
   name: 'Alex Doe',
@@ -29,24 +32,24 @@ const year = now.getFullYear();
 const month = now.getMonth();
 
 export const mockTransactions: Transaction[] = [
-    { id: uuidv4(), description: 'Salary', amount: 4200, type: TransactionType.INCOME, category: 'Work', date: new Date(year, month, 1).toISOString() },
-    { id: uuidv4(), description: 'Groceries from SuperMart', amount: 180.50, type: TransactionType.EXPENSE, category: 'Groceries', date: new Date(year, month, 3).toISOString() },
-    { id: uuidv4(), description: 'Electricity Bill', amount: 75.20, type: TransactionType.EXPENSE, category: 'Utilities', date: new Date(year, month, 5).toISOString() },
-    { id: uuidv4(), description: 'Freelance Project X', amount: 650, type: TransactionType.INCOME, category: 'Side Hustle', date: new Date(year, month, 8).toISOString() },
-    { id: uuidv4(), description: 'Dinner with Friends', amount: 85.00, type: TransactionType.EXPENSE, category: 'Entertainment', date: new Date(year, month, 10).toISOString() },
-    { id: uuidv4(), description: 'New headphones', amount: 120.00, type: TransactionType.EXPENSE, category: 'Shopping', date: new Date(year, month, 11).toISOString() },
-    { id: uuidv4(), description: 'Monthly Transport Pass', amount: 55.00, type: TransactionType.EXPENSE, category: 'Transport', date: new Date(year, month, 2).toISOString() },
-    { id: uuidv4(), description: 'Stock Dividend', amount: 125.00, type: TransactionType.INCOME, category: 'Investment', date: new Date(year, month, 15).toISOString() },
-    { id: uuidv4(), description: 'Deposit to Vacation Fund', amount: 200, type: TransactionType.EXPENSE, category: 'Savings', date: new Date(year, month, 5).toISOString() },
-    { id: uuidv4(), description: 'Repayment to City Bank', amount: 50, type: TransactionType.EXPENSE, category: 'Debt Repayment', date: new Date(year, month, 1).toISOString() },
+    { id: uuidv4(), description: 'Salary', amount: 4200, type: TransactionType.INCOME, categoryId: 'cat-other', category: 'Work', date: new Date(year, month, 1).toISOString(), memberId: member3Id },
+    { id: uuidv4(), description: 'Groceries from SuperMart', amount: 180.50, type: TransactionType.EXPENSE, categoryId: 'cat-groceries', category: 'Groceries', date: new Date(year, month, 3).toISOString(), memberId: member2Id },
+    { id: uuidv4(), description: 'Electricity Bill', amount: 75.20, type: TransactionType.EXPENSE, categoryId: 'cat-utilities', category: 'Utilities', date: new Date(year, month, 5).toISOString() },
+    { id: uuidv4(), description: 'Freelance Project X', amount: 650, type: TransactionType.INCOME, categoryId: 'cat-other', category: 'Side Hustle', date: new Date(year, month, 8).toISOString(), memberId: member3Id },
+    { id: uuidv4(), description: 'Dinner with Friends', amount: 85.00, type: TransactionType.EXPENSE, categoryId: 'cat-entertainment', category: 'Entertainment', date: new Date(year, month, 10).toISOString(), memberId: member4Id },
+    { id: uuidv4(), description: 'Health Checkup Medicines', amount: 120.00, type: TransactionType.EXPENSE, categoryId: 'cat-health', category: 'Health', date: new Date(year, month, 11).toISOString(), memberId: member1Id },
+    { id: uuidv4(), description: 'Monthly Transport Pass', amount: 55.00, type: TransactionType.EXPENSE, categoryId: 'cat-transport', category: 'Transport', date: new Date(year, month, 2).toISOString(), memberId: member4Id },
+    { id: uuidv4(), description: 'Apartment Rent', amount: 1200.00, type: TransactionType.EXPENSE, categoryId: 'cat-rent', category: 'Rent', date: new Date(year, month, 1).toISOString() },
+    { id: uuidv4(), description: 'Deposit to Vacation Fund', amount: 200, type: TransactionType.EXPENSE, categoryId: 'cat-other', category: 'Savings', date: new Date(year, month, 5).toISOString(), memberId: member3Id },
+    { id: uuidv4(), description: 'Repayment to City Bank', amount: 50, type: TransactionType.EXPENSE, categoryId: 'cat-loan', category: 'Debt Repayment', date: new Date(year, month, 1).toISOString(), memberId: member3Id },
 ];
 
 
 export const mockBills: Bill[] = [
-    { id: uuidv4(), name: 'Netflix Subscription', amount: 15.99, category: BillCategory.SUBSCRIPTION, dueDate: new Date(year, month, 15).toISOString(), paid: true, recurrence: 'monthly', paidOn: new Date(year, month, 14).toISOString() },
-    { id: uuidv4(), name: 'Apartment Rent', amount: 1200, category: BillCategory.RENT, dueDate: new Date(year, month + 1, 1).toISOString(), paid: false, recurrence: 'monthly' },
-    { id: uuidv4(), name: 'Internet Bill', amount: 60, category: BillCategory.UTILITIES, dueDate: new Date(year, month, now.getDate() + 2).toISOString(), paid: false, recurrence: 'monthly' },
-    { id: uuidv4(), name: 'Gym Membership', amount: 45, category: BillCategory.SUBSCRIPTION, dueDate: new Date(year, month, now.getDate() - 2).toISOString(), paid: false, recurrence: 'monthly' }, // Overdue
+    { id: uuidv4(), name: 'Netflix Subscription', amount: 15.99, categoryId: 'cat-subscriptions', category: BillCategory.SUBSCRIPTION, dueDate: new Date(year, month, 15).toISOString(), paid: true, recurrence: 'monthly', paidOn: new Date(year, month, 14).toISOString(), memberId: member4Id },
+    { id: uuidv4(), name: 'Apartment Rent', amount: 1200, categoryId: 'cat-rent', category: BillCategory.RENT, dueDate: new Date(year, month + 1, 1).toISOString(), paid: false, recurrence: 'monthly' },
+    { id: uuidv4(), name: 'Internet Bill', amount: 60, categoryId: 'cat-utilities', category: BillCategory.UTILITIES, dueDate: new Date(year, month, now.getDate() + 2).toISOString(), paid: false, recurrence: 'monthly' },
+    { id: uuidv4(), name: 'Health Insurance', amount: 85, categoryId: 'cat-health', category: BillCategory.OTHER, dueDate: new Date(year, month, now.getDate() - 2).toISOString(), paid: false, recurrence: 'monthly', memberId: member1Id }, // Overdue
 ];
 
 export const mockBorrowings: Borrowing[] = [

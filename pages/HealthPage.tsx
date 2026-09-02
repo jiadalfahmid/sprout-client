@@ -394,65 +394,66 @@ const HealthPage: React.FC = () => {
 
             {/* QUICK ADD MEDICINE MODAL */}
             <Modal isOpen={isAddMedModalOpen} onClose={() => setIsAddMedModalOpen(false)} title={t('settings.addNewMedicine') || 'Add Medicine'}>
-                <div className="space-y-4">
+                <div className="space-y-4 py-1">
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">Family Member *</label>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Family Member *</label>
                         <select 
                             value={medForm.memberId} 
                             onChange={e => setMedForm(s => ({...s, memberId: e.target.value}))}
-                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
                             {familyMembers.map(m => (
-                                <option key={m.id} value={m.id}>{m.name}</option>
+                                <option key={m.id} value={m.id}>{m.name} ({m.relation})</option>
                             ))}
                         </select>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">Medicine Name *</label>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Medicine Name *</label>
                         <input 
                             type="text" 
-                            placeholder="e.g. Paracetamol, Metformin" 
+                            placeholder="e.g. Paracetamol, Metformin, Vitamin D3" 
                             value={medForm.name} 
                             onChange={e => setMedForm(s => ({...s, name: e.target.value}))} 
-                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.dosage')}</label>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Dosage Strength</label>
                             <input 
                                 type="text" 
                                 placeholder="e.g. 500" 
                                 value={medForm.dosage} 
                                 onChange={e => setMedForm(s => ({...s, dosage: e.target.value}))} 
-                                className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                                className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.unit')}</label>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Unit of Measurement</label>
                             <select 
                                 value={medForm.unit} 
                                 onChange={e => setMedForm(s => ({...s, unit: e.target.value}))} 
-                                className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                                className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
                             >
-                                <option value="mg">mg</option>
-                                <option value="ml">ml</option>
+                                <option value="mg">mg (Milligrams)</option>
+                                <option value="ml">ml (Milliliters)</option>
                                 <option value="tablet">tablet</option>
                                 <option value="drops">drops</option>
                                 <option value="pills">pills</option>
+                                <option value="mcg">mcg (Micrograms)</option>
                             </select>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.form')}</label>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Medicine Form</label>
                             <select 
                                 value={medForm.doseForm} 
                                 onChange={e => setMedForm(s => ({...s, doseForm: e.target.value as any}))} 
-                                className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                                className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
                             >
                                 <option value="Tablet">{t('medicines.forms.tablet')}</option>
                                 <option value="Capsule">{t('medicines.forms.capsule')}</option>
@@ -461,11 +462,11 @@ const HealthPage: React.FC = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.mealRelation')}</label>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Meal Timing</label>
                             <select 
                                 value={medForm.mealRelation} 
                                 onChange={e => setMedForm(s => ({...s, mealRelation: e.target.value as any}))} 
-                                className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                                className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
                             >
                                 <option value="after">{t('health.afterMeal')}</option>
                                 <option value="before">{t('health.beforeMeal')}</option>
@@ -474,18 +475,18 @@ const HealthPage: React.FC = () => {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.reminderTime')}</label>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Scheduled Reminder Time *</label>
                         <input 
                             type="time" 
                             value={medForm.times[0] || '09:00'} 
                             onChange={e => setMedForm(s => ({...s, times: [e.target.value]}))} 
-                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
                         />
                     </div>
 
                     <button 
                         onClick={handleSaveMedicine} 
-                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md transition-colors text-sm"
+                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md transition-colors text-sm active:scale-[0.99]"
                     >
                         Save Medicine
                     </button>
@@ -494,26 +495,26 @@ const HealthPage: React.FC = () => {
 
             {/* QUICK LOG VITAL MODAL */}
             <Modal isOpen={isVitalModalOpen} onClose={() => setIsVitalModalOpen(false)} title={t('health.vitalModalTitle')}>
-                <div className="space-y-4">
+                <div className="space-y-4 py-1">
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('appointments.modal.member')}</label>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Family Member *</label>
                         <select 
                             value={vitalForm.memberId} 
                             onChange={e => setVitalForm(s => ({...s, memberId: e.target.value}))}
-                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
                             {familyMembers.map(m => (
-                                <option key={m.id} value={m.id}>{m.name}</option>
+                                <option key={m.id} value={m.id}>{m.name} ({m.relation})</option>
                             ))}
                         </select>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.metricType')}</label>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Health Metric Type *</label>
                         <select 
                             value={vitalForm.type} 
                             onChange={e => setVitalForm(s => ({...s, type: e.target.value}))}
-                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
                             <option value="Blood Pressure">{t('health.bloodPressure')}</option>
                             <option value="Blood Sugar">{t('health.bloodSugar')}</option>
@@ -525,30 +526,30 @@ const HealthPage: React.FC = () => {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.valueReading')} *</label>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Metric Value / Reading *</label>
                         <input 
                             type="text" 
-                            placeholder="e.g. 120/80, 95 mg/dL, 70 kg" 
+                            placeholder="e.g. 120/80 mmHg, 98.6 °F, 110 mg/dL, 70 kg" 
                             value={vitalForm.value} 
                             onChange={e => setVitalForm(s => ({...s, value: e.target.value}))} 
-                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('health.additionalNotes')}</label>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">Notes & Context (Optional)</label>
                         <input 
                             type="text" 
-                            placeholder="e.g. Taken before breakfast, feeling energetic" 
+                            placeholder="e.g. Fasting reading before breakfast, feeling well" 
                             value={vitalForm.notes} 
                             onChange={e => setVitalForm(s => ({...s, notes: e.target.value}))} 
-                            className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm"
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
                         />
                     </div>
 
                     <button 
                         onClick={handleSaveVital} 
-                        className="w-full py-3 bg-rose-600 text-white font-semibold rounded-xl hover:bg-rose-700 shadow-md transition-colors text-sm"
+                        className="w-full py-3 bg-rose-600 text-white font-semibold rounded-xl hover:bg-rose-700 shadow-md transition-colors text-sm active:scale-[0.99]"
                     >
                         {t('health.saveVital')}
                     </button>

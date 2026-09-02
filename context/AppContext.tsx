@@ -2,12 +2,14 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { 
     Transaction, TransactionType, Bill, FamilyMember, Medicine, Task, Note, User, Notification, 
     NotificationSettings, CalendarEvent, CartItem, HealthRecord, Currency, Language, MedicalReport,
-    Borrowing, Lending, SavingsGoal, Repayment, Return, Appointment, TaskList, FamilyInvite
+    Borrowing, Lending, SavingsGoal, Repayment, Return, Appointment, TaskList, FamilyInvite,
+    TransactionCategory
 } from '../types';
 import { 
     mockUser, mockFamilyMembers, mockTransactions, mockBills, mockMedicines, mockTasks, mockNotes, mockNotifications, mockMedicalReports,
-    mockBorrowings, mockLendings, mockSavingsGoals, mockAppointments, mockTaskLists
+    mockBorrowings, mockLendings, mockSavingsGoals, mockAppointments, mockTaskLists, mockTransactionCategories
 } from '../data/mockData';
+import { DEFAULT_TRANSACTION_CATEGORIES } from '../utils/categoryIcons';
 import { 
   auth, 
   signInWithGoogle, 
@@ -110,6 +112,10 @@ interface AppContextType {
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   updateTransaction: (transaction: Transaction) => void;
   deleteTransaction: (id: string) => void;
+  transactionCategories: TransactionCategory[];
+  addTransactionCategory: (category: Omit<TransactionCategory, 'id' | 'isCustom'> & { isCustom?: boolean }) => TransactionCategory;
+  updateTransactionCategory: (category: TransactionCategory) => void;
+  deleteTransactionCategory: (id: string) => void;
   bills: Bill[];
   addBill: (bill: Omit<Bill, 'id' | 'paid' | 'paidOn'>) => void;
   updateBill: (bill: Bill) => boolean;
@@ -212,6 +218,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [theme, setTheme] = useLocalStorage<'light' | 'dark'>('theme', 'dark');
   const [user, setUser] = useLocalStorage<User>('user', defaultCleanUser);
   const [familyMembers, setFamilyMembers] = useLocalStorage<FamilyMember[]>('familyMembers', []);
+  const [transactionCategories, setTransactionCategories] = useLocalStorage<TransactionCategory[]>('transactionCategories', mockTransactionCategories);
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('transactions', []);
   const [bills, setBills] = useLocalStorage<Bill[]>('bills', []);
   const [medicines, setMedicines] = useLocalStorage<Medicine[]>('medicines', []);
@@ -334,6 +341,11 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           subscribeToUserSubcollection<Appointment>(fbUser.uid, 'appointments', (items) => {
             setAppointments(items);
           }),
+          subscribeToUserSubcollection<TransactionCategory>(fbUser.uid, 'transactionCategories', (items) => {
+            if (items && items.length > 0) {
+              setTransactionCategories(items);
+            }
+          }),
           subscribeToUserSubcollection<Transaction>(fbUser.uid, 'transactions', (items) => {
             setTransactions(items);
           }),
@@ -384,6 +396,85 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }, 500);
     return () => clearTimeout(timer);
   }, []);
+
+  // Category & Legacy Free-Text Migration for Transactions and Bills
+  useEffect(() => {
+    if (loading) return;
+
+    let categoriesUpdated = false;
+    let currentCategories = [...transactionCategories];
+
+    // Ensure baseline default categories exist if empty
+    if (currentCategories.length === 0) {
+      currentCategories = [...DEFAULT_TRANSACTION_CATEGORIES];
+      categoriesUpdated = true;
+    }
+
+    const ensureCategory = (catNameOrId?: string): string => {
+      if (!catNameOrId) return currentCategories[0]?.id || 'cat-other';
+      // 1. Direct ID match
+      const existingById = currentCategories.find(c => c.id === catNameOrId);
+      if (existingById) return existingById.id;
+      // 2. Name match (case-insensitive)
+      const normalized = String(catNameOrId).trim();
+      const existingByName = currentCategories.find(c => c.name.toLowerCase() === normalized.toLowerCase());
+      if (existingByName) return existingByName.id;
+      
+      // 3. Create a new custom category from the legacy free-text string
+      const titleCased = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+      const newCategory: TransactionCategory = {
+        id: `cat-${uuidv4().slice(0, 8)}`,
+        name: titleCased || 'Other',
+        icon: 'HiOutlineTag',
+        color: '#6366F1',
+        isCustom: true,
+      };
+      currentCategories = [...currentCategories, newCategory];
+      categoriesUpdated = true;
+      if (googleFirebaseUser?.uid) {
+        saveUserDocument(googleFirebaseUser.uid, 'transactionCategories', newCategory.id, newCategory);
+      }
+      return newCategory.id;
+    };
+
+    let transactionsUpdated = false;
+    const migratedTransactions = transactions.map(tx => {
+      if (!tx.categoryId || !currentCategories.some(c => c.id === tx.categoryId)) {
+        const validId = ensureCategory(tx.categoryId || tx.category);
+        transactionsUpdated = true;
+        const updated = { ...tx, categoryId: validId };
+        if (googleFirebaseUser?.uid) {
+          saveUserDocument(googleFirebaseUser.uid, 'transactions', tx.id, updated);
+        }
+        return updated;
+      }
+      return tx;
+    });
+
+    let billsUpdated = false;
+    const migratedBills = bills.map(bill => {
+      if (!bill.categoryId || !currentCategories.some(c => c.id === bill.categoryId)) {
+        const validId = ensureCategory(bill.categoryId || (typeof bill.category === 'string' ? bill.category : undefined));
+        billsUpdated = true;
+        const updated = { ...bill, categoryId: validId };
+        if (googleFirebaseUser?.uid) {
+          saveUserDocument(googleFirebaseUser.uid, 'bills', bill.id, updated);
+        }
+        return updated;
+      }
+      return bill;
+    });
+
+    if (categoriesUpdated) {
+      setTransactionCategories(currentCategories);
+    }
+    if (transactionsUpdated) {
+      setTransactions(migratedTransactions);
+    }
+    if (billsUpdated) {
+      setBills(migratedBills);
+    }
+  }, [loading, transactions.length, bills.length]);
 
   // -------------------------------------------------------------
   // NOTIFICATION SYSTEM
@@ -656,6 +747,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       setMedicalReports([]);
       setNotes([]);
       setNotifications([]);
+      setTransactionCategories(mockTransactionCategories);
       setUser(defaultCleanUser);
       toast.success('Signed out of Sprout.');
     } catch (err) {
@@ -671,6 +763,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         toast.loading('Populating starter sample data into your Firebase database...');
         await seedUserData(googleFirebaseUser.uid, {
           familyMembers: mockFamilyMembers,
+          transactionCategories: mockTransactionCategories,
           medicines: mockMedicines,
           bills: mockBills,
           transactions: mockTransactions,
@@ -688,6 +781,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         return true;
       } else {
         setFamilyMembers(mockFamilyMembers);
+        setTransactionCategories(mockTransactionCategories);
         setMedicines(mockMedicines);
         setBills(mockBills);
         setTransactions(mockTransactions);
@@ -1099,6 +1193,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const newTransaction: Transaction = {
       id: uuidv4(),
       ...transaction,
+      categoryId: transaction.categoryId || 'cat-other',
     };
     setTransactions(prev => [newTransaction, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     if (googleFirebaseUser?.uid) {
@@ -1119,9 +1214,74 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       deleteUserDocument(googleFirebaseUser.uid, 'transactions', id);
     }
   };
+
+  const addTransactionCategory = (category: Omit<TransactionCategory, 'id' | 'isCustom'> & { isCustom?: boolean }): TransactionCategory => {
+    const newCat: TransactionCategory = {
+      id: `cat-${uuidv4().slice(0, 8)}`,
+      name: category.name.trim(),
+      icon: category.icon || 'HiOutlineTag',
+      color: category.color || '#6366F1',
+      isCustom: category.isCustom !== false,
+    };
+    setTransactionCategories(prev => [...prev, newCat]);
+    if (googleFirebaseUser?.uid) {
+      saveUserDocument(googleFirebaseUser.uid, 'transactionCategories', newCat.id, newCat);
+    }
+    return newCat;
+  };
+
+  const updateTransactionCategory = (category: TransactionCategory) => {
+    setTransactionCategories(prev => prev.map(c => c.id === category.id ? category : c));
+    if (googleFirebaseUser?.uid) {
+      saveUserDocument(googleFirebaseUser.uid, 'transactionCategories', category.id, category);
+    }
+  };
+
+  const deleteTransactionCategory = (id: string) => {
+    const fallbackCategory = transactionCategories.find(c => c.id !== id && (c.id === 'cat-other' || c.name.toLowerCase() === 'other')) 
+      || transactionCategories.find(c => c.id !== id) 
+      || DEFAULT_TRANSACTION_CATEGORIES[DEFAULT_TRANSACTION_CATEGORIES.length - 1];
+
+    const fallbackId = fallbackCategory.id;
+
+    // Remove category
+    setTransactionCategories(prev => prev.filter(c => c.id !== id));
+    if (googleFirebaseUser?.uid) {
+      deleteUserDocument(googleFirebaseUser.uid, 'transactionCategories', id);
+    }
+
+    // Reassign affected transactions
+    setTransactions(prev => prev.map(t => {
+      if (t.categoryId === id) {
+        const updated = { ...t, categoryId: fallbackId };
+        if (googleFirebaseUser?.uid) {
+          saveUserDocument(googleFirebaseUser.uid, 'transactions', t.id, updated);
+        }
+        return updated;
+      }
+      return t;
+    }));
+
+    // Reassign affected bills
+    setBills(prev => prev.map(b => {
+      if (b.categoryId === id) {
+        const updated = { ...b, categoryId: fallbackId };
+        if (googleFirebaseUser?.uid) {
+          saveUserDocument(googleFirebaseUser.uid, 'bills', b.id, updated);
+        }
+        return updated;
+      }
+      return b;
+    }));
+  };
   
   const addBill = (bill: Omit<Bill, 'id' | 'paid' | 'paidOn'>) => {
-    const newBill: Bill = { ...bill, id: uuidv4(), paid: false };
+    const newBill: Bill = { 
+      ...bill, 
+      id: uuidv4(), 
+      paid: false,
+      categoryId: bill.categoryId || 'cat-other',
+    };
     setBills(prev => [...prev, newBill]);
     if (googleFirebaseUser?.uid) {
       saveUserDocument(googleFirebaseUser.uid, 'bills', newBill.id, newBill);
@@ -1138,8 +1298,10 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             description: finalBill.name,
             amount: finalBill.amount,
             type: TransactionType.EXPENSE,
-            category: finalBill.category,
-            date: new Date().toISOString()
+            categoryId: finalBill.categoryId || 'cat-other',
+            category: typeof finalBill.category === 'string' ? finalBill.category : undefined,
+            date: new Date().toISOString(),
+            memberId: finalBill.memberId,
         });
         transactionCreated = true;
         finalBill.paidOn = new Date().toISOString();
@@ -1775,6 +1937,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     addNotification,
     // Core Domain
     transactions, addTransaction, updateTransaction, deleteTransaction,
+    transactionCategories, addTransactionCategory, updateTransactionCategory, deleteTransactionCategory,
     bills, addBill, updateBill, deleteBill,
     familyMembers, addFamilyMember, updateFamilyMember, deleteFamilyMember,
     medicines, addMedicine, updateMedicine, deleteMedicine, logDose,

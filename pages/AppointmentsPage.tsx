@@ -289,65 +289,101 @@ const AppointmentsPage: React.FC = () => {
             />
             
             <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)} title={editingAppointment ? t('appointments.modal.editTitle') : t('appointments.modal.addTitle')}>
-                <div className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
+                <div className="space-y-4 py-1">
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
                             Family Member *
                         </label>
-                        <select value={formState.memberId} onChange={e => setFormState(s => ({...s, memberId: e.target.value}))} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm">
-                            {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                        <select 
+                            value={formState.memberId} 
+                            onChange={e => setFormState(s => ({...s, memberId: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
+                        >
+                            {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name} ({m.relation})</option>)}
                         </select>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
-                            {t('appointments.modal.doctor')} *
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Doctor or Specialist Name *
                         </label>
-                        <input type="text" placeholder="e.g., Dr. Smith" value={formState.doctorName} onChange={e => setFormState(s => ({...s, doctorName: e.target.value}))} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm" />
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Dr. Sarah Jenkins, MD" 
+                            value={formState.doctorName} 
+                            onChange={e => setFormState(s => ({...s, doctorName: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" 
+                        />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
-                            {t('appointments.modal.clinic')} *
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Hospital / Clinic / Center *
                         </label>
-                        <input type="text" placeholder="e.g., City Medical Center" value={formState.clinicName} onChange={e => setFormState(s => ({...s, clinicName: e.target.value}))} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm" />
+                        <input 
+                            type="text" 
+                            placeholder="e.g. City General Hospital, Suite 400" 
+                            value={formState.clinicName} 
+                            onChange={e => setFormState(s => ({...s, clinicName: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" 
+                        />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
-                            Date & Time *
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Appointment Date & Time *
                         </label>
-                        <input type="datetime-local" value={formState.dateTime} onChange={e => setFormState(s => ({...s, dateTime: e.target.value}))} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm" />
+                        <input 
+                            type="datetime-local" 
+                            value={formState.dateTime} 
+                            onChange={e => setFormState(s => ({...s, dateTime: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent" 
+                        />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
-                            {t('appointments.modal.purpose')} *
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Purpose / Reason for Visit *
                         </label>
-                        <textarea placeholder="e.g., Annual cardiology checkup & blood work review" value={formState.purpose} onChange={e => setFormState(s => ({...s, purpose: e.target.value}))} rows={2} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm resize-none" />
+                        <textarea 
+                            placeholder="e.g. Annual cardiology checkup, blood pressure review, and routine blood tests" 
+                            value={formState.purpose} 
+                            onChange={e => setFormState(s => ({...s, purpose: e.target.value}))} 
+                            rows={3} 
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent resize-none" 
+                        />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
-                            {t('appointments.modal.specialization')} (Optional)
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Medical Specialization (Optional)
                         </label>
-                        <input type="text" placeholder="e.g., Cardiology, Pediatrics" value={formState.specialization} onChange={e => setFormState(s => ({...s, specialization: e.target.value}))} className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm" />
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Cardiology, Pediatrics, Dermatology, Ophthalmology" 
+                            value={formState.specialization} 
+                            onChange={e => setFormState(s => ({...s, specialization: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" 
+                        />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
-                            {t('appointments.modal.prescriptionOrDoc')}
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Prescription or Medical Attachment (Optional)
                         </label>
-                        <label className="block w-full cursor-pointer p-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-50 dark:hover:bg-zinc-800 transition">
+                        <label className="block w-full cursor-pointer p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-50 dark:hover:bg-zinc-800 transition">
                             <div className="flex flex-col items-center justify-center">
                                 <HiOutlineCloudArrowUp className="h-6 w-6 mb-1 text-primary" />
-                                <span className="text-xs">{formState.documentFile ? formState.documentFile.name : t('appointments.modal.upload')}</span>
+                                <span className="text-xs font-medium">{formState.documentFile ? formState.documentFile.name : 'Click to select prescription or document (PDF / Image)'}</span>
                             </div>
                             <input type="file" className="hidden" onChange={e => e.target.files && setFormState(s=> ({...s, documentFile: e.target.files![0]}))} accept="image/*,application/pdf" />
                         </label>
                     </div>
 
-                    <button onClick={handleSaveAppointment} className="w-full py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary-focus transition shadow-sm text-sm">
+                    <button 
+                        onClick={handleSaveAppointment} 
+                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-focus transition shadow-md active:scale-[0.99] text-sm"
+                    >
                         {editingAppointment ? t('finance.modal.saveChanges') : t('finance.modal.addRecord')}
                     </button>
                 </div>

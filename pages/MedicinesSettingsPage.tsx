@@ -203,35 +203,35 @@ const MedicinesSettingsPage: React.FC = () => {
             )}
 
             <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)} title={editingMedicine ? t('medicines.modal.editTitle') : t('medicines.modal.addTitle')}>
-                <div className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
+                <div className="space-y-4 py-1">
                      <div>
-                        <label htmlFor="memberId" className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('medicines.modal.member')}</label>
-                        <select id="memberId" value={formState.memberId} onChange={e => setFormState(s => ({...s, memberId: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
-                            {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                        <label htmlFor="memberId" className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.member')} *</label>
+                        <select id="memberId" value={formState.memberId} onChange={e => setFormState(s => ({...s, memberId: e.target.value}))} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent">
+                            {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name} ({m.relation})</option>)}
                         </select>
                      </div>
                      <div>
-                        <label htmlFor="medName" className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('medicines.modal.name')}</label>
-                        <input id="medName" type="text" placeholder="e.g. Paracetamol" value={formState.name} onChange={e => setFormState(s => ({...s, name: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
+                        <label htmlFor="medName" className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.name')} *</label>
+                        <input id="medName" type="text" placeholder="e.g. Paracetamol, Lisinopril, Metformin" value={formState.name} onChange={e => setFormState(s => ({...s, name: e.target.value}))} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" />
                      </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label htmlFor="dosage" className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('medicines.modal.dosage')}</label>
-                            <input id="dosage" type="number" placeholder="e.g. 500" value={formState.dosage} onChange={e => setFormState(s => ({...s, dosage: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
+                            <label htmlFor="dosage" className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.dosage')} *</label>
+                            <input id="dosage" type="number" placeholder="e.g. 500" value={formState.dosage} onChange={e => setFormState(s => ({...s, dosage: e.target.value}))} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" />
                         </div>
                         <div>
-                            <label htmlFor="unit" className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('medicines.modal.unit')}</label>
-                            <input id="unit" type="text" placeholder="e.g. mg, ml" value={formState.unit} onChange={e => setFormState(s => ({...s, unit: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
+                            <label htmlFor="unit" className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.unit')} *</label>
+                            <input id="unit" type="text" placeholder="e.g. mg, ml, mcg, iu" value={formState.unit} onChange={e => setFormState(s => ({...s, unit: e.target.value}))} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" />
                         </div>
                     </div>
-                     <div className="grid grid-cols-2 gap-2">
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                           <label htmlFor="doseQuantity" className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('medicines.modal.quantity')}</label>
-                           <input id="doseQuantity" type="number" placeholder="e.g. 1" value={formState.doseQuantity} onChange={e => setFormState(s => ({...s, doseQuantity: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
+                           <label htmlFor="doseQuantity" className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.quantity')} per dose</label>
+                           <input id="doseQuantity" type="number" placeholder="e.g. 1" value={formState.doseQuantity} onChange={e => setFormState(s => ({...s, doseQuantity: e.target.value}))} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" />
                         </div>
                         <div>
-                           <label htmlFor="doseForm" className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('medicines.modal.form')}</label>
-                           <select id="doseForm" value={formState.doseForm} onChange={e => setFormState(s => ({...s, doseForm: e.target.value as any}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
+                           <label htmlFor="doseForm" className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.form')}</label>
+                           <select id="doseForm" value={formState.doseForm} onChange={e => setFormState(s => ({...s, doseForm: e.target.value as any}))} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent">
                                <option value="Tablet">{t('medicines.forms.tablet')}</option>
                                <option value="Capsule">{t('medicines.forms.capsule')}</option>
                                <option value="Drops">{t('medicines.forms.drops')}</option>
@@ -240,18 +240,18 @@ const MedicinesSettingsPage: React.FC = () => {
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="stock" className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('medicines.modal.currentStock')}</label>
-                        <input id="stock" type="number" placeholder="e.g. 30" value={formState.stock} onChange={e => setFormState(s => ({...s, stock: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
+                        <label htmlFor="stock" className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.currentStock')}</label>
+                        <input id="stock" type="number" placeholder="e.g. 30" value={formState.stock} onChange={e => setFormState(s => ({...s, stock: e.target.value}))} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" />
                     </div>
                     
                     <div>
-                        <label className="text-sm font-medium text-light-text-secondary dark:text-text-secondary block mb-1">{t('medicines.modal.intakeTime')}</label>
-                        <div className="flex justify-around p-2 bg-light-background dark:bg-background rounded-lg border border-slate-200 dark:border-slate-600">
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.intakeTime')}</label>
+                        <div className="flex justify-around p-1.5 bg-light-background dark:bg-background rounded-xl border border-slate-200 dark:border-slate-600">
                             {['Morning', 'Noon', 'Night'].map(timeOfDay => {
                                 const timeValue = timeOfDay === 'Morning' ? '08:00' : timeOfDay === 'Noon' ? '14:00' : '20:00';
                                 const isChecked = formState.times.includes(timeValue);
                                 return (
-                                    <label key={timeOfDay} className={`cursor-pointer px-4 py-2 rounded-md text-sm font-semibold transition-colors ${isChecked ? 'bg-primary text-white shadow' : 'hover:bg-primary/10'}`}>
+                                    <label key={timeOfDay} className={`cursor-pointer flex-1 text-center py-2 rounded-lg text-xs font-semibold transition-colors ${isChecked ? 'bg-primary text-white shadow-sm' : 'hover:bg-primary/10'}`}>
                                         <input
                                             type="checkbox"
                                             className="sr-only"
@@ -271,36 +271,36 @@ const MedicinesSettingsPage: React.FC = () => {
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-light-text-secondary dark:text-text-secondary block mb-1">{t('medicines.modal.mealRelation')}</label>
-                        <div className="flex justify-around p-1 bg-light-background dark:bg-background rounded-lg border border-slate-200 dark:border-slate-600">
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.mealRelation')}</label>
+                        <div className="flex justify-around p-1.5 bg-light-background dark:bg-background rounded-xl border border-slate-200 dark:border-slate-600">
                             <button
                                 type="button"
                                 onClick={() => setFormState(s => ({...s, mealRelation: 'before'}))}
-                                className={`w-1/2 py-2 rounded-md font-semibold transition-colors text-sm ${formState.mealRelation === 'before' ? 'bg-primary text-white shadow' : 'hover:bg-primary/10'}`}
+                                className={`w-1/2 py-2 rounded-lg font-semibold transition-colors text-xs ${formState.mealRelation === 'before' ? 'bg-primary text-white shadow-sm' : 'hover:bg-primary/10'}`}
                             >
                                 {t('medicines.modal.beforeMeal')}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setFormState(s => ({...s, mealRelation: 'after'}))}
-                                className={`w-1/2 py-2 rounded-md font-semibold transition-colors text-sm ${formState.mealRelation === 'after' ? 'bg-primary text-white shadow' : 'hover:bg-primary/10'}`}
+                                className={`w-1/2 py-2 rounded-lg font-semibold transition-colors text-xs ${formState.mealRelation === 'after' ? 'bg-primary text-white shadow-sm' : 'hover:bg-primary/10'}`}
                             >
                                 {t('medicines.modal.afterMeal')}
                             </button>
                         </div>
                     </div>
                     
-                     <div className="grid grid-cols-2 gap-2">
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label htmlFor="stripPrice" className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('medicines.modal.pricePerStrip')} ({currencySymbol}) ({t('medicines.modal.optional')})</label>
-                            <input id="stripPrice" type="number" placeholder="e.g. 150" value={formState.stripPrice} onChange={e => setFormState(s => ({...s, stripPrice: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
+                            <label htmlFor="stripPrice" className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.pricePerStrip')} ({currencySymbol})</label>
+                            <input id="stripPrice" type="number" placeholder="e.g. 150 (Optional)" value={formState.stripPrice} onChange={e => setFormState(s => ({...s, stripPrice: e.target.value}))} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" />
                         </div>
                         <div>
-                            <label htmlFor="piecesPerStrip" className="text-sm font-medium text-light-text-secondary dark:text-text-secondary">{t('medicines.modal.piecesPerStrip')} ({t('medicines.modal.optional')})</label>
-                            <input id="piecesPerStrip" type="number" placeholder="e.g. 10" value={formState.piecesPerStrip} onChange={e => setFormState(s => ({...s, piecesPerStrip: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
+                            <label htmlFor="piecesPerStrip" className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.piecesPerStrip')}</label>
+                            <input id="piecesPerStrip" type="number" placeholder="e.g. 10 (Optional)" value={formState.piecesPerStrip} onChange={e => setFormState(s => ({...s, piecesPerStrip: e.target.value}))} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" />
                         </div>
                     </div>
-                    <button onClick={handleSaveMedicine} className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 mt-2">{editingMedicine ? t('finance.modal.saveChanges') : t('medicines.add')}</button>
+                    <button onClick={handleSaveMedicine} className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 mt-2 shadow-md active:scale-[0.99] text-sm">{editingMedicine ? t('finance.modal.saveChanges') : t('medicines.add')}</button>
                 </div>
             </Modal>
 

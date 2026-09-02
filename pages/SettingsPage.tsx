@@ -135,11 +135,11 @@ const SettingsPage = () => {
   ];
 
   const SettingItemWrapper: React.FC<{icon: React.ElementType, children: React.ReactNode}> = ({ icon: Icon, children }) => (
-    <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10 text-primary">
-            <Icon className="h-6 w-6" />
+    <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-primary/10 text-primary shrink-0">
+            <Icon className="h-4 w-4" />
         </div>
-        {children}
+        <div className="min-w-0">{children}</div>
     </div>
   );
 
@@ -152,10 +152,10 @@ const SettingsPage = () => {
       {/* User Profile Card */}
       {loading ? (
         <Card className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Skeleton className="w-16 h-16 rounded-full" />
+          <div className="flex items-center gap-3.5">
+            <Skeleton className="w-14 h-14 sm:w-16 sm:h-16 rounded-full" />
             <div className="space-y-2">
-              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-5 w-32" />
               <Skeleton className="h-4 w-24" />
             </div>
           </div>
@@ -163,10 +163,10 @@ const SettingsPage = () => {
         </Card>
       ) : (
         <Card className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src={user.avatar} alt={user.name} className="w-16 h-16 rounded-full object-cover border border-primary/30" />
+          <div className="flex items-center gap-3.5">
+            <img src={user.avatar} alt={user.name} className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border border-primary/30" />
             <div>
-              <h2 className="text-xl font-bold text-light-text-primary dark:text-text-primary">{user.name}</h2>
+              <h2 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">{user.name}</h2>
               <p className="text-xs text-light-text-secondary dark:text-text-secondary">
                 {user.email || 'Local User Profile'}
               </p>
@@ -188,16 +188,16 @@ const SettingsPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link 
           to="/family" 
-          className="group block p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-xs hover:border-primary/40 dark:hover:border-primary/40 transition-all"
+          className="group block p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-xs hover:border-primary/40 dark:hover:border-primary/40 transition-all"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-pink-500/10 text-pink-600 dark:text-pink-400 group-hover:scale-105 transition-transform">
-                <HiOutlineUserGroup className="h-6 w-6" />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-pink-500/10 text-pink-600 dark:text-pink-400 group-hover:scale-105 transition-transform shrink-0">
+                <HiOutlineUserGroup className="h-5 w-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-sm text-light-text-primary dark:text-text-primary">
+                  <h3 className="font-bold text-sm text-light-text-primary dark:text-text-primary">
                     {t('settings.familyHub')}
                   </h3>
                   {familyMembers?.length > 0 && (
@@ -217,16 +217,16 @@ const SettingsPage = () => {
 
         <Link 
           to="/tasks" 
-          className="group block p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-xs hover:border-primary/40 dark:hover:border-primary/40 transition-all"
+          className="group block p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-xs hover:border-primary/40 dark:hover:border-primary/40 transition-all"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform">
-                <HiOutlineClipboardDocumentList className="h-6 w-6" />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform shrink-0">
+                <HiOutlineClipboardDocumentList className="h-5 w-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-sm text-light-text-primary dark:text-text-primary">
+                  <h3 className="font-bold text-sm text-light-text-primary dark:text-text-primary">
                     {t('settings.tasksHub')}
                   </h3>
                   {tasks?.filter(t => !t.completed).length > 0 && (
@@ -249,11 +249,11 @@ const SettingsPage = () => {
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-500/10 text-emerald-500">
-              <HiOutlineShieldCheck className="h-6 w-6" />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-500/10 text-emerald-500 shrink-0">
+              <HiOutlineShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-light-text-primary dark:text-text-primary text-sm">
+              <h3 className="font-bold text-light-text-primary dark:text-text-primary text-sm">
                 Cloud Sync & Account Security
               </h3>
               <p className="text-xs text-light-text-secondary dark:text-text-secondary">
@@ -264,7 +264,7 @@ const SettingsPage = () => {
 
           <button
             onClick={() => setAuthModalOpen(true)}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary-focus transition-colors shadow-xs"
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary-focus transition-colors shadow-xs"
           >
             {isGoogleAuthenticated ? t('settings.manageAccount') : t('settings.signInConnect')}
           </button>
@@ -309,11 +309,11 @@ const SettingsPage = () => {
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-500/10 text-blue-500">
-              <HiOutlineBell className="h-6 w-6" />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-blue-500/10 text-blue-500 shrink-0">
+              <HiOutlineBell className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-light-text-primary dark:text-text-primary text-sm">
+              <h3 className="font-bold text-light-text-primary dark:text-text-primary text-sm">
                 Real-Time Notification System
               </h3>
               <p className="text-xs text-light-text-secondary dark:text-text-secondary">
@@ -332,12 +332,12 @@ const SettingsPage = () => {
 
         <ul className="divide-y divide-slate-200 dark:divide-zinc-700/70 text-sm">
           {/* Browser Push Notifications */}
-          <li className="py-3 flex justify-between items-center">
-            <div>
-              <span className="font-semibold text-light-text-primary dark:text-text-primary block text-xs sm:text-sm">
+          <li className="py-2.5 sm:py-3 flex justify-between items-center gap-3">
+            <div className="min-w-0">
+              <span className="font-medium text-light-text-primary dark:text-text-primary block text-xs sm:text-sm">
                 Browser Push Notifications
               </span>
-              <span className="text-xs text-light-text-secondary dark:text-text-secondary">
+              <span className="text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary">
                 Receive notifications even when Sprout is in the background
               </span>
             </div>
@@ -350,7 +350,7 @@ const SettingsPage = () => {
                   toast.success('Browser notifications disabled');
                 }
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-colors ${
                 notificationSettings.browserPushEnabled
                   ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
                   : 'bg-slate-200 dark:bg-zinc-700 text-light-text-secondary dark:text-text-secondary'
@@ -361,16 +361,16 @@ const SettingsPage = () => {
           </li>
 
           {/* Medicine & Dose Reminders */}
-          <li className="py-3 flex justify-between items-center">
-            <div>
-              <span className="font-semibold text-light-text-primary dark:text-text-primary block text-xs sm:text-sm">
+          <li className="py-2.5 sm:py-3 flex justify-between items-center gap-3">
+            <div className="min-w-0">
+              <span className="font-medium text-light-text-primary dark:text-text-primary block text-xs sm:text-sm">
                 Medicine & Dose Alerts
               </span>
-              <span className="text-xs text-light-text-secondary dark:text-text-secondary">
+              <span className="text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary">
                 Reminders when it's time to take prescribed medications
               </span>
             </div>
-            <label htmlFor="medicine-alerts-toggle" className="relative inline-flex items-center cursor-pointer">
+            <label htmlFor="medicine-alerts-toggle" className="relative inline-flex items-center cursor-pointer shrink-0">
               <input 
                 type="checkbox" 
                 id="medicine-alerts-toggle" 
@@ -383,16 +383,16 @@ const SettingsPage = () => {
           </li>
 
           {/* Low Stock Warning */}
-          <li className="py-3 flex justify-between items-center">
-            <div>
-              <span className="font-semibold text-light-text-primary dark:text-text-primary block text-xs sm:text-sm">
+          <li className="py-2.5 sm:py-3 flex justify-between items-center gap-3">
+            <div className="min-w-0">
+              <span className="font-medium text-light-text-primary dark:text-text-primary block text-xs sm:text-sm">
                 Low Medicine Stock Warnings
               </span>
-              <span className="text-xs text-light-text-secondary dark:text-text-secondary">
+              <span className="text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary">
                 Alert when medicine inventory drops below restock threshold
               </span>
             </div>
-            <label htmlFor="lowstock-alerts-toggle" className="relative inline-flex items-center cursor-pointer">
+            <label htmlFor="lowstock-alerts-toggle" className="relative inline-flex items-center cursor-pointer shrink-0">
               <input 
                 type="checkbox" 
                 id="lowstock-alerts-toggle" 
@@ -405,16 +405,16 @@ const SettingsPage = () => {
           </li>
 
           {/* Bill Due Reminders */}
-          <li className="py-3 flex justify-between items-center">
-            <div>
-              <span className="font-semibold text-light-text-primary dark:text-text-primary block text-xs sm:text-sm">
+          <li className="py-2.5 sm:py-3 flex justify-between items-center gap-3">
+            <div className="min-w-0">
+              <span className="font-medium text-light-text-primary dark:text-text-primary block text-xs sm:text-sm">
                 Bill Due Date Alerts
               </span>
-              <span className="text-xs text-light-text-secondary dark:text-text-secondary">
+              <span className="text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary">
                 Warn 3 days before utilities, rent, or credit card bills are due
               </span>
             </div>
-            <label htmlFor="bill-alerts-toggle" className="relative inline-flex items-center cursor-pointer">
+            <label htmlFor="bill-alerts-toggle" className="relative inline-flex items-center cursor-pointer shrink-0">
               <input 
                 type="checkbox" 
                 id="bill-alerts-toggle" 
@@ -427,19 +427,19 @@ const SettingsPage = () => {
           </li>
 
           {/* Sound Alerts */}
-          <li className="py-3 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <HiOutlineSpeakerWave className="h-5 w-5 text-light-text-secondary dark:text-text-secondary" />
-              <div>
-                <span className="font-semibold text-light-text-primary dark:text-text-primary block text-xs sm:text-sm">
+          <li className="py-2.5 sm:py-3 flex justify-between items-center gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <HiOutlineSpeakerWave className="h-4 w-4 text-light-text-secondary dark:text-text-secondary shrink-0" />
+              <div className="min-w-0">
+                <span className="font-medium text-light-text-primary dark:text-text-primary block text-xs sm:text-sm">
                   Audio Sound Effects
                 </span>
-                <span className="text-xs text-light-text-secondary dark:text-text-secondary">
+                <span className="text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary">
                   Play pleasant notification chime for urgent reminders
                 </span>
               </div>
             </div>
-            <label htmlFor="sound-alerts-toggle" className="relative inline-flex items-center cursor-pointer">
+            <label htmlFor="sound-alerts-toggle" className="relative inline-flex items-center cursor-pointer shrink-0">
               <input 
                 type="checkbox" 
                 id="sound-alerts-toggle" 
@@ -455,22 +455,22 @@ const SettingsPage = () => {
 
       {/* General App Preferences */}
       <Card>
-        <ul className="divide-y divide-slate-200 dark:divide-zinc-700">
-          <li className="py-3 flex justify-between items-center">
+        <ul className="divide-y divide-slate-200 dark:divide-zinc-700/70">
+          <li className="py-2.5 sm:py-3 flex justify-between items-center">
              <SettingItemWrapper icon={HiOutlinePaintBrush}>
-                <span className="font-semibold text-light-text-primary dark:text-text-primary">{t('settings.darkMode')}</span>
+                <span className="font-medium text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{t('settings.darkMode')}</span>
              </SettingItemWrapper>
-              <label htmlFor="theme-toggle" className="relative inline-flex items-center cursor-pointer">
+              <label htmlFor="theme-toggle" className="relative inline-flex items-center cursor-pointer shrink-0">
                 <input type="checkbox" id="theme-toggle" className="sr-only peer" checked={theme === 'dark'} onChange={toggleTheme} />
                 <div className="w-11 h-6 bg-slate-200 dark:bg-zinc-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-primary peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
               </label>
           </li>
 
-          <li className="py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1 -mx-1" onClick={toggleFullscreen}>
+          <li className="py-2.5 sm:py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1.5 -mx-1.5 transition-colors" onClick={toggleFullscreen}>
              <SettingItemWrapper icon={isFullscreen ? HiOutlineArrowsPointingIn : HiOutlineArrowsPointingOut}>
                 <div>
-                  <span className="font-semibold text-light-text-primary dark:text-text-primary block">Fullscreen Mode</span>
-                  <span className="text-xs text-light-text-secondary dark:text-text-secondary">Expand view to fill entire display</span>
+                  <span className="font-medium text-xs sm:text-sm text-light-text-primary dark:text-text-primary block">Fullscreen Mode</span>
+                  <span className="text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary">Expand view to fill entire display</span>
                 </div>
              </SettingItemWrapper>
              <button
@@ -479,7 +479,7 @@ const SettingsPage = () => {
                  e.stopPropagation();
                  toggleFullscreen();
                }}
-               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+               className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-colors ${
                  isFullscreen
                    ? 'bg-primary text-white'
                    : 'bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-text-primary'
@@ -489,33 +489,33 @@ const SettingsPage = () => {
              </button>
           </li>
           
-          <li className="py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1 -mx-1" onClick={() => setCurrencyModalOpen(true)}>
+          <li className="py-2.5 sm:py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1.5 -mx-1.5 transition-colors" onClick={() => setCurrencyModalOpen(true)}>
               <SettingItemWrapper icon={HiOutlineCurrencyDollar}>
-                  <span className="font-semibold text-light-text-primary dark:text-text-primary">{t('settings.currency')}</span>
+                  <span className="font-medium text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{t('settings.currency')}</span>
               </SettingItemWrapper>
-              <div className="flex items-center gap-2">
-                  <span className="text-light-text-secondary dark:text-text-secondary">{selectedCurrency?.code} ({selectedCurrency?.symbol})</span>
-                  <HiChevronRight className="h-5 w-5 text-light-text-secondary dark:text-text-secondary" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-xs text-light-text-secondary dark:text-text-secondary">{selectedCurrency?.code} ({selectedCurrency?.symbol})</span>
+                  <HiChevronRight className="h-4 w-4 text-light-text-secondary dark:text-text-secondary" />
               </div>
           </li>
 
-           <li className="py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1 -mx-1" onClick={() => setLanguageModalOpen(true)}>
+           <li className="py-2.5 sm:py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1.5 -mx-1.5 transition-colors" onClick={() => setLanguageModalOpen(true)}>
               <SettingItemWrapper icon={HiOutlineLanguage}>
-                  <span className="font-semibold text-light-text-primary dark:text-text-primary">{t('settings.language')}</span>
+                  <span className="font-medium text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{t('settings.language')}</span>
               </SettingItemWrapper>
-              <div className="flex items-center gap-2">
-                  <span className="text-light-text-secondary dark:text-text-secondary">{selectedLanguage?.name}</span>
-                  <HiChevronRight className="h-5 w-5 text-light-text-secondary dark:text-text-secondary" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-xs text-light-text-secondary dark:text-text-secondary">{selectedLanguage?.name}</span>
+                  <HiChevronRight className="h-4 w-4 text-light-text-secondary dark:text-text-secondary" />
               </div>
           </li>
 
           {settingsItems.map(item => (
-            <Link to={item.to} key={item.label} className="block hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg -mx-1">
-              <li className="py-3 flex justify-between items-center px-1">
+            <Link to={item.to} key={item.label} className="block hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg -mx-1.5 transition-colors">
+              <li className="py-2.5 sm:py-3 flex justify-between items-center px-1.5">
                 <SettingItemWrapper icon={item.icon}>
-                  <span className="font-semibold text-light-text-primary dark:text-text-primary">{item.label}</span>
+                  <span className="font-medium text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{item.label}</span>
                 </SettingItemWrapper>
-                <HiChevronRight className="h-5 w-5 text-light-text-secondary dark:text-text-secondary" />
+                <HiChevronRight className="h-4 w-4 text-light-text-secondary dark:text-text-secondary" />
               </li>
             </Link>
           ))}
@@ -527,8 +527,8 @@ const SettingsPage = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-zinc-700">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                <HiOutlineCloudArrowUp className="w-6 h-6" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                <HiOutlineCloudArrowUp className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="font-bold text-sm text-light-text-primary dark:text-text-primary">
@@ -591,19 +591,28 @@ const SettingsPage = () => {
       
       {/* Edit Profile Modal */}
       <Modal isOpen={isProfileModalOpen} onClose={() => setProfileModalOpen(false)} title={t('settings.profile.modalTitle')}>
-          <div className="space-y-4">
-            <input 
-              type="text" 
-              placeholder={t('settings.profile.namePlaceholder')} 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
-              className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" 
-            />
+          <div className="space-y-4 py-1">
             <div>
-              <label className="block w-full cursor-pointer p-3 border-2 border-dashed border-slate-300 dark:border-zinc-600 rounded-lg text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-700/80">
+              <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                Full Name *
+              </label>
+              <input 
+                type="text" 
+                placeholder="e.g. John Doe" 
+                value={name} 
+                onChange={e => setName(e.target.value)} 
+                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                Profile Photo (Optional)
+              </label>
+              <label className="block w-full cursor-pointer p-4 border-2 border-dashed border-slate-300 dark:border-zinc-600 rounded-xl text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-700/80 transition-colors">
                   <div className="flex flex-col items-center justify-center">
-                      <HiOutlineCloudArrowUp className="h-8 w-8 mb-1" />
-                      <span>{avatarFile ? avatarFile.name : t('settings.profile.uploadAvatar')}</span>
+                      <HiOutlineCloudArrowUp className="h-7 w-7 mb-1 text-primary" />
+                      <span className="text-sm font-medium text-light-text-primary dark:text-text-primary">{avatarFile ? avatarFile.name : t('settings.profile.uploadAvatar')}</span>
+                      <span className="text-xs text-light-text-secondary dark:text-text-secondary mt-1">PNG, JPG, WebP up to 5MB</span>
                   </div>
                   <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
               </label>
@@ -611,7 +620,7 @@ const SettingsPage = () => {
             <button 
               onClick={handleProfileUpdate} 
               disabled={isUploading} 
-              className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 disabled:bg-slate-500"
+              className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 disabled:bg-slate-500 shadow-md active:scale-[0.99] transition-colors text-sm"
             >
               {isUploading ? t('settings.profile.saving') : t('settings.profile.saveChanges')}
             </button>
@@ -620,15 +629,15 @@ const SettingsPage = () => {
 
       {/* Currency Modal */}
       <Modal isOpen={isCurrencyModalOpen} onClose={() => setCurrencyModalOpen(false)} title={t('settings.selectCurrency')}>
-          <div className="space-y-2">
+          <div className="space-y-2 py-1 max-h-[60vh] overflow-y-auto">
               {availableCurrencies.map(c => (
                   <button
                       key={c.code}
                       onClick={() => { updateCurrency(c.code); toast.success(t('settings.currencySetTo', {name: c.name})); setCurrencyModalOpen(false); }}
-                      className={`w-full text-left p-3 rounded-lg flex justify-between items-center transition-colors ${currency === c.code ? 'bg-primary/10 text-primary' : 'hover:bg-slate-100 dark:hover:bg-zinc-700/50'}`}
+                      className={`w-full text-left p-3 rounded-xl flex justify-between items-center transition-colors text-sm ${currency === c.code ? 'bg-primary/10 text-primary font-bold' : 'hover:bg-slate-100 dark:hover:bg-zinc-700/50 text-light-text-primary dark:text-text-primary'}`}
                   >
-                      <span className="font-semibold">{c.symbol} - {c.name} ({c.code})</span>
-                      {currency === c.code && <HiCheck className="h-5 w-5" />}
+                      <span>{c.symbol} - {c.name} ({c.code})</span>
+                      {currency === c.code && <HiCheck className="h-5 w-5 text-primary" />}
                   </button>
               ))}
           </div>
@@ -636,15 +645,15 @@ const SettingsPage = () => {
 
       {/* Language Modal */}
       <Modal isOpen={isLanguageModalOpen} onClose={() => setLanguageModalOpen(false)} title={t('settings.selectLanguage')}>
-          <div className="space-y-2">
+          <div className="space-y-2 py-1 max-h-[60vh] overflow-y-auto">
               {availableLanguages.map(l => (
                   <button
                       key={l.code}
                       onClick={() => { updateLanguage(l.code); toast.success(`${t('settings.languageSetTo')} ${l.name}`); setLanguageModalOpen(false); }}
-                      className={`w-full text-left p-3 rounded-lg flex justify-between items-center transition-colors ${language === l.code ? 'bg-primary/10 text-primary' : 'hover:bg-slate-100 dark:hover:bg-zinc-700/50'}`}
+                      className={`w-full text-left p-3 rounded-xl flex justify-between items-center transition-colors text-sm ${language === l.code ? 'bg-primary/10 text-primary font-bold' : 'hover:bg-slate-100 dark:hover:bg-zinc-700/50 text-light-text-primary dark:text-text-primary'}`}
                   >
-                      <span className="font-semibold">{l.name}</span>
-                      {language === l.code && <HiCheck className="h-5 w-5" />}
+                      <span>{l.name}</span>
+                      {language === l.code && <HiCheck className="h-5 w-5 text-primary" />}
                   </button>
               ))}
           </div>

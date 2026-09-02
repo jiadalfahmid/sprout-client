@@ -5,13 +5,23 @@ export enum TransactionType {
   EXPENSE = 'expense',
 }
 
+export interface TransactionCategory {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  isCustom: boolean;
+}
+
 export interface Transaction {
   id: string;
   description: string;
   amount: number;
   type: TransactionType;
-  category: string;
+  categoryId?: string;
+  category?: string; // Legacy / fallback string
   date: string; // ISO string
+  memberId?: string; // Optional: undefined/omitted means "Shared/Household"
 }
 
 export enum BillCategory {
@@ -26,11 +36,13 @@ export interface Bill {
   id: string;
   name: string;
   amount: number;
-  category: BillCategory;
+  categoryId?: string;
+  category?: BillCategory | string; // Legacy / fallback
   dueDate: string; // ISO string
   paid: boolean;
   recurrence: 'none' | 'weekly' | 'monthly' | 'yearly';
   paidOn?: string; // ISO string
+  memberId?: string; // Optional: undefined/omitted means "Shared/Household"
 }
 
 export interface Repayment {

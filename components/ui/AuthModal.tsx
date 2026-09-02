@@ -299,44 +299,44 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             {activeTab === 'login' && (
               <form onSubmit={handleEmailSignIn} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-light-text-primary dark:text-text-primary mb-1">
+                  <label className="block text-xs font-semibold text-light-text-primary dark:text-text-primary mb-1.5">
                     Email Address
                   </label>
                   <div className="relative">
-                    <HiOutlineEnvelope className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                    <HiOutlineEnvelope className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
                     <input
                       type="email"
                       required
-                      placeholder="name@example.com"
+                      placeholder="e.g. name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-xs text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden"
+                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden transition-all"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex justify-between items-center mb-1">
+                  <div className="flex justify-between items-center mb-1.5">
                     <label className="block text-xs font-semibold text-light-text-primary dark:text-text-primary">
                       Password
                     </label>
                     <button
                       type="button"
                       onClick={() => setActiveTab('forgot')}
-                      className="text-[11px] font-semibold text-primary hover:underline"
+                      className="text-xs font-semibold text-primary hover:underline"
                     >
-                      Forgot?
+                      Forgot password?
                     </button>
                   </div>
                   <div className="relative">
-                    <HiOutlineLockClosed className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                    <HiOutlineLockClosed className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
                     <input
                       type="password"
                       required
-                      placeholder="••••••••"
+                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-xs text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden"
+                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden transition-all"
                     />
                   </div>
                 </div>
@@ -344,7 +344,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 bg-primary text-white text-xs font-bold rounded-2xl hover:bg-primary/90 transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="w-full py-3 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-1.5 disabled:opacity-50 active:scale-[0.99]"
                 >
                   {loading ? 'Signing in...' : 'Sign In'}
                 </button>
@@ -354,51 +354,51 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             {activeTab === 'signup' && (
               <form onSubmit={handleSignUp} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-light-text-primary dark:text-text-primary mb-1">
+                  <label className="block text-xs font-semibold text-light-text-primary dark:text-text-primary mb-1.5">
                     Full Name
                   </label>
                   <div className="relative">
-                    <HiOutlineUser className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                    <HiOutlineUser className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
                     <input
                       type="text"
-                      placeholder="Alex Morgan"
+                      placeholder="e.g. Alex Morgan"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-xs text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden"
+                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden transition-all"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-light-text-primary dark:text-text-primary mb-1">
+                  <label className="block text-xs font-semibold text-light-text-primary dark:text-text-primary mb-1.5">
                     Email Address
                   </label>
                   <div className="relative">
-                    <HiOutlineEnvelope className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                    <HiOutlineEnvelope className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
                     <input
                       type="email"
                       required
-                      placeholder="name@example.com"
+                      placeholder="e.g. name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-xs text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden"
+                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden transition-all"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-light-text-primary dark:text-text-primary mb-1">
-                    Password (min. 6 characters)
+                  <label className="block text-xs font-semibold text-light-text-primary dark:text-text-primary mb-1.5">
+                    Password *
                   </label>
                   <div className="relative">
-                    <HiOutlineLockClosed className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                    <HiOutlineLockClosed className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
                     <input
                       type="password"
                       required
-                      placeholder="••••••••"
+                      placeholder="Min. 6 characters"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-xs text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden"
+                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden transition-all"
                     />
                   </div>
                 </div>
@@ -406,7 +406,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 bg-primary text-white text-xs font-bold rounded-2xl hover:bg-primary/90 transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="w-full py-3 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-1.5 disabled:opacity-50 active:scale-[0.99]"
                 >
                   {loading ? 'Creating Account...' : 'Create Account'}
                 </button>
@@ -414,39 +414,39 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             )}
 
             {activeTab === 'forgot' && (
-              <form onSubmit={handleForgotPassword} className="space-y-3">
+              <form onSubmit={handleForgotPassword} className="space-y-3.5">
                 <p className="text-xs text-light-text-secondary dark:text-text-secondary">
                   Enter your email address and we'll send you a password reset link.
                 </p>
                 <div>
-                  <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+                  <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
                     Email Address
                   </label>
                   <div className="relative">
-                    <HiOutlineEnvelope className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <HiOutlineEnvelope className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
                     <input
                       type="email"
                       required
-                      placeholder="name@example.com"
+                      placeholder="e.g. name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-xs focus:ring-2 focus:ring-primary focus:outline-hidden"
+                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:outline-hidden transition-all"
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() => setActiveTab('login')}
-                    className="py-2 px-3 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-text-secondary"
+                    className="py-2.5 px-4 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-text-secondary hover:bg-slate-50 dark:hover:bg-zinc-800 transition"
                   >
-                    Back
+                    Back to Sign In
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 py-2 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-focus transition-all shadow-sm disabled:opacity-50"
+                    className="flex-1 py-2.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50"
                   >
                     {loading ? 'Sending...' : 'Send Reset Link'}
                   </button>

@@ -232,20 +232,70 @@ const MedicalProfilePage: React.FC = () => {
 
         return (
              <Modal isOpen={isUploadModalOpen} onClose={() => setUploadModalOpen(false)} title={t('medicalProfile.documents.modal.title')}>
-                <div className="space-y-4">
-                    <input type="text" placeholder={t('medicalProfile.documents.modal.name')} value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
-                    <select value={category} onChange={e => setCategory(e.target.value as MedicalReportCategory)} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
-                        {Object.values(MedicalReportCategory).map(cat => <option key={cat} value={cat}>{t(`medicalProfile.documents.modal.categories.${cat.split(' ')[0].toLowerCase()}`)}</option>)}
-                    </select>
-                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
-                    <label className="block w-full cursor-pointer p-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-700/80">
-                        <div className="flex flex-col items-center justify-center">
-                            <HiOutlineCloudArrowUp className="h-8 w-8 mb-1" />
-                            <span>{file ? file.name : t('medicalProfile.documents.modal.selectFile')}</span>
-                        </div>
-                        <input type="file" className="hidden" onChange={e => e.target.files && setFile(e.target.files[0])} accept="image/*,application/pdf" />
-                    </label>
-                    <button onClick={handleUpload} disabled={isUploading} className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 disabled:bg-slate-500">
+                <div className="space-y-4 py-1">
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Document / Report Name *
+                        </label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Annual Blood Test, Chest X-Ray, Cardiology Prescription" 
+                            value={name} 
+                            onChange={e => setName(e.target.value)} 
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" 
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Report Category *
+                        </label>
+                        <select 
+                            value={category} 
+                            onChange={e => setCategory(e.target.value as MedicalReportCategory)} 
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
+                        >
+                            {Object.values(MedicalReportCategory).map(cat => (
+                                <option key={cat} value={cat}>
+                                    {t(`medicalProfile.documents.modal.categories.${cat.split(' ')[0].toLowerCase()}`)}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Document Date *
+                        </label>
+                        <input 
+                            type="date" 
+                            value={date} 
+                            onChange={e => setDate(e.target.value)} 
+                            className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent" 
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Attachment File *
+                        </label>
+                        <label className="block w-full cursor-pointer p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-700/80 transition-colors">
+                            <div className="flex flex-col items-center justify-center">
+                                <HiOutlineCloudArrowUp className="h-8 w-8 mb-1 text-primary" />
+                                <span className="text-sm font-medium text-light-text-primary dark:text-text-primary">
+                                    {file ? file.name : t('medicalProfile.documents.modal.selectFile')}
+                                </span>
+                                <span className="text-xs text-light-text-secondary dark:text-text-secondary mt-1">PDF, JPG, PNG up to 10MB</span>
+                            </div>
+                            <input type="file" className="hidden" onChange={e => e.target.files && setFile(e.target.files[0])} accept="image/*,application/pdf" />
+                        </label>
+                    </div>
+
+                    <button 
+                        onClick={handleUpload} 
+                        disabled={isUploading} 
+                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 disabled:bg-slate-500 shadow-md active:scale-[0.99] text-sm transition-colors"
+                    >
                         {isUploading ? t('medicalProfile.documents.modal.uploading') : t('medicalProfile.documents.modal.add')}
                     </button>
                 </div>

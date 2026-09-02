@@ -464,80 +464,80 @@ const FamilyPage: React.FC = () => {
 
       {/* Add Member Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('family.modal.title')}>
-        <div className="space-y-4">
+        <div className="space-y-4 py-1">
           <div>
-            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
               {t('family.modal.name')} *
             </label>
             <input 
               type="text" 
-              placeholder="e.g., Sarah Johnson" 
+              placeholder="e.g. Sarah Johnson" 
               value={name} 
               onChange={e => setName(e.target.value)} 
-              className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" 
+              className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" 
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+              <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
                 {t('family.modal.relation')} *
               </label>
               <input 
                 type="text" 
-                placeholder="e.g., Mother, Spouse" 
+                placeholder="e.g. Mother, Spouse, Son" 
                 value={relation} 
                 onChange={e => setRelation(e.target.value)} 
-                className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" 
+                className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" 
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+              <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
                 {t('family.modal.age')} *
               </label>
               <input 
                 type="number" 
-                placeholder="e.g., 45" 
+                placeholder="e.g. 42" 
                 value={age} 
                 onChange={e => setAge(e.target.value)} 
-                className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" 
+                className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" 
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
-              Gmail / Email (For Invitations)
+            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+              {t('family.emailLabel')}
             </label>
             <input 
               type="email" 
-              placeholder="e.g., member@gmail.com" 
+              placeholder="e.g. sarah.johnson@gmail.com" 
               value={email} 
               onChange={e => setEmail(e.target.value)} 
-              className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" 
+              className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" 
             />
           </div>
 
           {email.trim() && (
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-light-text-secondary dark:text-text-secondary">
+            <label className="flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 dark:bg-zinc-800/50 cursor-pointer text-xs text-light-text-secondary dark:text-text-secondary">
               <input 
                 type="checkbox" 
                 checked={sendInviteOnCreate} 
                 onChange={e => setSendInviteOnCreate(e.target.checked)} 
                 className="rounded text-primary focus:ring-primary h-4 w-4"
               />
-              <span>{t('family.sendInviteCheckbox')}</span>
+              <span className="font-medium text-light-text-primary dark:text-text-primary">{t('family.sendInviteCheckbox')}</span>
             </label>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
+            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
               {t('family.photoLabel')}
             </label>
-            <label className="block w-full cursor-pointer p-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors">
+            <label className="block w-full cursor-pointer p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors">
               <div className="flex flex-col items-center justify-center">
                 <HiOutlineCloudArrowUp className="h-6 w-6 mb-1 text-primary" />
-                <span className="text-xs">{avatarFile ? avatarFile.name : t('family.modal.uploadAvatar')}</span>
+                <span className="text-xs font-medium">{avatarFile ? avatarFile.name : t('family.modal.uploadAvatar')}</span>
               </div>
               <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
             </label>
@@ -546,7 +546,7 @@ const FamilyPage: React.FC = () => {
           <button 
             onClick={handleAddMember} 
             disabled={isUploading} 
-            className="w-full py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary-focus transition disabled:opacity-60 shadow-sm text-sm"
+            className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-focus transition disabled:opacity-60 shadow-md active:scale-[0.99] text-sm"
           >
             {isUploading ? t('family.modal.uploading') : t('family.modal.addMemberBtn')}
           </button>

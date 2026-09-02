@@ -5,13 +5,48 @@ import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
 import { Transaction, TransactionType, Bill, BillCategory, Borrowing, Lending, SavingsGoal, Repayment, Return } from '../types';
-import { HiPlus, HiPencil, HiTrash, HiChevronLeft, HiChevronRight, HiOutlineArrowTrendingUp, HiOutlineArrowTrendingDown, HiOutlineBanknotes, HiOutlineScale, HiOutlineReceiptRefund, HiOutlineWifi, HiOutlineHome, HiOutlineCreditCard, HiOutlineQuestionMarkCircle, HiOutlineMagnifyingGlass, HiOutlineChevronUpDown, HiOutlinePresentationChartBar, HiOutlineClipboardDocumentList, HiOutlineArrowsRightLeft, HiOutlineFlag, HiOutlineTrophy, HiOutlinePlusCircle, HiEllipsisVertical } from 'react-icons/hi2';
+import { 
+    HiPlus, 
+    HiPencil, 
+    HiTrash, 
+    HiChevronLeft, 
+    HiChevronRight, 
+    HiOutlineArrowTrendingUp, 
+    HiOutlineArrowTrendingDown, 
+    HiOutlineBanknotes, 
+    HiOutlineScale, 
+    HiOutlineReceiptRefund, 
+    HiOutlineWifi, 
+    HiOutlineHome, 
+    HiOutlineCreditCard, 
+    HiOutlineQuestionMarkCircle, 
+    HiOutlineMagnifyingGlass, 
+    HiOutlineChevronUpDown, 
+    HiOutlinePresentationChartBar, 
+    HiOutlineClipboardDocumentList, 
+    HiOutlineArrowsRightLeft, 
+    HiOutlineFlag, 
+    HiOutlineTrophy, 
+    HiOutlinePlusCircle, 
+    HiEllipsisVertical,
+    HiOutlineArrowUpRight,
+    HiOutlineArrowDownLeft,
+    HiOutlineXMark,
+    HiOutlineFunnel,
+    HiOutlineCheck,
+    HiOutlineCalendarDays
+} from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
+import CategoryChipPicker from '../components/finance/CategoryChipPicker';
+import FamilyMemberPicker from '../components/finance/FamilyMemberPicker';
+import CategoryBadge from '../components/finance/CategoryBadge';
+import MemberSpendingChart from '../components/finance/MemberSpendingChart';
+import { getCategoryIcon } from '../utils/categoryIcons';
 
 type FinanceView = 'dashboard' | 'transactions' | 'bills' | 'borrow_lend' | 'savings';
 type ModalType = 'none' | 'transaction' | 'bill' | 'borrowing' | 'lending' | 'repayment' | 'return' | 'savings_goal' | 'deposit' | 'delete_goal' | 'edit_goal' | 'edit_borrowing' | 'edit_lending' | 'delete_borrowing' | 'delete_lending';
@@ -157,30 +192,37 @@ const FinancePage: React.FC = () => {
     
     return (
         <div className="space-y-6">
-            <PageHeader
-                title={t('finance.title')}
-                action={
-                    <div className="flex items-center justify-center bg-light-surface dark:bg-surface rounded-lg px-2 py-1 gap-1 w-full sm:w-auto border border-slate-200 dark:border-zinc-700">
+            {/* Header: Title & Month Switch on the same line */}
+            <div className="flex items-center justify-between gap-3">
+                <div className="text-left min-w-0">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-light-text-primary dark:text-text-primary truncate">
+                        {t('finance.title')}
+                    </h1>
+                </div>
+                {activeView !== 'bills' && (
+                    <div className="flex items-center justify-center bg-light-surface dark:bg-surface rounded-xl px-2 py-1 gap-0.5 shrink-0 border border-slate-200 dark:border-zinc-700 shadow-2xs">
                         <button
                             onClick={() => changeMonth(-1)}
-                            className="p-2 sm:p-1 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-700"
+                            className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary transition-colors"
+                            aria-label="Previous month"
                         >
-                            <HiChevronLeft className="h-5 w-5" />
+                            <HiChevronLeft className="h-4 w-4" />
                         </button>
 
-                        <h2 className="text-sm font-semibold w-32 sm:w-28 text-center truncate">
-                            {currentDate.toLocaleString(language, { month: 'long', year: 'numeric' })}
+                        <h2 className="text-xs sm:text-sm font-semibold px-2 text-center whitespace-nowrap text-light-text-primary dark:text-text-primary">
+                            {currentDate.toLocaleString(language, { month: 'short', year: 'numeric' })}
                         </h2>
 
                         <button
                             onClick={() => changeMonth(1)}
-                            className="p-2 sm:p-1 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-700"
+                            className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary transition-colors"
+                            aria-label="Next month"
                         >
-                            <HiChevronRight className="h-5 w-5" />
+                            <HiChevronRight className="h-4 w-4" />
                         </button>
                     </div>
-                }
-            />
+                )}
+            </div>
 
             <div className="overflow-x-auto">
                 <div className="flex justify-center sm:justify-center gap-2 bg-slate-100 dark:bg-surface p-1 rounded-full min-w-max">
@@ -217,7 +259,7 @@ const FinancePage: React.FC = () => {
 // --- VIEWS --- //
 
 const DashboardView: React.FC<{ currentDate: Date, currencySymbol: string }> = ({ currentDate, currencySymbol }) => {
-    const { theme, transactions, borrowings, lendings, savingsGoals } = useAppContext();
+    const { theme, transactions, borrowings, lendings, savingsGoals, familyMembers } = useAppContext();
     const { t } = useTranslation();
     
     const monthlySummary = useMemo(() => {
@@ -262,13 +304,13 @@ const DashboardView: React.FC<{ currentDate: Date, currencySymbol: string }> = (
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 {summaryCards.map(card => (
-                    <Card key={card.title} className="!p-4 text-center">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-2 ${card.bgColor}`}>
-                            <card.icon className={`h-6 w-6 ${card.color}`} />
+                    <Card key={card.title} className="!p-3 sm:!p-4 text-center">
+                        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mx-auto mb-1.5 sm:mb-2 ${card.bgColor}`}>
+                            <card.icon className={`h-5 w-5 ${card.color}`} />
                         </div>
-                        <p className={`text-lg sm:text-xl font-bold ${card.color}`}>{card.value}</p>
+                        <p className={`text-base sm:text-lg font-bold ${card.color}`}>{card.value}</p>
                         <p className="text-xs text-light-text-secondary dark:text-text-secondary">{card.title}</p>
                     </Card>
                 ))}
@@ -276,7 +318,7 @@ const DashboardView: React.FC<{ currentDate: Date, currencySymbol: string }> = (
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2">
-                     <h2 className="text-lg font-semibold mb-4 text-light-text-primary dark:text-text-primary">{t('finance.chartTitle')}</h2>
+                     <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 text-light-text-primary dark:text-text-primary">{t('finance.chartTitle')}</h2>
                      <div style={{ width: '100%', height: 250 }}>
                         <ResponsiveContainer>
                             <LineChart data={dailyChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
@@ -297,27 +339,36 @@ const DashboardView: React.FC<{ currentDate: Date, currencySymbol: string }> = (
                 </Card>
                 <div className="space-y-6">
                     <Card>
-                        <h3 className="text-lg font-semibold mb-2">{t('finance.borrowingSummary.title')}</h3>
+                        <h3 className="text-base sm:text-lg font-bold mb-2 text-light-text-primary dark:text-text-primary">{t('finance.borrowingSummary.title')}</h3>
                         <div className="space-y-2">
                             <div>
-                                <p className="text-sm text-light-text-secondary dark:text-text-secondary">{t('finance.borrowingSummary.youOwe')}</p>
-                                <p className="text-xl font-bold text-expense">{currencySymbol}{debtSummary.totalOwed.toFixed(2)}</p>
+                                <p className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary">{t('finance.borrowingSummary.youOwe')}</p>
+                                <p className="text-base sm:text-lg font-bold text-expense">{currencySymbol}{debtSummary.totalOwed.toFixed(2)}</p>
                             </div>
                             <div>
-                                <p className="text-sm text-light-text-secondary dark:text-text-secondary">{t('finance.borrowingSummary.owedToYou')}</p>
-                                <p className="text-xl font-bold text-income">{currencySymbol}{debtSummary.totalOwedToYou.toFixed(2)}</p>
+                                <p className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary">{t('finance.borrowingSummary.owedToYou')}</p>
+                                <p className="text-base sm:text-lg font-bold text-income">{currencySymbol}{debtSummary.totalOwedToYou.toFixed(2)}</p>
                             </div>
                         </div>
                     </Card>
                      <Card>
-                        <h3 className="text-lg font-semibold mb-2">{t('finance.savingsSummary.title')}</h3>
+                        <h3 className="text-base sm:text-lg font-bold mb-2 text-light-text-primary dark:text-text-primary">{t('finance.savingsSummary.title')}</h3>
                         <div className="space-y-3">
                             {savingsGoals.slice(0, 2).map(goal => <SavingsGoalItem key={goal.id} goal={goal} currencySymbol={currencySymbol} />)}
-                             {savingsGoals.length === 0 && <p className="text-sm text-center text-light-text-secondary dark:text-text-secondary">{t('finance.savingsSummary.noGoals')}</p>}
+                             {savingsGoals.length === 0 && <p className="text-xs sm:text-sm text-center text-light-text-secondary dark:text-text-secondary py-2">{t('finance.savingsSummary.noGoals')}</p>}
                         </div>
                     </Card>
                 </div>
             </div>
+            
+            {/* By Person Spending Breakdown */}
+            <MemberSpendingChart
+                transactions={transactions}
+                familyMembers={familyMembers}
+                currentDate={currentDate}
+                currencySymbol={currencySymbol}
+                theme={theme}
+            />
         </div>
     );
 };
@@ -327,25 +378,47 @@ const TransactionsView: React.FC<{
     currencySymbol: string;
     triggerAction?: { type: 'income' | 'expense'; timestamp: number } | null;
 }> = ({ currentDate, currencySymbol, triggerAction }) => {
-    const { transactions, addTransaction, updateTransaction, deleteTransaction } = useAppContext();
+    const { 
+        transactions, 
+        addTransaction, 
+        updateTransaction, 
+        deleteTransaction,
+        transactionCategories,
+        addTransactionCategory,
+        familyMembers
+    } = useAppContext();
     const { t } = useTranslation();
     const [isTransactionModalOpen, setTransactionModalOpen] = useState(false);
+    const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
+    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.INCOME);
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
-    const [category, setCategory] = useState('');
+    const [categoryId, setCategoryId] = useState<string>(transactionCategories[0]?.id || 'cat-other');
+    const [memberId, setMemberId] = useState<string | undefined>(undefined);
     const [date, setDate] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+    const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+    const [selectedMemberFilter, setSelectedMemberFilter] = useState<string>('all');
+    const [isFilterDropdownOpen, setFilterDropdownOpen] = useState(false);
+    const filterDropdownRef = useRef<HTMLDivElement>(null);
+    useOnClickOutside(filterDropdownRef, () => setFilterDropdownOpen(false));
+
     const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction | 'description'; direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
     const [isSortOpen, setSortOpen] = useState(false);
     const sortRef = useRef<HTMLDivElement>(null);
     useOnClickOutside(sortRef, () => setSortOpen(false));
 
     const resetTransactionForm = useCallback(() => {
-        setDescription(''); setAmount(''); setCategory(''); setEditingTransaction(null);
+        setDescription(''); 
+        setAmount(''); 
+        setCategoryId(transactionCategories[0]?.id || 'cat-other');
+        setMemberId(undefined);
+        setEditingTransaction(null);
         setDate(new Date().toISOString().split('T')[0]);
-    }, []);
+    }, [transactionCategories]);
 
     const handleOpenTransactionModal = useCallback((type: TransactionType, transaction: Transaction | null = null) => {
         setTransactionType(type);
@@ -353,13 +426,34 @@ const TransactionsView: React.FC<{
             setEditingTransaction(transaction);
             setDescription(transaction.description);
             setAmount(transaction.amount.toString());
-            setCategory(transaction.category);
+            const matchedCat = transaction.categoryId || transactionCategories.find(c => c.name.toLowerCase() === transaction.category?.toLowerCase())?.id || transactionCategories[0]?.id || 'cat-other';
+            setCategoryId(matchedCat);
+            setMemberId(transaction.memberId);
             setDate(new Date(transaction.date).toISOString().split('T')[0]);
         } else {
             resetTransactionForm();
         }
         setTransactionModalOpen(true);
-    }, [resetTransactionForm]);
+    }, [resetTransactionForm, transactionCategories]);
+
+    const handleRowClick = (transaction: Transaction) => {
+        setSelectedTransaction(transaction);
+        setDetailsModalOpen(true);
+    };
+
+    const handleEditFromDetails = () => {
+        if (!selectedTransaction) return;
+        setDetailsModalOpen(false);
+        handleOpenTransactionModal(selectedTransaction.type, selectedTransaction);
+    };
+
+    const handleDeleteFromDetails = () => {
+        if (!selectedTransaction) return;
+        deleteTransaction(selectedTransaction.id);
+        setDetailsModalOpen(false);
+        setSelectedTransaction(null);
+        toast.success(t('finance.modal.transactionDeleted') || 'Transaction deleted');
+    };
 
     useEffect(() => {
         if (triggerAction) {
@@ -372,12 +466,17 @@ const TransactionsView: React.FC<{
     }, [triggerAction, handleOpenTransactionModal]);
 
     const handleSaveTransaction = () => {
-        if (description && amount && category && date) {
+        if (description && amount && categoryId && date) {
+            const selectedCatObj = transactionCategories.find(c => c.id === categoryId);
+            const categoryName = selectedCatObj?.name || 'Other';
+
             const transactionData = {
                 description,
                 amount: parseFloat(amount),
                 type: transactionType,
-                category,
+                category: categoryName,
+                categoryId: categoryId,
+                memberId: memberId || undefined,
                 date: new Date(date).toISOString()
             };
             if(editingTransaction) {
@@ -394,7 +493,7 @@ const TransactionsView: React.FC<{
         }
     };
     
-     const handleSortChange = (key: typeof sortConfig.key) => {
+    const handleSortChange = (key: typeof sortConfig.key) => {
         let direction: 'asc' | 'desc' = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') {
             direction = 'desc';
@@ -403,9 +502,26 @@ const TransactionsView: React.FC<{
         setSortOpen(false);
     };
 
+    const monthlyTransactions = useMemo(() => {
+        return transactions.filter(t => 
+            new Date(t.date).getFullYear() === currentDate.getFullYear() && 
+            new Date(t.date).getMonth() === currentDate.getMonth()
+        );
+    }, [transactions, currentDate]);
+
     const filteredAndSortedTransactions = useMemo(() => {
-        const monthlyTransactions = transactions.filter(t => new Date(t.date).getFullYear() === currentDate.getFullYear() && new Date(t.date).getMonth() === currentDate.getMonth());
-        const searchedTransactions = monthlyTransactions.filter(t => t.description.toLowerCase().includes(searchQuery.toLowerCase()) || t.category.toLowerCase().includes(searchQuery.toLowerCase()));
+        const searchedTransactions = monthlyTransactions.filter(t => {
+            const matchesSearch = t.description.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                (t.category && t.category.toLowerCase().includes(searchQuery.toLowerCase()));
+            const matchesCategory = selectedCategoryFilter === 'all' || 
+                t.categoryId === selectedCategoryFilter || 
+                t.category === selectedCategoryFilter;
+            const matchesType = typeFilter === 'all' || t.type === typeFilter;
+            const matchesMember = selectedMemberFilter === 'all' || 
+                (selectedMemberFilter === 'household' ? !t.memberId : t.memberId === selectedMemberFilter);
+            return matchesSearch && matchesCategory && matchesType && matchesMember;
+        });
+
         return [...searchedTransactions].sort((a, b) => {
             const aVal = a[sortConfig.key];
             const bVal = b[sortConfig.key];
@@ -413,66 +529,634 @@ const TransactionsView: React.FC<{
             if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [transactions, currentDate, searchQuery, sortConfig]);
+    }, [monthlyTransactions, searchQuery, selectedCategoryFilter, typeFilter, selectedMemberFilter, sortConfig]);
 
+    // Active filter counter for badge
+    const activeFilterCount = (typeFilter !== 'all' ? 1 : 0) + 
+        (selectedCategoryFilter !== 'all' ? 1 : 0) + 
+        (selectedMemberFilter !== 'all' ? 1 : 0);
+
+    // Aggregate filtered totals
+    const filteredMetrics = useMemo(() => {
+        let totalIncome = 0;
+        let totalExpense = 0;
+        filteredAndSortedTransactions.forEach(t => {
+            if (t.type === 'income') totalIncome += t.amount;
+            else totalExpense += t.amount;
+        });
+        return {
+            totalIncome,
+            totalExpense,
+            net: totalIncome - totalExpense
+        };
+    }, [filteredAndSortedTransactions]);
+
+    const isFiltered = searchQuery !== '' || activeFilterCount > 0;
 
     return (
         <Card>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-                 <button onClick={() => handleOpenTransactionModal(TransactionType.INCOME)} className="p-3 bg-light-surface dark:bg-surface rounded-lg flex items-center justify-center text-sm font-semibold hover:bg-slate-100 dark:hover:bg-zinc-700/50 transition-colors border border-slate-200 dark:border-zinc-700"><HiPlus className="h-5 w-5 mr-2 text-income"/>{t('finance.addIncome')}</button>
-                 <button onClick={() => handleOpenTransactionModal(TransactionType.EXPENSE)} className="p-3 bg-light-surface dark:bg-surface rounded-lg flex items-center justify-center text-sm font-semibold hover:bg-slate-100 dark:hover:bg-zinc-700/50 transition-colors border border-slate-200 dark:border-zinc-700"><HiPlus className="h-5 w-5 mr-2 text-expense"/>{t('finance.addExpense')}</button>
+            {/* Top Quick Actions */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
+                <button 
+                    onClick={() => handleOpenTransactionModal(TransactionType.INCOME)} 
+                    className="p-3 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center text-xs sm:text-sm font-semibold transition-all shadow-xs active:scale-[0.98]"
+                >
+                    <HiOutlineArrowUpRight className="h-4 w-4 mr-2 text-emerald-500 stroke-[2.5]" />
+                    {t('finance.addIncome')}
+                </button>
+                <button 
+                    onClick={() => handleOpenTransactionModal(TransactionType.EXPENSE)} 
+                    className="p-3 bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl flex items-center justify-center text-xs sm:text-sm font-semibold transition-all shadow-xs active:scale-[0.98]"
+                >
+                    <HiOutlineArrowDownLeft className="h-4 w-4 mr-2 text-rose-500 stroke-[2.5]" />
+                    {t('finance.addExpense')}
+                </button>
             </div>
-             <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="relative flex-grow">
-                        <HiOutlineMagnifyingGlass className="absolute top-1/2 left-3 -translate-y-1/2 h-5 w-5 text-light-text-secondary dark:text-text-secondary" />
-                        <input type="text" placeholder={t('finance.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full p-2 pl-10 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary"/>
+
+            <div className="space-y-4">
+                {/* Search Bar with integrated Filter Button + Sort Menu */}
+                <div className="flex gap-2">
+                    {/* Search Field with Integrated Filter Button */}
+                    <div className="relative flex-grow flex items-center">
+                        <HiOutlineMagnifyingGlass className="absolute left-3.5 h-4 w-4 text-slate-400 dark:text-zinc-500 pointer-events-none" />
+                        <input 
+                            type="text" 
+                            placeholder={t('finance.searchPlaceholder')} 
+                            value={searchQuery} 
+                            onChange={(e) => setSearchQuery(e.target.value)} 
+                            className="w-full h-10 pl-10 pr-20 border rounded-xl bg-slate-50/80 dark:bg-zinc-800/60 border-slate-200 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-primary/40 focus:border-primary text-xs sm:text-sm text-light-text-primary dark:text-text-primary placeholder:text-slate-400 dark:placeholder:text-zinc-500 transition-all"
+                        />
+                        <div className="absolute right-1.5 flex items-center gap-1">
+                            {searchQuery && (
+                                <button 
+                                    onClick={() => setSearchQuery('')}
+                                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 rounded-full"
+                                >
+                                    <HiOutlineXMark className="h-3.5 w-3.5" />
+                                </button>
+                            )}
+
+                            {/* Filter Button at the end of Search Bar */}
+                            <div className="relative" ref={filterDropdownRef}>
+                                <button
+                                    onClick={() => setFilterDropdownOpen(!isFilterDropdownOpen)}
+                                    className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold transition-all ${
+                                        activeFilterCount > 0 
+                                            ? 'bg-primary text-white shadow-xs' 
+                                            : isFilterDropdownOpen
+                                                ? 'bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-white'
+                                                : 'bg-white dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-zinc-600 hover:bg-slate-100 dark:hover:bg-zinc-600'
+                                    }`}
+                                    title="Filter options"
+                                >
+                                    <HiOutlineFunnel className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Filter</span>
+                                    {activeFilterCount > 0 && (
+                                        <span className="w-4 h-4 rounded-full bg-white text-primary text-[10px] font-bold flex items-center justify-center leading-none">
+                                            {activeFilterCount}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {/* Comprehensive Filter Popover Dropdown */}
+                                <AnimatePresence>
+                                    {isFilterDropdownOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.95, y: 4 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95, y: 4 }}
+                                            className="absolute z-30 top-full mt-2 right-[-116px] w-[calc(100vw-3.5rem)] max-w-xs sm:w-80 bg-light-surface dark:bg-zinc-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-700 p-3.5 sm:p-4 text-xs space-y-4 max-h-[75vh] overflow-y-auto"
+                                        >
+                                            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-zinc-700">
+                                                <div className="flex items-center gap-2 font-bold text-sm text-light-text-primary dark:text-text-primary">
+                                                    <HiOutlineFunnel className="w-4 h-4 text-primary" />
+                                                    <span>Filters</span>
+                                                </div>
+                                                {activeFilterCount > 0 && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setTypeFilter('all');
+                                                            setSelectedCategoryFilter('all');
+                                                            setSelectedMemberFilter('all');
+                                                        }}
+                                                        className="text-xs font-semibold text-primary hover:underline"
+                                                    >
+                                                        Reset All
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Transaction Type Filter */}
+                                            <div className="space-y-1.5">
+                                                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                                                    Type
+                                                </label>
+                                                <div className="grid grid-cols-3 gap-1.5">
+                                                    <button
+                                                        onClick={() => setTypeFilter('all')}
+                                                        className={`py-1.5 px-2 rounded-lg text-xs font-medium border text-center transition-all ${
+                                                            typeFilter === 'all'
+                                                                ? 'bg-primary text-white border-primary shadow-xs font-semibold'
+                                                                : 'bg-slate-50 dark:bg-zinc-700/50 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300 hover:bg-slate-100'
+                                                        }`}
+                                                    >
+                                                        All
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setTypeFilter('income')}
+                                                        className={`py-1.5 px-2 rounded-lg text-xs font-medium border text-center transition-all ${
+                                                            typeFilter === 'income'
+                                                                ? 'bg-emerald-500 text-white border-emerald-500 shadow-xs font-semibold'
+                                                                : 'bg-slate-50 dark:bg-zinc-700/50 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
+                                                        }`}
+                                                    >
+                                                        Income
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setTypeFilter('expense')}
+                                                        className={`py-1.5 px-2 rounded-lg text-xs font-medium border text-center transition-all ${
+                                                            typeFilter === 'expense'
+                                                                ? 'bg-rose-500 text-white border-rose-500 shadow-xs font-semibold'
+                                                                : 'bg-slate-50 dark:bg-zinc-700/50 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300 hover:bg-rose-50 dark:hover:bg-rose-950/30'
+                                                        }`}
+                                                    >
+                                                        Expense
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Categories Filter */}
+                                            <div className="space-y-1.5">
+                                                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                                                    Category
+                                                </label>
+                                                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                                                    <button
+                                                        onClick={() => setSelectedCategoryFilter('all')}
+                                                        className={`py-1.5 px-2 rounded-lg text-left text-xs font-medium border transition-all flex items-center justify-between ${
+                                                            selectedCategoryFilter === 'all'
+                                                                ? 'bg-primary/10 border-primary text-primary font-semibold'
+                                                                : 'bg-slate-50 dark:bg-zinc-700/50 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300 hover:bg-slate-100'
+                                                        }`}
+                                                    >
+                                                        <span>All Categories</span>
+                                                        {selectedCategoryFilter === 'all' && <HiOutlineCheck className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                    {transactionCategories.map(cat => {
+                                                        const isSelected = selectedCategoryFilter === cat.id;
+                                                        return (
+                                                            <button
+                                                                key={cat.id}
+                                                                onClick={() => setSelectedCategoryFilter(cat.id)}
+                                                                className={`py-1.5 px-2 rounded-lg text-left text-xs font-medium border transition-all flex items-center gap-1.5 justify-between ${
+                                                                    isSelected
+                                                                        ? 'bg-primary/10 border-primary text-primary font-semibold'
+                                                                        : 'bg-slate-50 dark:bg-zinc-700/50 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300 hover:bg-slate-100'
+                                                                }`}
+                                                            >
+                                                                <span className="flex items-center gap-1.5 truncate">
+                                                                    <span 
+                                                                        className="w-2 h-2 rounded-full shrink-0" 
+                                                                        style={{ backgroundColor: cat.color }} 
+                                                                    />
+                                                                    <span className="truncate">{cat.name}</span>
+                                                                </span>
+                                                                {isSelected && <HiOutlineCheck className="w-3.5 h-3.5 shrink-0" />}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            {/* Family Member Filter */}
+                                            <div className="space-y-1.5">
+                                                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                                                    For Whom / Family Member
+                                                </label>
+                                                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                                                    <button
+                                                        onClick={() => setSelectedMemberFilter('all')}
+                                                        className={`py-1.5 px-2 rounded-lg text-left text-xs font-medium border transition-all flex items-center justify-between ${
+                                                            selectedMemberFilter === 'all'
+                                                                ? 'bg-primary/10 border-primary text-primary font-semibold'
+                                                                : 'bg-slate-50 dark:bg-zinc-700/50 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300 hover:bg-slate-100'
+                                                        }`}
+                                                    >
+                                                        <span>Everyone</span>
+                                                        {selectedMemberFilter === 'all' && <HiOutlineCheck className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setSelectedMemberFilter('household')}
+                                                        className={`py-1.5 px-2 rounded-lg text-left text-xs font-medium border transition-all flex items-center justify-between ${
+                                                            selectedMemberFilter === 'household'
+                                                                ? 'bg-primary/10 border-primary text-primary font-semibold'
+                                                                : 'bg-slate-50 dark:bg-zinc-700/50 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300 hover:bg-slate-100'
+                                                        }`}
+                                                    >
+                                                        <span>Shared / Household</span>
+                                                        {selectedMemberFilter === 'household' && <HiOutlineCheck className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                    {familyMembers.map(member => {
+                                                        const isSelected = selectedMemberFilter === member.id;
+                                                        return (
+                                                            <button
+                                                                key={member.id}
+                                                                onClick={() => setSelectedMemberFilter(member.id)}
+                                                                className={`py-1.5 px-2 rounded-lg text-left text-xs font-medium border transition-all flex items-center justify-between ${
+                                                                    isSelected
+                                                                        ? 'bg-primary/10 border-primary text-primary font-semibold'
+                                                                        : 'bg-slate-50 dark:bg-zinc-700/50 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300 hover:bg-slate-100'
+                                                                }`}
+                                                            >
+                                                                <span className="flex items-center gap-1.5 truncate">
+                                                                    <img 
+                                                                        src={member.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'} 
+                                                                        alt={member.name}
+                                                                        className="w-3.5 h-3.5 rounded-full object-cover shrink-0" 
+                                                                    />
+                                                                    <span className="truncate">{member.name}</span>
+                                                                </span>
+                                                                {isSelected && <HiOutlineCheck className="w-3.5 h-3.5 shrink-0" />}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => setFilterDropdownOpen(false)}
+                                                className="w-full py-2 bg-primary text-white font-semibold rounded-xl text-xs hover:bg-opacity-90 transition-opacity"
+                                            >
+                                                Apply Filters
+                                            </button>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </div>
                     </div>
-                    <div className="relative" ref={sortRef}>
-                        <button onClick={() => setSortOpen(!isSortOpen)} className="w-full sm:w-auto flex items-center justify-between gap-2 p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600">
-                            <span className="capitalize">{t('finance.sortBy')}: {t(`finance.sort.${sortConfig.key}`)} ({t(`finance.sort.${sortConfig.direction}`)})</span>
-                            <HiOutlineChevronUpDown className="h-5 w-5 text-light-text-secondary dark:text-text-secondary" />
+
+                    {/* Sort Menu Button */}
+                    <div className="relative shrink-0" ref={sortRef}>
+                        <button 
+                            onClick={() => setSortOpen(!isSortOpen)} 
+                            className={`h-10 px-3 flex items-center gap-1.5 border rounded-xl bg-slate-50/80 dark:bg-zinc-800/60 border-slate-200 dark:border-zinc-700 text-xs font-medium transition-all ${isSortOpen ? 'border-primary ring-2 ring-primary/20' : 'hover:bg-slate-100 dark:hover:bg-zinc-700/50'}`}
+                        >
+                            <HiOutlineChevronUpDown className="h-4 w-4 text-slate-500 dark:text-zinc-400" />
+                            <span className="capitalize hidden sm:inline text-light-text-secondary dark:text-text-secondary">
+                                {t(`finance.sort.${sortConfig.key}`)}
+                            </span>
+                            <span className="text-[10px] uppercase font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10">
+                                {sortConfig.direction}
+                            </span>
                         </button>
+
                         <AnimatePresence>
-                        {isSortOpen && (
-                            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="absolute z-10 top-full mt-2 w-full sm:w-56 right-0 bg-light-surface dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-zinc-700 p-2">
-                                {(['date', 'description', 'amount', 'category'] as const).map(key => (
-                                    <button key={key} onClick={() => handleSortChange(key)} className="w-full text-left px-3 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50 capitalize">{t(`finance.sort.${key}`)}</button>
-                                ))}
-                            </motion.div>
-                        )}
+                            {isSortOpen && (
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.95, y: 4 }} 
+                                    animate={{ opacity: 1, scale: 1, y: 0 }} 
+                                    exit={{ opacity: 0, scale: 0.95, y: 4 }} 
+                                    className="absolute z-20 top-full mt-1.5 w-48 right-0 bg-light-surface dark:bg-zinc-800 rounded-xl shadow-xl border border-slate-200 dark:border-zinc-700 p-1.5 text-xs"
+                                >
+                                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                                        {t('finance.sortBy')}
+                                    </div>
+                                    {(['date', 'description', 'amount', 'category'] as const).map(key => {
+                                        const isSelected = sortConfig.key === key;
+                                        return (
+                                            <button 
+                                                key={key} 
+                                                onClick={() => handleSortChange(key)} 
+                                                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg capitalize transition-colors ${isSelected ? 'bg-primary/10 text-primary font-semibold' : 'text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-700/60'}`}
+                                            >
+                                                <span>{t(`finance.sort.${key}`)}</span>
+                                                {isSelected && <HiOutlineCheck className="h-3.5 w-3.5" />}
+                                            </button>
+                                        );
+                                    })}
+                                </motion.div>
+                            )}
                         </AnimatePresence>
                     </div>
                 </div>
+
+                {/* Active Filter Indicators Bar */}
+                {activeFilterCount > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap text-xs pt-0.5">
+                        <span className="text-[11px] font-semibold text-slate-400 dark:text-zinc-500 mr-1">Active:</span>
+                        {typeFilter !== 'all' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-light-text-primary dark:text-text-primary border border-slate-200 dark:border-zinc-700 text-xs">
+                                <span className="capitalize">{typeFilter}</span>
+                                <button onClick={() => setTypeFilter('all')} className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200">
+                                    <HiOutlineXMark className="w-3 h-3" />
+                                </button>
+                            </span>
+                        )}
+                        {selectedCategoryFilter !== 'all' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-light-text-primary dark:text-text-primary border border-slate-200 dark:border-zinc-700 text-xs">
+                                <span>{transactionCategories.find(c => c.id === selectedCategoryFilter)?.name || selectedCategoryFilter}</span>
+                                <button onClick={() => setSelectedCategoryFilter('all')} className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200">
+                                    <HiOutlineXMark className="w-3 h-3" />
+                                </button>
+                            </span>
+                        )}
+                        {selectedMemberFilter !== 'all' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-light-text-primary dark:text-text-primary border border-slate-200 dark:border-zinc-700 text-xs">
+                                <span>{selectedMemberFilter === 'household' ? 'Shared / Household' : familyMembers.find(m => m.id === selectedMemberFilter)?.name || 'Member'}</span>
+                                <button onClick={() => setSelectedMemberFilter('all')} className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200">
+                                    <HiOutlineXMark className="w-3 h-3" />
+                                </button>
+                            </span>
+                        )}
+                        <button
+                            onClick={() => {
+                                setTypeFilter('all');
+                                setSelectedCategoryFilter('all');
+                                setSelectedMemberFilter('all');
+                            }}
+                            className="text-xs text-primary font-semibold hover:underline ml-1"
+                        >
+                            Clear all
+                        </button>
+                    </div>
+                )}
+
+                {/* Filter Summary Strip */}
+                {filteredAndSortedTransactions.length > 0 && (
+                    <div className="flex items-center justify-between py-1 px-1 text-[11px] text-light-text-secondary dark:text-text-secondary border-b border-slate-100 dark:border-zinc-800/80 pb-2">
+                        <div className="flex items-center gap-2">
+                            <span className="font-semibold text-light-text-primary dark:text-text-primary">{filteredAndSortedTransactions.length}</span>
+                            <span>{filteredAndSortedTransactions.length === 1 ? 'transaction' : 'transactions'}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {filteredMetrics.totalIncome > 0 && (
+                                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                    +{currencySymbol}{filteredMetrics.totalIncome.toFixed(2)}
+                                </span>
+                            )}
+                            {filteredMetrics.totalExpense > 0 && (
+                                <span className="text-rose-600 dark:text-rose-400 font-semibold">
+                                    -{currencySymbol}{filteredMetrics.totalExpense.toFixed(2)}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Minimalist Transactions List - Only Name & Amount, Click to open details */}
                 {filteredAndSortedTransactions.length > 0 ? (
-                    <ul className="divide-y divide-slate-200 dark:divide-zinc-700"><AnimatePresence>
-                    {filteredAndSortedTransactions.map((t) => (
-                        <motion.li key={t.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} className="py-3 flex flex-wrap justify-between items-center group gap-x-4 gap-y-2">
-                            <div>
-                                <p className="font-semibold">{t.description}</p>
-                                <p className="text-sm text-light-text-secondary dark:text-text-secondary">{t.category} - {new Date(t.date).toLocaleDateString()}</p>
+                    <div className="divide-y divide-slate-100 dark:divide-zinc-800/60 rounded-xl bg-slate-50/50 dark:bg-zinc-800/30 border border-slate-200/80 dark:border-zinc-700/60 overflow-hidden">
+                        <AnimatePresence>
+                            {filteredAndSortedTransactions.map((item) => {
+                                const isIncome = item.type === 'income';
+
+                                return (
+                                    <motion.div
+                                        key={item.id}
+                                        layout
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        onClick={() => handleRowClick(item)}
+                                        className="px-4 py-3.5 hover:bg-slate-100/80 dark:hover:bg-zinc-700/50 active:bg-slate-200/70 dark:active:bg-zinc-700 transition-colors flex items-center justify-between gap-3 cursor-pointer select-none group"
+                                    >
+                                        {/* Left Side: Name and Date only */}
+                                        <div className="min-w-0 pr-2">
+                                            <p className="font-semibold text-xs sm:text-sm text-light-text-primary dark:text-text-primary truncate group-hover:text-primary transition-colors">
+                                                {item.description}
+                                            </p>
+                                            <p className="text-[11px] text-light-text-secondary dark:text-text-secondary mt-0.5">
+                                                {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </p>
+                                        </div>
+
+                                        {/* Right Side: Amount with +/- and currency */}
+                                        <div className="text-right shrink-0 flex items-center gap-2">
+                                            <span className={`font-bold text-xs sm:text-sm ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                {isIncome ? '+' : '-'}{currencySymbol}{item.amount.toFixed(2)}
+                                            </span>
+                                            <HiChevronRight className="w-4 h-4 text-slate-300 dark:text-zinc-600 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </AnimatePresence>
+                    </div>
+                ) : (
+                    <div className="py-12 px-4 text-center rounded-xl bg-slate-50/50 dark:bg-zinc-800/30 border border-dashed border-slate-200 dark:border-zinc-700/80">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-3 text-slate-400 dark:text-zinc-500">
+                            <HiOutlineBanknotes className="w-6 h-6" />
+                        </div>
+                        <h4 className="text-sm font-semibold text-light-text-primary dark:text-text-primary mb-1">
+                            {isFiltered ? 'No matching transactions' : t('finance.noTransactions')}
+                        </h4>
+                        <p className="text-xs text-light-text-secondary dark:text-text-secondary max-w-sm mx-auto mb-4">
+                            {isFiltered 
+                                ? 'Try adjusting your search query, type filter, category or family member filter.' 
+                                : 'Start logging your family income and expenses to track your household budget.'
+                            }
+                        </p>
+                        {isFiltered ? (
+                            <button
+                                onClick={() => {
+                                    setSearchQuery('');
+                                    setSelectedCategoryFilter('all');
+                                    setSelectedMemberFilter('all');
+                                    setTypeFilter('all');
+                                }}
+                                className="px-3.5 py-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
+                            >
+                                Clear all filters
+                            </button>
+                        ) : (
+                            <div className="flex justify-center gap-2">
+                                <button
+                                    onClick={() => handleOpenTransactionModal(TransactionType.INCOME)}
+                                    className="px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 rounded-lg transition-colors"
+                                >
+                                    + {t('finance.addIncome')}
+                                </button>
+                                <button
+                                    onClick={() => handleOpenTransactionModal(TransactionType.EXPENSE)}
+                                    className="px-3 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/15 rounded-lg transition-colors"
+                                >
+                                    + {t('finance.addExpense')}
+                                </button>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <p className={`font-bold ${t.type === 'income' ? 'text-income' : 'text-expense'}`}>{t.type === 'income' ? '+' : '-'}{currencySymbol}{t.amount.toFixed(2)}</p>
-                                <div className="flex gap-2 sm:opacity-0 sm:group-hover:opacity-100">
-                                    <button onClick={() => handleOpenTransactionModal(t.type, t)} className="text-blue-400 hover:text-blue-300"><HiPencil/></button>
-                                    <button onClick={() => deleteTransaction(t.id)} className="text-red-400 hover:text-red-300"><HiTrash/></button>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Transaction Details Popup (Click to view full category & member info, edit or delete) */}
+            <Modal 
+                isOpen={isDetailsModalOpen} 
+                onClose={() => setDetailsModalOpen(false)} 
+                title="Transaction Details"
+            >
+                {selectedTransaction && (() => {
+                    const isIncome = selectedTransaction.type === 'income';
+                    const catObj = transactionCategories.find(c => c.id === selectedTransaction.categoryId || c.name.toLowerCase() === selectedTransaction.category?.toLowerCase());
+                    const assignedMember = familyMembers.find(m => m.id === selectedTransaction.memberId);
+                    const IconComp = catObj ? getCategoryIcon(catObj.icon) : HiOutlineCreditCard;
+                    const categoryColor = catObj?.color || '#64748b';
+
+                    return (
+                        <div className="space-y-5">
+                            {/* Big Amount & Type Card */}
+                            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-800/80 border border-slate-200/80 dark:border-zinc-700/80 text-center space-y-1">
+                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                                    isIncome ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                                }`}>
+                                    {isIncome ? <HiOutlineArrowUpRight className="w-3.5 h-3.5 stroke-[2.5]" /> : <HiOutlineArrowDownLeft className="w-3.5 h-3.5 stroke-[2.5]" />}
+                                    {selectedTransaction.type}
+                                </span>
+                                <h3 className={`text-2xl sm:text-3xl font-extrabold ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                    {isIncome ? '+' : '-'}{currencySymbol}{selectedTransaction.amount.toFixed(2)}
+                                </h3>
+                                <p className="font-medium text-sm text-light-text-primary dark:text-text-primary">
+                                    {selectedTransaction.description}
+                                </p>
+                            </div>
+
+                            {/* Details List (Category & For Whom displayed here) */}
+                            <div className="space-y-3 bg-slate-50/50 dark:bg-zinc-800/40 p-3.5 rounded-2xl border border-slate-200/60 dark:border-zinc-700/60">
+                                {/* Category */}
+                                <div className="flex items-center justify-between py-1">
+                                    <span className="text-xs text-light-text-secondary dark:text-text-secondary font-medium">Category</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div 
+                                            className="w-5 h-5 rounded-md flex items-center justify-center text-white" 
+                                            style={{ backgroundColor: categoryColor }}
+                                        >
+                                            <IconComp className="w-3.5 h-3.5" />
+                                        </div>
+                                        <span className="text-xs font-semibold text-light-text-primary dark:text-text-primary">
+                                            {catObj?.name || selectedTransaction.category || 'Other'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* For Whom / Assigned Member */}
+                                <div className="flex items-center justify-between py-1 border-t border-slate-200/40 dark:border-zinc-700/40">
+                                    <span className="text-xs text-light-text-secondary dark:text-text-secondary font-medium">For Whom</span>
+                                    {assignedMember ? (
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-700/60 border border-slate-200 dark:border-zinc-600">
+                                            <img 
+                                                src={assignedMember.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'} 
+                                                alt={assignedMember.name} 
+                                                className="w-4 h-4 rounded-full object-cover" 
+                                            />
+                                            <span className="text-xs font-semibold text-light-text-primary dark:text-text-primary">{assignedMember.name}</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-700/60 px-2 py-0.5 rounded-full border border-slate-200 dark:border-zinc-600">
+                                            Shared / Whole Household
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Date */}
+                                <div className="flex items-center justify-between py-1 border-t border-slate-200/40 dark:border-zinc-700/40">
+                                    <span className="text-xs text-light-text-secondary dark:text-text-secondary font-medium">Date</span>
+                                    <span className="text-xs font-semibold text-light-text-primary dark:text-text-primary">
+                                        {new Date(selectedTransaction.date).toLocaleDateString(undefined, { 
+                                            weekday: 'short', 
+                                            year: 'numeric', 
+                                            month: 'short', 
+                                            day: 'numeric' 
+                                        })}
+                                    </span>
                                 </div>
                             </div>
-                        </motion.li>
-                    ))}
-                    </AnimatePresence></ul>
-                ) : <p className="text-center py-4 text-light-text-secondary dark:text-text-secondary">{t('finance.noTransactions')}</p>}
-            </div>
-             <Modal isOpen={isTransactionModalOpen} onClose={() => setTransactionModalOpen(false)} title={editingTransaction ? t('finance.modal.edit' + (transactionType === 'income' ? 'Income' : 'Expense')) : t('finance.modal.add' + (transactionType === 'income' ? 'Income' : 'Expense'))}>
-                 <div className="space-y-4">
-                     <input type="text" placeholder={t('finance.modal.description')} value={description} onChange={e => setDescription(e.target.value)} className="w-full mt-1 p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
-                    <div className="grid grid-cols-2 gap-4">
-                        <input type="number" placeholder={t('finance.modal.amount')} value={amount} onChange={e => setAmount(e.target.value)} className="w-full mt-1 p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
-                        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full mt-1 p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
+
+                            {/* Action Buttons: Edit and Delete */}
+                            <div className="grid grid-cols-2 gap-3 pt-2">
+                                <button
+                                    onClick={handleDeleteFromDetails}
+                                    className="py-2.5 px-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-semibold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-[0.98]"
+                                >
+                                    <HiTrash className="w-4 h-4" />
+                                    <span>Delete</span>
+                                </button>
+                                <button
+                                    onClick={handleEditFromDetails}
+                                    className="py-2.5 px-4 bg-primary text-white font-semibold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 hover:bg-opacity-90 transition-opacity active:scale-[0.98] shadow-xs"
+                                >
+                                    <HiPencil className="w-4 h-4" />
+                                    <span>Edit</span>
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })()}
+            </Modal>
+
+            {/* Add / Edit Transaction Modal */}
+            <Modal isOpen={isTransactionModalOpen} onClose={() => setTransactionModalOpen(false)} title={editingTransaction ? t('finance.modal.edit' + (transactionType === 'income' ? 'Income' : 'Expense')) : t('finance.modal.add' + (transactionType === 'income' ? 'Income' : 'Expense'))}>
+                <div className="space-y-4 py-1">
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            {t('finance.modal.description')} *
+                        </label>
+                        <input 
+                            type="text" 
+                            placeholder={transactionType === 'income' ? "e.g. Monthly Salary, Freelance project" : "e.g. Grocery shopping, Electricity bill"} 
+                            value={description} 
+                            onChange={e => setDescription(e.target.value)} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" 
+                        />
                     </div>
-                    <input type="text" placeholder={t('finance.modal.category')} value={category} onChange={e => setCategory(e.target.value)} className="w-full mt-1 p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600" />
-                    <button onClick={handleSaveTransaction} className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90">{editingTransaction ? t('finance.modal.saveChanges') : t('finance.modal.addRecord')}</button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                                {t('finance.modal.amount')} ({currencySymbol}) *
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0"
+                                placeholder="0.00" 
+                                value={amount} 
+                                onChange={e => setAmount(e.target.value)} 
+                                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                                Date *
+                            </label>
+                            <input 
+                                type="date" 
+                                value={date} 
+                                onChange={e => setDate(e.target.value)} 
+                                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent" 
+                            />
+                        </div>
+                    </div>
+
+                    {/* Category Chip Picker */}
+                    <CategoryChipPicker
+                        categories={transactionCategories}
+                        selectedCategoryId={categoryId}
+                        onSelect={setCategoryId}
+                        onAddCategory={addTransactionCategory}
+                    />
+
+                    {/* Family Member Picker */}
+                    <FamilyMemberPicker
+                        members={familyMembers}
+                        selectedMemberId={memberId}
+                        onSelect={setMemberId}
+                    />
+
+                    <button 
+                        onClick={handleSaveTransaction} 
+                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md active:scale-[0.99] transition-colors text-sm"
+                    >
+                        {editingTransaction ? t('finance.modal.saveChanges') : t('finance.modal.addRecord')}
+                    </button>
                 </div>
             </Modal>
         </Card>
@@ -484,7 +1168,15 @@ const BillsView: React.FC<{
     currencySymbol: string;
     triggerAction?: { type: 'bill'; timestamp: number } | null;
 }> = ({ currentDate, currencySymbol, triggerAction }) => {
-    const { bills, addBill, updateBill, deleteBill } = useAppContext();
+    const { 
+        bills, 
+        addBill, 
+        updateBill, 
+        deleteBill,
+        transactionCategories,
+        addTransactionCategory,
+        familyMembers
+    } = useAppContext();
     const { t, language } = useTranslation();
     const [isBillModalOpen, setBillModalOpen] = useState(false);
     const [editingBill, setEditingBill] = useState<Bill | null>(null);
@@ -494,7 +1186,9 @@ const BillsView: React.FC<{
     const [billForm, setBillForm] = useState({ 
         name: '', 
         amount: '', 
-        category: BillCategory.UTILITIES, 
+        categoryId: transactionCategories[0]?.id || 'cat-utilities',
+        category: 'Utilities',
+        memberId: undefined as string | undefined,
         dueDate: '', 
         recurrence: 'monthly' as Bill['recurrence'],
         paid: false
@@ -503,10 +1197,13 @@ const BillsView: React.FC<{
     const openBillModal = (bill?: Bill) => {
         if (bill) {
             setEditingBill(bill);
+            const matchedCat = bill.categoryId || transactionCategories.find(c => c.name.toLowerCase() === bill.category?.toLowerCase())?.id || transactionCategories[0]?.id || 'cat-utilities';
             setBillForm({
                 name: bill.name,
                 amount: bill.amount.toString(),
+                categoryId: matchedCat,
                 category: bill.category,
+                memberId: bill.memberId,
                 dueDate: bill.dueDate.split('T')[0],
                 recurrence: bill.recurrence,
                 paid: bill.paid
@@ -516,7 +1213,9 @@ const BillsView: React.FC<{
             setBillForm({ 
                 name: '', 
                 amount: '', 
-                category: BillCategory.UTILITIES, 
+                categoryId: transactionCategories[0]?.id || 'cat-utilities',
+                category: 'Utilities',
+                memberId: undefined,
                 dueDate: new Date().toISOString().split('T')[0], 
                 recurrence: 'monthly',
                 paid: false
@@ -533,8 +1232,8 @@ const BillsView: React.FC<{
 
     const filteredBills = useMemo(() => {
         return bills.filter(b => {
-            const matchesSearch = b.name.toLowerCase().includes(searchQuery.toLowerCase()) || b.category.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesCategory = selectedCategory === 'all' || b.category === selectedCategory;
+            const matchesSearch = b.name.toLowerCase().includes(searchQuery.toLowerCase()) || (b.category && b.category.toLowerCase().includes(searchQuery.toLowerCase()));
+            const matchesCategory = selectedCategory === 'all' || b.categoryId === selectedCategory || b.category === selectedCategory;
             return matchesSearch && matchesCategory;
         });
     }, [bills, searchQuery, selectedCategory]);
@@ -554,13 +1253,18 @@ const BillsView: React.FC<{
     };
 
     const handleSaveBill = () => {
-        if(billForm.name && billForm.amount && billForm.dueDate) {
+        if(billForm.name && billForm.amount && billForm.dueDate && billForm.categoryId) {
+            const catObj = transactionCategories.find(c => c.id === billForm.categoryId);
+            const categoryName = catObj?.name || 'Utilities';
+
             if (editingBill) {
                 updateBill({
                     ...editingBill,
                     name: billForm.name,
                     amount: parseFloat(billForm.amount),
-                    category: billForm.category,
+                    category: categoryName,
+                    categoryId: billForm.categoryId,
+                    memberId: billForm.memberId,
                     dueDate: new Date(billForm.dueDate).toISOString(),
                     recurrence: billForm.recurrence,
                     paid: billForm.paid,
@@ -571,7 +1275,9 @@ const BillsView: React.FC<{
                 addBill({
                     name: billForm.name,
                     amount: parseFloat(billForm.amount),
-                    category: billForm.category,
+                    category: categoryName,
+                    categoryId: billForm.categoryId,
+                    memberId: billForm.memberId,
                     dueDate: new Date(billForm.dueDate).toISOString(),
                     recurrence: billForm.recurrence
                 });
@@ -579,7 +1285,16 @@ const BillsView: React.FC<{
             }
             setBillModalOpen(false);
             setEditingBill(null);
-            setBillForm({ name: '', amount: '', category: BillCategory.UTILITIES, dueDate: '', recurrence: 'monthly', paid: false });
+            setBillForm({ 
+                name: '', 
+                amount: '', 
+                categoryId: transactionCategories[0]?.id || 'cat-utilities', 
+                category: 'Utilities',
+                memberId: undefined, 
+                dueDate: '', 
+                recurrence: 'monthly', 
+                paid: false 
+            });
         } else {
             toast.error(t('finance.modal.fillFieldsError'));
         }
@@ -603,6 +1318,9 @@ const BillsView: React.FC<{
         const dueDate = new Date(bill.dueDate);
         const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         
+        const catObj = transactionCategories.find(c => c.id === bill.categoryId || c.name.toLowerCase() === bill.category?.toLowerCase());
+        const assignedMember = familyMembers.find(m => m.id === bill.memberId);
+
         let statusText = '';
         let statusColor = 'text-light-text-secondary dark:text-text-secondary';
         if (!bill.paid) {
@@ -621,24 +1339,34 @@ const BillsView: React.FC<{
         }
 
         return (
-            <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3.5 bg-light-background dark:bg-background rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border border-slate-100 dark:border-zinc-800">
+            <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3 sm:p-3.5 bg-light-background dark:bg-background rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5 sm:gap-3 border border-slate-100 dark:border-zinc-800">
                 <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                        <p className="font-bold text-light-text-primary dark:text-text-primary">{bill.name}</p>
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-zinc-700 text-light-text-secondary dark:text-text-secondary capitalize font-medium">{bill.category}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{bill.name}</p>
+                        <CategoryBadge category={catObj} fallbackName={bill.category} />
                         {bill.recurrence !== 'none' && (
-                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize font-medium">{bill.recurrence}</span>
+                            <span className="text-[10px] sm:text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize font-medium">{bill.recurrence}</span>
+                        )}
+                        {assignedMember && (
+                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-light-text-secondary dark:text-text-secondary border border-slate-200 dark:border-zinc-700">
+                                <img 
+                                    src={assignedMember.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'} 
+                                    alt={assignedMember.name} 
+                                    className="w-3.5 h-3.5 rounded-full object-cover" 
+                                />
+                                <span className="truncate max-w-[80px]">{assignedMember.name}</span>
+                            </span>
                         )}
                     </div>
-                    <p className={`text-xs font-semibold mt-1 ${statusColor}`}>{statusText}</p>
+                    <p className={`text-[11px] sm:text-xs font-semibold mt-0.5 ${statusColor}`}>{statusText}</p>
                 </div>
-                <div className="flex items-center justify-between sm:justify-end gap-3 self-stretch sm:self-auto">
-                    <p className="font-bold text-lg text-light-text-primary dark:text-text-primary">{currencySymbol}{bill.amount.toFixed(2)}</p>
+                <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 self-stretch sm:self-auto">
+                    <p className="font-bold text-base sm:text-lg text-light-text-primary dark:text-text-primary">{currencySymbol}{bill.amount.toFixed(2)}</p>
                     
                     <div className="flex items-center gap-1.5">
                         <button 
                             onClick={() => handleTogglePaid(bill)} 
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${bill.paid ? 'bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-text-primary hover:bg-slate-300' : 'bg-primary text-white hover:bg-primary/90'}`}
+                            className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${bill.paid ? 'bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-text-primary hover:bg-slate-300' : 'bg-primary text-white hover:bg-primary/90'}`}
                         >
                             {bill.paid ? t('finance.modal.markUnpaid') : t('finance.bills.pay')}
                         </button>
@@ -651,13 +1379,13 @@ const BillsView: React.FC<{
                                 {menuOpen && (
                                     <motion.div
                                         initial={{ opacity: 0, scale: 0.95, y: -5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-                                        className="absolute right-0 top-8 w-44 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-20 p-1.5 space-y-1"
+                                        className="absolute right-0 top-8 w-44 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-20 p-1.5 space-y-1 text-xs"
                                     >
-                                        <button onClick={() => { openBillModal(bill); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
-                                            <HiPencil className="h-3.5 w-3.5" /> {t('finance.modal.actions.edit')}
+                                        <button onClick={() => { openBillModal(bill); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                            <HiPencil className="h-4 w-4" /> {t('finance.modal.actions.edit')}
                                         </button>
-                                        <button onClick={() => { setDeletingBill(bill); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md text-red-500 hover:bg-red-500/10">
-                                            <HiTrash className="h-3.5 w-3.5" /> {t('finance.modal.actions.delete')}
+                                        <button onClick={() => { setDeletingBill(bill); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 font-medium rounded-md text-red-500 hover:bg-red-500/10">
+                                            <HiTrash className="h-4 w-4" /> {t('finance.modal.actions.delete')}
                                         </button>
                                     </motion.div>
                                 )}
@@ -679,92 +1407,145 @@ const BillsView: React.FC<{
                         placeholder={t('finance.searchPlaceholder')} 
                         value={searchQuery} 
                         onChange={(e) => setSearchQuery(e.target.value)} 
-                        className="w-full text-sm p-2 pl-9 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-700 focus:ring-1 focus:ring-primary"
+                        className="w-full text-base sm:text-sm p-2 pl-9 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-700 focus:ring-1 focus:ring-primary"
                     />
                 </div>
-                <button onClick={() => openBillModal()} className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-lg flex items-center justify-center text-sm font-semibold hover:bg-opacity-90 transition-colors shrink-0">
+                <button onClick={() => openBillModal()} className="w-full sm:w-auto px-3.5 py-2 bg-primary text-white rounded-lg flex items-center justify-center text-xs sm:text-sm font-semibold hover:bg-opacity-90 transition-colors shrink-0">
                     <HiPlus className="h-4 w-4 mr-1.5"/>{t('finance.addRecurringBill')}
                 </button>
             </div>
 
             {/* Category Chips */}
             <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs">
-                {['all', ...Object.values(BillCategory)].map(cat => (
+                <button
+                    onClick={() => setSelectedCategory('all')}
+                    className={`px-3 py-1.5 rounded-full capitalize whitespace-nowrap font-medium transition-colors ${selectedCategory === 'all' ? 'bg-primary text-white' : 'bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700 text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
+                >
+                    All Categories
+                </button>
+                {transactionCategories.map(cat => (
                     <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`px-3 py-1.5 rounded-full capitalize whitespace-nowrap font-medium transition-colors ${selectedCategory === cat ? 'bg-primary text-white' : 'bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700 text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
+                        key={cat.id}
+                        onClick={() => setSelectedCategory(cat.id)}
+                        className={`px-3 py-1.5 rounded-full capitalize whitespace-nowrap font-medium transition-colors ${selectedCategory === cat.id ? 'bg-primary text-white' : 'bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700 text-light-text-secondary dark:text-text-secondary hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
                     >
-                        {cat}
+                        {cat.name}
                     </button>
                 ))}
             </div>
 
             <Card>
                 <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-semibold">{t('finance.bills.upcoming')}</h3>
+                    <h3 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">{t('finance.bills.upcoming')}</h3>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500 font-semibold">{upcomingBills.length}</span>
                 </div>
                 {upcomingBills.length > 0 ? (
                     <div className="space-y-2"><AnimatePresence>{upcomingBills.map(b => <BillItem key={b.id} bill={b}/>)}</AnimatePresence></div>
                 ) : (
-                    <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.noBills')}</p>
+                    <p className="text-center text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.noBills')}</p>
                 )}
             </Card>
 
             <Card>
                 <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-semibold">{t('finance.bills.paid')}</h3>
+                    <h3 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">{t('finance.bills.paid')}</h3>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 font-semibold">{paidBills.length}</span>
                 </div>
                 {paidBills.length > 0 ? (
                     <div className="space-y-2"><AnimatePresence>{paidBills.map(b => <BillItem key={b.id} bill={b}/>)}</AnimatePresence></div>
                 ) : (
-                    <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.noPaidBills')}</p>
+                    <p className="text-center text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.noPaidBills')}</p>
                 )}
             </Card>
 
             {/* Add / Edit Bill Modal */}
             <Modal isOpen={isBillModalOpen} onClose={() => setBillModalOpen(false)} title={editingBill ? t('finance.modal.editBill') : t('finance.modal.addBill')}>
-                <div className="space-y-4">
+                <div className="space-y-4 py-1">
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.billName')}</label>
-                        <input type="text" placeholder={t('finance.modal.billName')} value={billForm.name} onChange={e => setBillForm(s => ({...s, name: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            {t('finance.modal.billName')} *
+                        </label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. WiFi & Internet, Electricity, Rent" 
+                            value={billForm.name} 
+                            onChange={e => setBillForm(s => ({...s, name: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.amount')}</label>
-                            <input type="number" placeholder="0.00" value={billForm.amount} onChange={e => setBillForm(s => ({...s, amount: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                                {t('finance.modal.amount')} ({currencySymbol}) *
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00" 
+                                value={billForm.amount} 
+                                onChange={e => setBillForm(s => ({...s, amount: e.target.value}))} 
+                                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                            />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.dueDate')}</label>
-                            <input type="date" value={billForm.dueDate} onChange={e => setBillForm(s => ({...s, dueDate: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                                {t('finance.modal.dueDate')} *
+                            </label>
+                            <input 
+                                type="date" 
+                                value={billForm.dueDate} 
+                                onChange={e => setBillForm(s => ({...s, dueDate: e.target.value}))} 
+                                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
+                            />
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.category')}</label>
-                            <select value={billForm.category} onChange={e => setBillForm(s => ({...s, category: e.target.value as BillCategory}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
-                                {Object.values(BillCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.recurrence')}</label>
-                            <select value={billForm.recurrence} onChange={e => setBillForm(s => ({...s, recurrence: e.target.value as any}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600">
-                                <option value="monthly">{t('finance.modal.recurrenceOptions.monthly')}</option>
-                                <option value="weekly">{t('finance.modal.recurrenceOptions.weekly')}</option>
-                                <option value="yearly">{t('finance.modal.recurrenceOptions.yearly')}</option>
-                                <option value="none">{t('finance.modal.recurrenceOptions.none')}</option>
-                            </select>
-                        </div>
+                    
+                    {/* Category Chip Picker */}
+                    <CategoryChipPicker
+                        categories={transactionCategories}
+                        selectedCategoryId={billForm.categoryId}
+                        onSelect={(id) => setBillForm(s => ({ ...s, categoryId: id }))}
+                        onAddCategory={addTransactionCategory}
+                    />
+
+                    {/* Family Member Picker */}
+                    <FamilyMemberPicker
+                        members={familyMembers}
+                        selectedMemberId={billForm.memberId}
+                        onSelect={(id) => setBillForm(s => ({ ...s, memberId: id }))}
+                    />
+
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            {t('finance.modal.recurrence')}
+                        </label>
+                        <select 
+                            value={billForm.recurrence} 
+                            onChange={e => setBillForm(s => ({...s, recurrence: e.target.value as any}))} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
+                        >
+                            <option value="monthly">{t('finance.modal.recurrenceOptions.monthly')}</option>
+                            <option value="weekly">{t('finance.modal.recurrenceOptions.weekly')}</option>
+                            <option value="yearly">{t('finance.modal.recurrenceOptions.yearly')}</option>
+                            <option value="none">{t('finance.modal.recurrenceOptions.none')}</option>
+                        </select>
                     </div>
                     {editingBill && (
-                        <label className="flex items-center gap-2 text-sm font-medium cursor-pointer pt-1">
-                            <input type="checkbox" checked={billForm.paid} onChange={e => setBillForm(s => ({ ...s, paid: e.target.checked }))} className="h-4 w-4 rounded text-primary focus:ring-primary" />
+                        <label className="flex items-center gap-2.5 text-sm font-medium cursor-pointer pt-1 text-light-text-primary dark:text-text-primary">
+                            <input 
+                                type="checkbox" 
+                                checked={billForm.paid} 
+                                onChange={e => setBillForm(s => ({ ...s, paid: e.target.checked }))} 
+                                className="h-4 w-4 rounded-md text-primary focus:ring-primary" 
+                            />
                             <span>{t('finance.modal.markPaid')}</span>
                         </label>
                     )}
-                    <button onClick={handleSaveBill} className="w-full py-2.5 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 transition-colors">
+                    <button 
+                        onClick={handleSaveBill} 
+                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md active:scale-[0.99] transition-colors text-sm"
+                    >
                         {editingBill ? t('finance.modal.saveChanges') : t('finance.modal.addBillBtn')}
                     </button>
                 </div>
@@ -820,36 +1601,36 @@ const BorrowLendItemCard: React.FC<{
     const progressColor = isBorrowing ? 'bg-orange-500' : 'bg-green-500';
 
     return (
-        <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 bg-light-background dark:bg-background rounded-2xl space-y-3 border border-slate-100 dark:border-zinc-800">
+        <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3.5 sm:p-4 bg-light-background dark:bg-background rounded-2xl space-y-3 border border-slate-100 dark:border-zinc-800">
             <div className="flex justify-between items-start">
                 <div>
-                    <p className="font-bold text-light-text-primary dark:text-text-primary">{isBorrowing ? item.lenderName : item.borrowerName}</p>
-                    <p className="text-xs text-light-text-secondary dark:text-text-secondary">{t(isBorrowing ? 'finance.borrowLend.lender' : 'finance.borrowLend.borrower')}</p>
+                    <p className="font-bold text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{isBorrowing ? item.lenderName : item.borrowerName}</p>
+                    <p className="text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary">{t(isBorrowing ? 'finance.borrowLend.lender' : 'finance.borrowLend.borrower')}</p>
                 </div>
                 <div className="relative" ref={menuRef}>
-                    <button onClick={() => setMenuOpen(p => !p)} className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
+                    <button onClick={() => setMenuOpen(p => !p)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
                         <HiEllipsisVertical className="h-5 w-5" />
                     </button>
                     <AnimatePresence>
                         {menuOpen && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-                                className="absolute top-8 right-0 w-48 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-10 p-1.5 space-y-1"
+                                className="absolute top-8 right-0 w-48 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-10 p-1.5 space-y-1 text-xs"
                             >
-                                <button onClick={() => { onLogPayment(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
-                                    <HiPlus className="h-3.5 w-3.5" /> {t(isBorrowing ? 'finance.borrowLend.logRepayment' : 'finance.borrowLend.logReturn')}
+                                <button onClick={() => { onLogPayment(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                    <HiPlus className="h-4 w-4" /> {t(isBorrowing ? 'finance.borrowLend.logRepayment' : 'finance.borrowLend.logReturn')}
                                 </button>
-                                <button onClick={() => { onEdit(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
-                                    <HiPencil className="h-3.5 w-3.5" /> {t('finance.modal.actions.edit')}
+                                <button onClick={() => { onEdit(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                    <HiPencil className="h-4 w-4" /> {t('finance.modal.actions.edit')}
                                 </button>
                                 {!isBorrowing && onWriteOff && (
-                                     <button onClick={() => { onWriteOff(item.id); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
-                                        <HiOutlineReceiptRefund className="h-3.5 w-3.5" /> {t('finance.borrowLend.writeOff')}
+                                     <button onClick={() => { onWriteOff(item.id); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                        <HiOutlineReceiptRefund className="h-4 w-4" /> {t('finance.borrowLend.writeOff')}
                                     </button>
                                 )}
                                 <div className="h-px bg-slate-200 dark:bg-zinc-700 my-1"></div>
-                                <button onClick={() => { onDelete(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md text-red-500 hover:bg-red-500/10">
-                                    <HiTrash className="h-3.5 w-3.5" /> {t('finance.modal.actions.delete')}
+                                <button onClick={() => { onDelete(item); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 font-medium rounded-md text-red-500 hover:bg-red-500/10">
+                                    <HiTrash className="h-4 w-4" /> {t('finance.modal.actions.delete')}
                                 </button>
                             </motion.div>
                         )}
@@ -857,19 +1638,19 @@ const BorrowLendItemCard: React.FC<{
                 </div>
             </div>
             
-            <div className={`p-3 rounded-lg flex justify-between items-center ${accentClasses}`}>
+            <div className={`p-2.5 sm:p-3 rounded-lg flex justify-between items-center ${accentClasses}`}>
                 <div>
-                    <p className="text-xs font-semibold opacity-80">{t('finance.borrowLend.remaining')}</p>
-                    <p className="text-2xl font-bold">{currencySymbol}{remaining.toFixed(2)}</p>
+                    <p className="text-[11px] sm:text-xs font-semibold opacity-80">{t('finance.borrowLend.remaining')}</p>
+                    <p className="text-xl sm:text-2xl font-bold">{currencySymbol}{remaining.toFixed(2)}</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-xs font-semibold opacity-80">{t('finance.borrowLend.total')}</p>
-                    <p className="font-semibold">{currencySymbol}{item.amount.toFixed(2)}</p>
+                    <p className="text-[11px] sm:text-xs font-semibold opacity-80">{t('finance.borrowLend.total')}</p>
+                    <p className="text-xs sm:text-sm font-semibold">{currencySymbol}{item.amount.toFixed(2)}</p>
                 </div>
             </div>
 
             <div>
-                <div className="flex justify-between text-xs font-medium text-light-text-secondary dark:text-text-secondary mb-1">
+                <div className="flex justify-between text-[11px] sm:text-xs font-medium text-light-text-secondary dark:text-text-secondary mb-1">
                     <span>{currencySymbol}{totalPaid.toFixed(2)} {t('finance.borrowLend.paid')}</span>
                     <span>{percentage}%</span>
                 </div>
@@ -878,7 +1659,7 @@ const BorrowLendItemCard: React.FC<{
                 </div>
             </div>
             
-            <div className="flex justify-between items-center text-xs text-light-text-secondary dark:text-text-secondary pt-1">
+            <div className="flex justify-between items-center text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary pt-1">
                 <p>{t('finance.borrowLend.dueDate')} <span className={`font-semibold ${isOverdue ? 'text-red-500' : 'text-light-text-primary dark:text-text-primary'}`}>{new Date(dueDate).toLocaleDateString()}</span></p>
                 {isOverdue && <span className="px-2 py-0.5 bg-red-500/20 text-red-500 text-[10px] font-bold rounded-full">{t('finance.borrowLend.overdue')}</span>}
             </div>
@@ -911,10 +1692,10 @@ const BorrowLendItemCard: React.FC<{
                                         {onDeletePayment && (
                                             <button 
                                                 onClick={() => onDeletePayment(item.id, idx, isBorrowing)} 
-                                                className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-red-500/10 transition-colors"
+                                                className="text-red-400 hover:text-red-500 p-1.5 rounded hover:bg-red-500/10 transition-colors"
                                                 title="Delete this payment record"
                                             >
-                                                <HiTrash className="h-3.5 w-3.5" />
+                                                <HiTrash className="h-4 w-4" />
                                             </button>
                                         )}
                                     </div>
@@ -1046,8 +1827,8 @@ const BorrowLendView: React.FC<{
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
                 <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-semibold">{t('finance.borrowLend.youOwe')}</h3>
-                    <button onClick={() => openModal('borrowing')} className="p-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"><HiPlus/></button>
+                    <h3 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">{t('finance.borrowLend.youOwe')}</h3>
+                    <button onClick={() => openModal('borrowing')} className="p-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"><HiPlus className="h-4 w-4"/></button>
                 </div>
                 {borrowings.filter(b => b.status === 'outstanding').length > 0 ? (
                     <div className="space-y-3">
@@ -1066,13 +1847,13 @@ const BorrowLendView: React.FC<{
                         </AnimatePresence>
                     </div>
                 ) : (
-                    <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.borrowLend.noBorrowings')}</p>
+                    <p className="text-center text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.borrowLend.noBorrowings')}</p>
                 )}
             </Card>
             <Card>
                 <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-semibold">{t('finance.borrowLend.owedToYou')}</h3>
-                    <button onClick={() => openModal('lending')} className="p-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"><HiPlus/></button>
+                    <h3 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">{t('finance.borrowLend.owedToYou')}</h3>
+                    <button onClick={() => openModal('lending')} className="p-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"><HiPlus className="h-4 w-4"/></button>
                 </div>
                 {lendings.filter(l => l.status === 'outstanding').length > 0 ? (
                     <div className="space-y-3">
@@ -1092,7 +1873,7 @@ const BorrowLendView: React.FC<{
                         </AnimatePresence>
                     </div>
                 ) : (
-                    <p className="text-center text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.borrowLend.noLendings')}</p>
+                    <p className="text-center text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary py-4">{t('finance.borrowLend.noLendings')}</p>
                 )}
             </Card>
 
@@ -1106,30 +1887,118 @@ const BorrowLendView: React.FC<{
                     modal === 'lending' ? t('finance.modal.addLending') :
                     t('finance.modal.editLending')
                 }>
-                <div className="space-y-4">
-                    <input type="text" placeholder={t(['borrowing', 'edit_borrowing'].includes(modal) ? 'finance.modal.lenderName' : 'finance.modal.borrowerName')} value={form.name} onChange={e => setForm(s => ({...s, name: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                    <input type="number" placeholder={t('finance.modal.amount')} value={form.amount} onChange={e => setForm(s => ({...s, amount: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                    <div className="grid grid-cols-2 gap-4">
-                        <input type="date" value={form.date} onChange={e => setForm(s => ({...s, date: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                        <input type="date" value={form.returnDate} onChange={e => setForm(s => ({...s, returnDate: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                <div className="space-y-4 py-1">
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            {['borrowing', 'edit_borrowing'].includes(modal) ? 'Lender Name *' : 'Borrower Name *'}
+                        </label>
+                        <input 
+                            type="text" 
+                            placeholder={['borrowing', 'edit_borrowing'].includes(modal) ? 'e.g. Alex Morgan, Bank, Friend' : 'e.g. John Doe, Colleague, Relative'} 
+                            value={form.name} 
+                            onChange={e => setForm(s => ({...s, name: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
                     </div>
-                    <input type="text" placeholder={t('finance.modal.notes')} value={form.notes} onChange={e => setForm(s => ({...s, notes: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                    <button onClick={handleSave} className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90">{['borrowing', 'lending'].includes(modal) ? t('finance.modal.addRecord') : t('finance.modal.saveChanges')}</button>
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            {t('finance.modal.amount')} ({currencySymbol}) *
+                        </label>
+                        <input 
+                            type="number" 
+                            step="0.01" 
+                            min="0"
+                            placeholder="0.00" 
+                            value={form.amount} 
+                            onChange={e => setForm(s => ({...s, amount: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                                {['borrowing', 'edit_borrowing'].includes(modal) ? 'Borrowed Date *' : 'Lent Date *'}
+                            </label>
+                            <input 
+                                type="date" 
+                                value={form.date} 
+                                onChange={e => setForm(s => ({...s, date: e.target.value}))} 
+                                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                                {['borrowing', 'edit_borrowing'].includes(modal) ? 'Due Date *' : 'Return Date *'}
+                            </label>
+                            <input 
+                                type="date" 
+                                value={form.returnDate} 
+                                onChange={e => setForm(s => ({...s, returnDate: e.target.value}))} 
+                                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            {t('finance.modal.notes')} (Optional)
+                        </label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Emergency medical expenses, Travel tickets" 
+                            value={form.notes} 
+                            onChange={e => setForm(s => ({...s, notes: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                    </div>
+                    <button 
+                        onClick={handleSave} 
+                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md active:scale-[0.99] transition-colors text-sm"
+                    >
+                        {['borrowing', 'lending'].includes(modal) ? t('finance.modal.addRecord') : t('finance.modal.saveChanges')}
+                    </button>
                 </div>
             </Modal>
              <Modal isOpen={modal === 'repayment' || modal === 'return'} onClose={() => openModal('none')} title={t(modal === 'repayment' ? 'finance.modal.logRepayment' : 'finance.modal.logReturn')}>
-                <div className="space-y-4">
-                    <input type="number" placeholder={t(modal === 'repayment' ? 'finance.modal.repaymentAmount' : 'finance.modal.returnAmount')} value={form.amount} onChange={e => setForm(s => ({...s, amount: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                    <input type="date" value={form.date} onChange={e => setForm(s => ({...s, date: e.target.value}))} className="w-full p-3 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
-                    <button onClick={handleSave} className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90">{t('finance.modal.log')}</button>
+                <div className="space-y-4 py-1">
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            {t(modal === 'repayment' ? 'finance.modal.repaymentAmount' : 'finance.modal.returnAmount')} ({currencySymbol}) *
+                        </label>
+                        <input 
+                            type="number" 
+                            step="0.01" 
+                            min="0"
+                            placeholder="0.00" 
+                            value={form.amount} 
+                            onChange={e => setForm(s => ({...s, amount: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            Payment Date *
+                        </label>
+                        <input 
+                            type="date" 
+                            value={form.date} 
+                            onChange={e => setForm(s => ({...s, date: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                    </div>
+                    <button 
+                        onClick={handleSave} 
+                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md active:scale-[0.99] transition-colors text-sm"
+                    >
+                        {t('finance.modal.log')}
+                    </button>
                 </div>
             </Modal>
             {/* Delete Confirmation Modal */}
             <Modal isOpen={modal === 'delete_borrowing' || modal === 'delete_lending'} onClose={() => openModal('none')} title={t('finance.modal.deleteTitle')}>
                 <p className="text-light-text-secondary dark:text-text-secondary">{t('finance.modal.deleteConfirm')}</p>
-                <div className="flex justify-end gap-4 mt-6">
-                    <button onClick={() => openModal('none')} className="px-4 py-2 bg-slate-200 dark:bg-zinc-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-zinc-600">{t('tasks.deleteModal.cancel')}</button>
-                    <button onClick={handleDelete} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600">{t('tasks.deleteModal.confirm')}</button>
+                <div className="flex justify-end gap-3 mt-6">
+                    <button onClick={() => openModal('none')} className="px-3.5 py-2 bg-slate-200 dark:bg-zinc-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-zinc-600 text-xs sm:text-sm">{t('tasks.deleteModal.cancel')}</button>
+                    <button onClick={handleDelete} className="px-3.5 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 text-xs sm:text-sm">{t('tasks.deleteModal.confirm')}</button>
                 </div>
             </Modal>
         </div>
@@ -1187,9 +2056,9 @@ const SavingsGoalCard: React.FC<{
         <Card className="flex flex-col justify-between">
             <div className="relative">
                 <div className="flex justify-between items-start">
-                    <h3 className="text-lg font-bold text-light-text-primary dark:text-text-primary pr-8">{goal.title}</h3>
+                    <h3 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary pr-8">{goal.title}</h3>
                     <div className="relative" ref={menuRef}>
-                        <button onClick={() => setMenuOpen(prev => !prev)} className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
+                        <button onClick={() => setMenuOpen(prev => !prev)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
                             <HiEllipsisVertical className="h-5 w-5" />
                         </button>
                         <AnimatePresence>
@@ -1198,20 +2067,20 @@ const SavingsGoalCard: React.FC<{
                                     initial={{ opacity: 0, scale: 0.95, y: -10 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                    className="absolute top-8 right-0 w-44 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-10 p-1.5 space-y-1"
+                                    className="absolute top-8 right-0 w-44 bg-light-surface dark:bg-surface rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 z-10 p-1.5 space-y-1 text-xs"
                                 >
-                                    <button onClick={() => { onAddDeposit(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
-                                        <HiPlus className="h-3.5 w-3.5 text-green-500" /> {t('finance.savingsPage.addDeposit')}
+                                    <button onClick={() => { onAddDeposit(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                        <HiPlus className="h-4 w-4 text-green-500" /> {t('finance.savingsPage.addDeposit')}
                                     </button>
-                                    <button onClick={() => { onWithdraw(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
-                                        <HiOutlineReceiptRefund className="h-3.5 w-3.5 text-orange-500" /> {t('finance.modal.withdraw')}
+                                    <button onClick={() => { onWithdraw(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                        <HiOutlineReceiptRefund className="h-4 w-4 text-orange-500" /> {t('finance.modal.withdraw')}
                                     </button>
-                                    <button onClick={() => { onEdit(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
-                                        <HiPencil className="h-3.5 w-3.5" /> {t('finance.modal.actions.edit')}
+                                    <button onClick={() => { onEdit(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 font-medium rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700/50">
+                                        <HiPencil className="h-4 w-4" /> {t('finance.modal.actions.edit')}
                                     </button>
                                     <div className="h-px bg-slate-200 dark:bg-zinc-700 my-1"></div>
-                                    <button onClick={() => { onDelete(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md text-red-500 hover:bg-red-500/10">
-                                        <HiTrash className="h-3.5 w-3.5" /> {t('finance.modal.actions.delete')}
+                                    <button onClick={() => { onDelete(); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 font-medium rounded-md text-red-500 hover:bg-red-500/10">
+                                        <HiTrash className="h-4 w-4" /> {t('finance.modal.actions.delete')}
                                     </button>
                                 </motion.div>
                             )}
@@ -1219,37 +2088,37 @@ const SavingsGoalCard: React.FC<{
                     </div>
                 </div>
 
-                <div className="relative my-6 flex items-center justify-center">
-                    <CircularProgress percentage={percentage} size={120} strokeWidth={12} />
+                <div className="relative my-4 sm:my-6 flex items-center justify-center">
+                    <CircularProgress percentage={percentage} size={110} strokeWidth={10} />
                     <div className="absolute flex flex-col items-center justify-center">
-                        <span className="text-3xl font-bold text-primary">{percentage}%</span>
+                        <span className="text-2xl sm:text-3xl font-bold text-primary">{percentage}%</span>
                     </div>
                 </div>
 
-                <div className="text-center space-y-2">
-                    <p className="text-sm text-light-text-secondary dark:text-text-secondary">
+                <div className="text-center space-y-1.5 sm:space-y-2">
+                    <p className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary">
                         {t('finance.savingsPage.saved')}: <span className="font-semibold text-light-text-primary dark:text-text-primary">{currencySymbol}{goal.currentAmount.toLocaleString()}</span> / {currencySymbol}{goal.targetAmount.toLocaleString()}
                     </p>
-                    <p className="text-sm font-semibold text-teal">
+                    <p className="text-xs sm:text-sm font-semibold text-teal">
                         {t('finance.savingsPage.remaining')}: {currencySymbol}{remaining.toLocaleString()}
                     </p>
                     {goal.deadlineDate && (
-                        <p className="text-xs text-light-text-secondary dark:text-text-secondary">
+                        <p className="text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary">
                             {t('finance.modal.deadline')}: {new Date(goal.deadlineDate).toLocaleDateString()}
                         </p>
                     )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-200 dark:border-zinc-750">
+                <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-200 dark:border-zinc-700">
                     <button 
                         onClick={onAddDeposit}
-                        className="w-full py-1.5 px-2 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors"
+                        className="w-full py-2 px-2 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors"
                     >
                         <HiPlus className="h-3.5 w-3.5" /> {t('finance.savingsPage.addDeposit')}
                     </button>
                     <button 
                         onClick={onWithdraw}
-                        className="w-full py-1.5 px-2 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors"
+                        className="w-full py-2 px-2 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors"
                     >
                         <HiOutlineReceiptRefund className="h-3.5 w-3.5" /> {t('finance.modal.withdraw')}
                     </button>
@@ -1265,13 +2134,13 @@ const CreateGoalCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
         <Card className="!p-0">
             <button
                 onClick={onClick}
-                className="w-full h-full min-h-[280px] flex flex-col items-center justify-center text-center p-6 text-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors rounded-2xl"
+                className="w-full h-full min-h-[240px] sm:min-h-[280px] flex flex-col items-center justify-center text-center p-4 sm:p-6 text-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors rounded-2xl"
             >
-                <div className="w-16 h-16 rounded-full border-2 border-dashed border-primary flex items-center justify-center mb-4">
-                    <HiPlus className="h-8 w-8" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 border-dashed border-primary flex items-center justify-center mb-3">
+                    <HiPlus className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-bold">{t('finance.savingsPage.createGoal')}</h3>
-                <p className="text-sm text-light-text-secondary dark:text-text-secondary mt-1">{t('finance.savingsPage.goalDescription')}</p>
+                <h3 className="text-base sm:text-lg font-bold">{t('finance.savingsPage.createGoal')}</h3>
+                <p className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary mt-1">{t('finance.savingsPage.goalDescription')}</p>
             </button>
         </Card>
     );
@@ -1399,37 +2268,85 @@ const SavingsView: React.FC<{
 
             {/* Add / Edit Goal Modal */}
             <Modal isOpen={modal.type === 'savings_goal' || modal.type === 'edit_goal'} onClose={() => openModal('none')} title={t(modal.type === 'edit_goal' ? 'finance.modal.editGoal' : 'finance.modal.addGoal')}>
-                <div className="space-y-4">
+                <div className="space-y-4 py-1">
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.goalTitle')}</label>
-                        <input type="text" placeholder={t('finance.modal.goalTitle')} value={form.title} onChange={e => setForm(s => ({...s, title: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            {t('finance.modal.goalTitle')} *
+                        </label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Emergency Fund, Vacation, New Laptop" 
+                            value={form.title} 
+                            onChange={e => setForm(s => ({...s, title: e.target.value}))} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.targetAmount')}</label>
-                            <input type="number" placeholder="0.00" value={form.targetAmount} onChange={e => setForm(s => ({...s, targetAmount: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                                {t('finance.modal.targetAmount')} ({currencySymbol}) *
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0"
+                                placeholder="0.00" 
+                                value={form.targetAmount} 
+                                onChange={e => setForm(s => ({...s, targetAmount: e.target.value}))} 
+                                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                            />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.deadline')}</label>
-                            <input type="date" value={form.deadlineDate} onChange={e => setForm(s => ({...s, deadlineDate: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                                {t('finance.modal.deadline')} (Optional)
+                            </label>
+                            <input 
+                                type="date" 
+                                value={form.deadlineDate} 
+                                onChange={e => setForm(s => ({...s, deadlineDate: e.target.value}))} 
+                                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"
+                            />
                         </div>
                     </div>
 
                     {modal.type === 'savings_goal' && (
                         <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.initialDeposit')}</label>
-                            <input type="number" placeholder="0.00" value={form.initialDeposit} onChange={e => setForm(s => ({...s, initialDeposit: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                                {t('finance.modal.initialDeposit')} ({currencySymbol}) (Optional)
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0"
+                                placeholder="0.00" 
+                                value={form.initialDeposit} 
+                                onChange={e => setForm(s => ({...s, initialDeposit: e.target.value}))} 
+                                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                            />
                         </div>
                     )}
 
                     {modal.type === 'edit_goal' && (
                         <div>
-                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">Current Saved Amount (Balance Adjustment)</label>
-                            <input type="number" placeholder="0.00" value={form.currentAmount} onChange={e => setForm(s => ({...s, currentAmount: e.target.value}))} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                                Current Saved Amount ({currencySymbol})
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0"
+                                placeholder="0.00" 
+                                value={form.currentAmount} 
+                                onChange={e => setForm(s => ({...s, currentAmount: e.target.value}))} 
+                                className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                            />
                         </div>
                     )}
 
-                    <button onClick={handleSaveGoal} className="w-full py-2.5 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 transition-colors">
+                    <button 
+                        onClick={handleSaveGoal} 
+                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md active:scale-[0.99] transition-colors text-sm"
+                    >
                         {t(modal.type === 'edit_goal' ? 'finance.modal.saveChanges' : 'finance.modal.addRecord')}
                     </button>
                 </div>
@@ -1437,36 +2354,69 @@ const SavingsView: React.FC<{
             
             {/* Add Deposit Modal */}
             <Modal isOpen={modal.type === 'deposit'} onClose={() => openModal('none')} title={t('finance.modal.addDeposit', { goalName: modal.goal?.title })}>
-                 <div className="space-y-4">
+                 <div className="space-y-4 py-1">
                     <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.depositAmount')}</label>
-                        <input type="number" placeholder="0.00" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            {t('finance.modal.depositAmount')} ({currencySymbol}) *
+                        </label>
+                        <input 
+                            type="number" 
+                            step="0.01" 
+                            min="0"
+                            placeholder="0.00" 
+                            value={depositAmount} 
+                            onChange={e => setDepositAmount(e.target.value)} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
                     </div>
-                    <button onClick={handleSaveDeposit} className="w-full py-2.5 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 transition-colors">{t('finance.savingsPage.addDeposit')}</button>
+                    <button 
+                        onClick={handleSaveDeposit} 
+                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md active:scale-[0.99] transition-colors text-sm"
+                    >
+                        {t('finance.savingsPage.addDeposit')}
+                    </button>
                 </div>
             </Modal>
 
             {/* Withdraw Modal */}
             <Modal isOpen={modal.type === 'withdraw'} onClose={() => openModal('none')} title={t('finance.modal.withdrawDeposit', { goalName: modal.goal?.title || '' })}>
-                 <div className="space-y-4">
-                    <p className="text-xs text-light-text-secondary dark:text-text-secondary">
-                        Available saved balance: <span className="font-semibold text-light-text-primary dark:text-text-primary">{currencySymbol}{modal.goal?.currentAmount.toFixed(2) || '0.00'}</span>
-                    </p>
-                    <div>
-                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">{t('finance.modal.withdrawAmount')}</label>
-                        <input type="number" placeholder="0.00" max={modal.goal?.currentAmount || 0} value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} className="w-full p-2.5 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-slate-600"/>
+                 <div className="space-y-4 py-1">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200/60 dark:border-zinc-700/60">
+                        <p className="text-xs text-light-text-secondary dark:text-text-secondary">
+                            Available saved balance: <span className="font-bold text-light-text-primary dark:text-text-primary">{currencySymbol}{modal.goal?.currentAmount.toFixed(2) || '0.00'}</span>
+                        </p>
                     </div>
-                    <button onClick={handleWithdraw} className="w-full py-2.5 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors">{t('finance.modal.withdraw')}</button>
+                    <div>
+                        <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
+                            {t('finance.modal.withdrawAmount')} ({currencySymbol}) *
+                        </label>
+                        <input 
+                            type="number" 
+                            step="0.01" 
+                            min="0"
+                            placeholder="0.00" 
+                            max={modal.goal?.currentAmount || 0} 
+                            value={withdrawAmount} 
+                            onChange={e => setWithdrawAmount(e.target.value)} 
+                            className="w-full p-2.5 sm:p-3 text-sm border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                    </div>
+                    <button 
+                        onClick={handleWithdraw} 
+                        className="w-full py-3 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 shadow-md active:scale-[0.99] transition-colors text-sm"
+                    >
+                        {t('finance.modal.withdraw')}
+                    </button>
                 </div>
             </Modal>
 
             {/* Delete Goal Confirmation Modal */}
             <Modal isOpen={modal.type === 'delete_goal'} onClose={() => openModal('none')} title={t('finance.modal.deleteGoal')}>
                  <div className="space-y-6">
-                    <p className="text-light-text-secondary dark:text-text-secondary">{t('finance.modal.deleteGoalConfirm', { goalName: modal.goal?.title || '' })}</p>
-                    <div className="flex justify-end gap-4">
-                        <button onClick={() => openModal('none')} className="px-4 py-2 bg-slate-200 dark:bg-zinc-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-zinc-600 text-sm">{t('tasks.deleteModal.cancel')}</button>
-                        <button onClick={handleDeleteGoal} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 text-sm">{t('tasks.deleteModal.confirm')}</button>
+                    <p className="text-light-text-secondary dark:text-text-secondary text-sm">{t('finance.modal.deleteGoalConfirm', { goalName: modal.goal?.title || '' })}</p>
+                    <div className="flex justify-end gap-3">
+                        <button onClick={() => openModal('none')} className="px-3.5 py-2 bg-slate-200 dark:bg-zinc-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-zinc-600 text-xs sm:text-sm">{t('tasks.deleteModal.cancel')}</button>
+                        <button onClick={handleDeleteGoal} className="px-3.5 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 text-xs sm:text-sm">{t('tasks.deleteModal.confirm')}</button>
                     </div>
                 </div>
             </Modal>
@@ -1483,18 +2433,18 @@ const SavingsGoalItem: React.FC<{ goal: SavingsGoal, currencySymbol: string, onA
     return (
         <div>
             <div className="flex justify-between items-center mb-1">
-                <span className="font-semibold text-sm">{goal.title}</span>
-                <span className="font-bold text-sm text-primary">{percentage}%</span>
+                <span className="font-semibold text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{goal.title}</span>
+                <span className="font-bold text-xs sm:text-sm text-primary">{percentage}%</span>
             </div>
-            <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-2.5">
-                <div className="bg-primary h-2.5 rounded-full" style={{ width: `${percentage}%` }}></div>
+            <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
             </div>
-            <div className="flex justify-between text-xs mt-1 text-light-text-secondary dark:text-text-secondary">
+            <div className="flex justify-between text-[11px] sm:text-xs mt-1 text-light-text-secondary dark:text-text-secondary">
                 <span>{currencySymbol}{goal.currentAmount.toFixed(0)}</span>
                 <span>{t('finance.savingsPage.of')} {currencySymbol}{goal.targetAmount.toFixed(0)}</span>
             </div>
              {onAddDeposit && (
-                <button onClick={onAddDeposit} className="w-full mt-3 text-sm py-2 bg-primary/10 text-primary font-semibold rounded-lg hover:bg-primary/20 transition-colors">{t('finance.savingsPage.addDeposit')}</button>
+                <button onClick={onAddDeposit} className="w-full mt-2.5 text-xs py-2 bg-primary/10 text-primary font-semibold rounded-lg hover:bg-primary/20 transition-colors">{t('finance.savingsPage.addDeposit')}</button>
              )}
         </div>
     );
