@@ -18,6 +18,7 @@ import {
     HiPlus
 } from 'react-icons/hi2';
 import { useTranslation } from '../hooks/useTranslation';
+import { findDoseHistoryEntry } from '../services/notificationService';
 
 type Dose = {
     medId: string;
@@ -230,10 +231,7 @@ const HealthPage: React.FC = () => {
                 const doseDateTime = new Date();
                 doseDateTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
 
-                const historyEntry = med.history.find(h => {
-                    const hDate = new Date(h.timestamp);
-                    return hDate.toDateString() === doseDateTime.toDateString() && hDate.getHours() === doseDateTime.getHours() && hDate.getMinutes() === doseDateTime.getMinutes();
-                });
+                const historyEntry = findDoseHistoryEntry(med.history, doseDateTime, doseDateTime.getHours(), doseDateTime.getMinutes());
 
                 return {
                     medId: med.id,
@@ -339,7 +337,7 @@ const HealthPage: React.FC = () => {
                 title={t('health.title')}
                 subtitle={t('health.subtitle')}
                 action={
-                    <select value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)} className="w-full sm:w-auto p-2 border rounded-xl bg-light-surface dark:bg-surface border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-sm font-medium">
+                    <select aria-label="Filter by family member" value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)} className="w-full sm:w-auto p-2 border rounded-xl bg-light-surface dark:bg-surface border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-sm font-medium">
                         <option value="all">{t('health.allMembers')}</option>
                         {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>

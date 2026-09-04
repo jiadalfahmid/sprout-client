@@ -10,10 +10,12 @@ import TasksPage from './pages/TasksPage';
 import SettingsPage from './pages/SettingsPage';
 import CalendarPage from './pages/CalendarPage';
 import MedicinesSettingsPage from './pages/MedicinesSettingsPage';
+import { CategoriesSettingsPage } from './pages/CategoriesSettingsPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 import RestockPage from './pages/RestockPage';
 import MedicalProfilePage from './pages/MedicalProfilePage';
 import LandingPage from './pages/LandingPage';
+import JoinFamilyPage from './pages/JoinFamilyPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
 import { Toaster } from 'react-hot-toast';
@@ -55,10 +57,14 @@ const ThemedApp = () => {
             <Route path="/calendar" element={<CalendarPage />} /> 
             <Route path="/health" element={<HealthPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/categories" element={<CategoriesSettingsPage />} />
             <Route path="/settings/medicines" element={<MedicinesSettingsPage />} />
             <Route path="/settings/appointments" element={<AppointmentsPage />} />
             <Route path="/restock" element={<RestockPage />} />
             <Route path="/tasks" element={<TasksPage />} />
+            <Route path="/join" element={<JoinFamilyPage />} />
+            <Route path="/join/:inviteId" element={<JoinFamilyPage />} />
+            <Route path="/invite/:inviteId" element={<JoinFamilyPage />} />
             <Route path="/landing" element={<LandingPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/terms" element={<TermsPage />} />

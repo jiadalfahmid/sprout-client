@@ -94,6 +94,27 @@ export const playNotificationSound = () => {
 };
 
 /**
+ * Shared Dose History Entry Matcher
+ * Accurately matches medicine dose logs by date, hour, AND minute.
+ */
+export function findDoseHistoryEntry(
+  history: Medicine['history'] | undefined,
+  date: Date,
+  hour: number,
+  minute: number
+) {
+  if (!history) return undefined;
+  return history.find((h) => {
+    const hDate = new Date(h.timestamp);
+    return (
+      hDate.toDateString() === date.toDateString() &&
+      hDate.getHours() === hour &&
+      hDate.getMinutes() === minute
+    );
+  });
+}
+
+/**
  * Intelligent Alert Engine
  * Evaluates medicine schedules, low stock thresholds, overdue or upcoming bills, and doctor appointments.
  */
@@ -151,23 +172,22 @@ export const generateSystemAlerts = ({
           const hour = parseInt(hourStr, 10);
           const minute = parseInt(minuteStr, 10);
 
-          // Check if dose was logged for this time today
-          const takenToday = med.history?.some((h) => {
-            const hDate = new Date(h.timestamp);
-            return (
-              hDate.toDateString() === today.toDateString() &&
-              hDate.getHours() === hour &&
-              h.status === 'taken'
-            );
-          });
+          // Check if dose was logged for this exact time today (hour + minute matching)
+          const historyEntry = findDoseHistoryEntry(med.history, today, hour, minute);
+          const takenToday = historyEntry?.status === 'taken';
 
           if (!takenToday) {
             const currentHour = now.getHours();
             const currentMin = now.getMinutes();
-            const isDueNow =
-              currentHour === hour && Math.abs(currentMin - minute) <= 45;
-            const isPastDue =
-              currentHour > hour || (currentHour === hour && currentMin > minute + 45);
+
+            const scheduledMinutesOfDay = hour * 60 + minute;
+            const nowMinutesOfDay = currentHour * 60 + currentMin;
+            let diffMinutes = nowMinutesOfDay - scheduledMinutesOfDay;
+            // handle midnight wrap-around when "now" is technically the next day for a late-night dose
+            if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+
+            const isDueNow = diffMinutes >= 0 && diffMinutes <= 45;
+            const isPastDue = diffMinutes > 45;
 
             if (isDueNow) {
               alerts.push({

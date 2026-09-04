@@ -184,7 +184,7 @@ const MedicalProfilePage: React.FC = () => {
             {memberReports.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {memberReports.map(report => (
-                        <a key={report.id} href={report.fileUrl} target="_blank" rel="noopener noreferrer" className="block p-3 bg-light-background dark:bg-background rounded-lg hover:shadow-md transition-shadow">
+                        <a key={report.id} href={report.fileUrl} target="_blank" rel="noopener noreferrer" aria-label={`View document ${report.name}`} className="block p-3 bg-light-background dark:bg-background rounded-lg hover:shadow-md transition-shadow">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 text-primary flex-shrink-0">
                                     <HiOutlineDocumentText className="h-7 w-7" />
@@ -251,6 +251,7 @@ const MedicalProfilePage: React.FC = () => {
                             Report Category *
                         </label>
                         <select 
+                            aria-label="Report Category"
                             value={category} 
                             onChange={e => setCategory(e.target.value as MedicalReportCategory)} 
                             className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary focus:ring-2 focus:ring-primary focus:border-transparent"

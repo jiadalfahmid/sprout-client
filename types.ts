@@ -42,6 +42,7 @@ export interface Bill {
   paid: boolean;
   recurrence: 'none' | 'weekly' | 'monthly' | 'yearly';
   paidOn?: string; // ISO string
+  paymentTransactionId?: string; // Transaction ID created when bill is marked paid
   memberId?: string; // Optional: undefined/omitted means "Shared/Household"
 }
 
@@ -91,15 +92,17 @@ export interface FamilyInvite {
   inviterUid: string;
   inviterName: string;
   inviterEmail?: string;
-  memberId: string;
-  memberName: string;
-  recipientEmail: string;
-  relation: string;
-  status: 'pending' | 'accepted' | 'cancelled';
+  memberId?: string;
+  memberName?: string;
+  recipientEmail?: string;
+  relation?: string;
+  customMessage?: string;
+  status: 'pending' | 'accepted' | 'cancelled' | 'superseded';
   createdAt: string;
   acceptedAt?: string;
   acceptedByUid?: string;
   acceptedByEmail?: string;
+  acceptedByName?: string;
 }
 
 export interface FamilyMember {
@@ -111,8 +114,10 @@ export interface FamilyMember {
   email?: string;
   inviteStatus?: 'none' | 'invited' | 'accepted';
   inviteId?: string;
+  inviteHistory?: string[];
   inviteSentAt?: string;
   linkedUid?: string;
+  linkedSince?: string;
 }
 
 export interface MedicineSchedule {

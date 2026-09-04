@@ -23,25 +23,61 @@ import {
   getInviteDocument,
   updateInviteDocument,
   subscribeToUserSubcollection,
+  subscribeToInviterInvites,
   saveUserProfile,
   getUserProfile,
   seedUserData,
-  setCachedAccessToken
+  setCachedAccessToken,
+  getAccessToken,
+  cancelPendingInvitesForMember,
+  clearAllCloudUserData
 } from '../services/firebaseService';
 import { 
   defaultNotificationSettings, 
   requestBrowserNotificationPermission, 
   sendBrowserNotification, 
   playNotificationSound,
-  generateSystemAlerts
+  generateSystemAlerts,
+  findDoseHistoryEntry
 } from '../services/notificationService';
 import { sendFamilyInviteViaGmail } from '../services/gmailService';
 import { fetchGoogleCalendarEvents, syncAppointmentToGoogleCalendar, syncBillToGoogleCalendar } from '../services/calendarService';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import toast from 'react-hot-toast';
 
-// UUID generator
-const uuidv4 = () => {
+// Cryptographically secure random hex & UUID generators
+const generateSecureRandomHex = (byteCount: number = 16): string => {
+  if (typeof crypto !== 'undefined') {
+    if (typeof crypto.randomUUID === 'function' && byteCount === 16) {
+      return crypto.randomUUID().replace(/-/g, '');
+    }
+    if (typeof crypto.getRandomValues === 'function') {
+      const bytes = new Uint8Array(byteCount);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    }
+  }
+  let result = '';
+  for (let i = 0; i < byteCount; i++) {
+    result += (Math.random() * 256 | 0).toString(16).padStart(2, '0');
+  }
+  return result;
+};
+
+const uuidv4 = (): string => {
+  if (typeof crypto !== 'undefined') {
+    if (typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    if (typeof crypto.getRandomValues === 'function') {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      bytes[6] = (bytes[6] & 0x0f) | 0x40; // RFC 4122 version 4
+      bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10
+      const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+    }
+  }
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
@@ -71,6 +107,8 @@ interface AppContextType {
   // Firebase Auth
   isGoogleAuthenticated: boolean;
   isGoogleLoading: boolean;
+  needsGoogleReauth: boolean;
+  reconnectGoogle: () => Promise<boolean>;
   isGuestMode: boolean;
   setGuestMode: (guest: boolean) => void;
   googleFirebaseUser: FirebaseUser | null;
@@ -93,7 +131,10 @@ interface AppContextType {
   syncAllToGoogleCalendar: () => Promise<{ appointmentsSynced: number; billsSynced: number }>;
   // Gmail Family Invite & Linking
   pendingInvite: FamilyInvite | null;
-  sendFamilyInvite: (memberId: string, email: string, customMessage?: string) => Promise<{ success: boolean; error?: string; mailtoFallback?: string }>;
+  sendFamilyInvite: (memberId: string, email: string, customMessage?: string) => Promise<{ success: boolean; inviteLink?: string; error?: string; mailtoFallback?: string }>;
+  generateFamilyInviteLink: (memberId?: string, email?: string, customMessage?: string) => Promise<{ inviteId: string; inviteLink: string }>;
+  copyFamilyInviteLink: (memberId?: string, email?: string) => Promise<string>;
+  getInviteDetails: (inviteId: string) => Promise<FamilyInvite | null>;
   cancelFamilyInvite: (memberId: string) => Promise<boolean>;
   acceptPendingInvite: (invite?: FamilyInvite) => Promise<void>;
   // Notification System
@@ -109,13 +150,14 @@ interface AppContextType {
   addNotification: (notif: Omit<Notification, 'id' | 'createdAt' | 'read'>) => void;
   // Core Entities
   transactions: Transaction[];
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => Transaction;
   updateTransaction: (transaction: Transaction) => void;
   deleteTransaction: (id: string) => void;
   transactionCategories: TransactionCategory[];
   addTransactionCategory: (category: Omit<TransactionCategory, 'id' | 'isCustom'> & { isCustom?: boolean }) => TransactionCategory;
   updateTransactionCategory: (category: TransactionCategory) => void;
   deleteTransactionCategory: (id: string) => void;
+  mergeTransactionCategories: (sourceId: string, targetId: string) => void;
   bills: Bill[];
   addBill: (bill: Omit<Bill, 'id' | 'paid' | 'paidOn'>) => void;
   updateBill: (bill: Bill) => boolean;
@@ -239,6 +281,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   // Firebase Auth State
   const [googleFirebaseUser, setGoogleFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isGoogleAuthenticated, setIsGoogleAuthenticated] = useState<boolean>(false);
+  const [needsGoogleReauth, setNeedsGoogleReauth] = useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
   const [isGuestMode, setIsGuestMode] = useLocalStorage<boolean>('isGuestMode', true);
   const [includeGoogleCalendar, setIncludeGoogleCalendar] = useLocalStorage<boolean>('includeGoogleCalendar', true);
@@ -271,7 +314,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           inviterUid: params.get('inviterUid') || '',
           inviterName: decodeURIComponent(params.get('inviterName') || 'Family Admin'),
           inviterEmail: params.get('inviterEmail') || undefined,
-          memberId: params.get('memberId') || '',
+          memberId: params.get('memberId') || undefined,
           memberName: decodeURIComponent(params.get('memberName') || 'Family Member'),
           recipientEmail: decodeURIComponent(params.get('recipientEmail') || ''),
           relation: decodeURIComponent(params.get('relation') || 'Family Member'),
@@ -280,9 +323,15 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         };
         setPendingInvite(invitePayload);
         localStorage.setItem('sprout_pending_invite', JSON.stringify(invitePayload));
-        // Clean URL to prevent repeated prompts on refresh
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
+
+        // Fetch fresh authoritative invite data from Firestore if available
+        getInviteDocument(inviteId).then((freshDoc) => {
+          if (freshDoc) {
+            setPendingInvite(freshDoc);
+            localStorage.setItem('sprout_pending_invite', JSON.stringify(freshDoc));
+          }
+        }).catch((err) => console.warn('Could not fetch invite document:', err));
+
         toast(`🌱 Family invite from ${invitePayload.inviterName} detected! Sign in or register to join.`, {
           icon: '💌',
           duration: 6000,
@@ -293,9 +342,15 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   }, []);
 
+  const unsubsRef = useRef<(() => void)[]>([]);
+
   // Firebase Auth State Listener & Real-time Cloud Sync
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
+      // Explicitly tear down any prior subscriptions
+      unsubsRef.current.forEach(u => u && u());
+      unsubsRef.current = [];
+
       if (fbUser) {
         setGoogleFirebaseUser(fbUser);
         setIsGoogleAuthenticated(true);
@@ -304,13 +359,17 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         // Fetch user profile from Firestore
         const savedProfile = await getUserProfile(fbUser.uid);
 
+        const isGoogleAccount = fbUser.providerData.some(p => p.providerId === 'google.com');
+        const token = await getAccessToken();
+        setNeedsGoogleReauth(Boolean(isGoogleAccount && !token));
+
         const updatedUser: User = {
           name: savedProfile?.name || fbUser.displayName || fbUser.email?.split('@')[0] || 'Sprout User',
           avatar: savedProfile?.avatar || fbUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
           email: fbUser.email || undefined,
           googleId: fbUser.uid,
           firebaseUid: fbUser.uid,
-          isGoogleUser: fbUser.providerData.some(p => p.providerId === 'google.com'),
+          isGoogleUser: isGoogleAccount,
         };
         setUser(updatedUser);
 
@@ -328,7 +387,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         });
 
         // Set up real-time Firestore collection listeners
-        const unsubs = [
+        unsubsRef.current = [
           subscribeToUserSubcollection<FamilyMember>(fbUser.uid, 'familyMembers', (items) => {
             setFamilyMembers(items);
           }),
@@ -343,7 +402,16 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           }),
           subscribeToUserSubcollection<TransactionCategory>(fbUser.uid, 'transactionCategories', (items) => {
             if (items && items.length > 0) {
-              setTransactionCategories(items);
+              setTransactionCategories(prev => {
+                const itemMap = new Map(items.map(it => [it.id, it]));
+                const merged = [...items];
+                DEFAULT_TRANSACTION_CATEGORIES.forEach(defCat => {
+                  if (!itemMap.has(defCat.id) && !items.some(it => it.name.toLowerCase() === defCat.name.toLowerCase())) {
+                    merged.push(defCat);
+                  }
+                });
+                return merged;
+              });
             }
           }),
           subscribeToUserSubcollection<Transaction>(fbUser.uid, 'transactions', (items) => {
@@ -374,17 +442,18 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             setNotifications(items);
           }),
         ];
-
-        return () => {
-          unsubs.forEach(u => u && u());
-        };
       } else {
+        unsubsRef.current.forEach(u => u && u());
+        unsubsRef.current = [];
         setGoogleFirebaseUser(null);
         setIsGoogleAuthenticated(false);
+        setNeedsGoogleReauth(false);
       }
     });
 
     return () => {
+      unsubsRef.current.forEach(u => u && u());
+      unsubsRef.current = [];
       unsubscribeAuth();
     };
   }, []);
@@ -396,6 +465,13 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }, 500);
     return () => clearTimeout(timer);
   }, []);
+
+  // Derived lightweight signature for transactions and bills categories to prevent stale dependency issues
+  const categoryMigrationSignature = useMemo(() => {
+    const txSig = transactions.map(t => `${t.id}:${t.categoryId || ''}:${t.category || ''}`).join(';');
+    const billSig = bills.map(b => `${b.id}:${b.categoryId || ''}:${typeof b.category === 'string' ? b.category : ''}`).join(';');
+    return `${txSig}__${billSig}`;
+  }, [transactions, bills]);
 
   // Category & Legacy Free-Text Migration for Transactions and Bills
   useEffect(() => {
@@ -420,6 +496,13 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       const existingByName = currentCategories.find(c => c.name.toLowerCase() === normalized.toLowerCase());
       if (existingByName) return existingByName.id;
       
+      // If catNameOrId looks like an internal ID (starts with "cat-" or "Cat-") or hex hash,
+      // never treat it as a category display name! Safely fallback to cat-other.
+      if (/^cat-[a-z0-9_-]+/i.test(normalized) || /^[0-9a-f]{8}(-[0-9a-f]{4}){0,4}$/i.test(normalized)) {
+        const otherCat = currentCategories.find(c => c.id === 'cat-other' || c.name.toLowerCase() === 'other');
+        return otherCat?.id || currentCategories[0]?.id || 'cat-other';
+      }
+
       // 3. Create a new custom category from the legacy free-text string
       const titleCased = normalized.charAt(0).toUpperCase() + normalized.slice(1);
       const newCategory: TransactionCategory = {
@@ -474,7 +557,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     if (billsUpdated) {
       setBills(migratedBills);
     }
-  }, [loading, transactions.length, bills.length]);
+  }, [loading, categoryMigrationSignature]);
 
   // -------------------------------------------------------------
   // NOTIFICATION SYSTEM
@@ -564,7 +647,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     });
     if (notificationSettings.browserPushEnabled) {
       sendBrowserNotification('🌱 Sprout System Alert', {
-        body: 'Real-time notifications are working perfectly on sprout-live!',
+        body: 'Real-time notifications are working perfectly on Sprout!',
       });
     }
     toast.success('Test notification triggered!');
@@ -636,6 +719,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       if (res?.user) {
         setGoogleFirebaseUser(res.user);
         setIsGoogleAuthenticated(true);
+        setNeedsGoogleReauth(false);
         setUser(prev => ({
           ...prev,
           name: res.user.displayName || prev.name,
@@ -663,6 +747,38 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       }
       console.warn('Google Sign In:', err?.message || err);
       throw err;
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const reconnectGoogle = async (): Promise<boolean> => {
+    try {
+      setIsGoogleLoading(true);
+      const res = await signInWithGoogle();
+      if (res?.cancelled) {
+        return false;
+      }
+      if (res?.accessToken) {
+        setNeedsGoogleReauth(false);
+        setIsGoogleAuthenticated(true);
+        if (res.user) {
+          setGoogleFirebaseUser(res.user);
+        }
+        toast.success('Google account reconnected successfully!');
+        if (includeGoogleCalendar) {
+          fetchGoogleEvents();
+        }
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        return false;
+      }
+      console.warn('Google Reconnect:', err?.message || err);
+      toast.error('Failed to reconnect Google account. Please try again.');
+      return false;
     } finally {
       setIsGoogleLoading(false);
     }
@@ -760,7 +876,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const seedSampleDataToCloud = async (): Promise<boolean> => {
     try {
       if (googleFirebaseUser?.uid) {
-        toast.loading('Populating starter sample data into your Firebase database...');
+        toast.loading('Populating starter sample data into your cloud database...');
         await seedUserData(googleFirebaseUser.uid, {
           familyMembers: mockFamilyMembers,
           transactionCategories: mockTransactionCategories,
@@ -777,7 +893,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           notes: mockNotes,
         });
         toast.dismiss();
-        toast.success('Sample data synced to your Firebase account!');
+        toast.success('Sample data synced to your cloud account!');
         return true;
       } else {
         setFamilyMembers(mockFamilyMembers);
@@ -804,22 +920,33 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   };
 
-  const clearAllUserData = async () => {
-    setFamilyMembers([]);
-    setMedicines([]);
-    setBills([]);
-    setTransactions([]);
-    setTasks([]);
-    setTaskLists([]);
-    setAppointments([]);
-    setSavingsGoals([]);
-    setBorrowings([]);
-    setLendings([]);
-    setMedicalReports([]);
-    setNotes([]);
-    setNotifications([]);
-    setCart([]);
-    toast.success('All records cleared.');
+  const clearAllUserData = async (): Promise<void> => {
+    try {
+      if (googleFirebaseUser?.uid) {
+        toast.loading('Clearing all synced records from cloud storage...');
+        await clearAllCloudUserData(googleFirebaseUser.uid);
+        toast.dismiss();
+      }
+      setFamilyMembers([]);
+      setMedicines([]);
+      setBills([]);
+      setTransactions([]);
+      setTasks([]);
+      setTaskLists([]);
+      setAppointments([]);
+      setSavingsGoals([]);
+      setBorrowings([]);
+      setLendings([]);
+      setMedicalReports([]);
+      setNotes([]);
+      setNotifications([]);
+      setCart([]);
+      toast.success(googleFirebaseUser?.uid ? 'All cloud and local records cleared.' : 'All local session records cleared.');
+    } catch (err) {
+      toast.dismiss();
+      console.error('Error clearing user records:', err);
+      toast.error('Failed to clear records');
+    }
   };
 
   // -------------------------------------------------------------
@@ -933,18 +1060,144 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   // -------------------------------------------------------------
   // FAMILY INVITATION, JOINING & MEMBER MANAGEMENT
   // -------------------------------------------------------------
+  const generateFamilyInviteLink = useCallback(async (
+    memberId?: string, 
+    email?: string, 
+    customMessage?: string
+  ): Promise<{ inviteId: string; inviteLink: string }> => {
+    const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid || 'family_admin';
+    const inviterName = user.name || googleFirebaseUser?.displayName || 'Family Organizer';
+    const randomEntropy = generateSecureRandomHex(16);
+    const inviteId = `inv_${randomEntropy}`;
+    const now = new Date().toISOString();
+
+    const member = memberId ? familyMembers.find(m => m.id === memberId) : undefined;
+    const memberName = member?.name || '';
+    const relation = member?.relation || 'Family Member';
+    const recipientEmail = email || member?.email || '';
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sprout-family.app';
+    const inviteLink = `${origin}/join?inviteId=${inviteId}&inviterUid=${encodeURIComponent(currentUid)}&inviterName=${encodeURIComponent(inviterName)}${memberId ? `&memberId=${encodeURIComponent(memberId)}` : ''}${memberName ? `&memberName=${encodeURIComponent(memberName)}` : ''}${relation ? `&relation=${encodeURIComponent(relation)}` : ''}${recipientEmail ? `&recipientEmail=${encodeURIComponent(recipientEmail)}` : ''}`;
+
+    // Store in Firestore family_invites collection
+    const inviteRecord: FamilyInvite = {
+      id: inviteId,
+      inviterUid: currentUid,
+      inviterName,
+      inviterEmail: user.email || googleFirebaseUser?.email || undefined,
+      memberId: memberId || undefined,
+      memberName: memberName || undefined,
+      recipientEmail: recipientEmail || undefined,
+      relation: relation || 'Family Member',
+      customMessage: customMessage || undefined,
+      status: 'pending',
+      createdAt: now,
+    };
+
+    try {
+      await saveInviteDocument(inviteId, inviteRecord);
+    } catch (e) {
+      console.warn('Could not save invite record to Firestore immediately:', e);
+    }
+
+    // Invalidate any previously pending invite(s) for this member so old links cannot be reused
+    if (memberId && currentUid) {
+      const prevInvites = [
+        ...(member?.inviteId ? [member.inviteId] : []),
+        ...(member?.inviteHistory || [])
+      ];
+      cancelPendingInvitesForMember(currentUid, memberId, prevInvites, 'superseded').catch(e => {
+        console.warn('Failed to mark previous invites superseded:', e);
+      });
+    }
+
+    if (memberId && member) {
+      const updatedHistory = Array.from(new Set([...(member.inviteHistory || []), ...(member.inviteId ? [member.inviteId] : []), inviteId]));
+      const updatedMember: FamilyMember = {
+        ...member,
+        email: recipientEmail || member.email,
+        inviteStatus: 'invited',
+        inviteId,
+        inviteHistory: updatedHistory,
+        inviteSentAt: now,
+      };
+      setFamilyMembers(prev => prev.map(m => m.id === memberId ? updatedMember : m));
+      if (googleFirebaseUser?.uid) {
+        saveUserDocument(googleFirebaseUser.uid, 'familyMembers', memberId, updatedMember);
+      }
+    }
+
+    return { inviteId, inviteLink };
+  }, [googleFirebaseUser, user, familyMembers]);
+
+  const copyFamilyInviteLink = useCallback(async (memberId?: string, email?: string): Promise<string> => {
+    try {
+      const { inviteLink } = await generateFamilyInviteLink(memberId, email);
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(inviteLink);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = inviteLink;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+
+      const member = memberId ? familyMembers.find(m => m.id === memberId) : undefined;
+      const targetName = member?.name ? `${member.name}'s` : 'Family';
+      toast.success(`📋 ${targetName} invite link copied! Anyone with this link can join your family circle.`, {
+        duration: 5000,
+        icon: '🔗',
+      });
+      return inviteLink;
+    } catch (err) {
+      console.error('Copy link error:', err);
+      toast.error('Failed to copy link to clipboard');
+      return '';
+    }
+  }, [generateFamilyInviteLink, familyMembers]);
+
+  const getInviteDetails = useCallback(async (inviteId: string): Promise<FamilyInvite | null> => {
+    try {
+      const doc = await getInviteDocument(inviteId);
+      if (doc) return doc;
+    } catch (err) {
+      console.warn('Error fetching invite doc from Firestore:', err);
+    }
+    return null;
+  }, []);
+
+  const isAcceptingInviteRef = useRef(false);
+
   const acceptPendingInvite = useCallback(async (inviteToAccept?: FamilyInvite) => {
     const targetInvite = inviteToAccept || pendingInvite;
     if (!targetInvite) return;
     const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid;
     if (!currentUid) return;
 
-    try {
-      const now = new Date().toISOString();
-      const userEmail = googleFirebaseUser?.email || user.email || targetInvite.recipientEmail;
-      const userName = user.name || googleFirebaseUser?.displayName || targetInvite.memberName;
+    if (isAcceptingInviteRef.current) return;
+    isAcceptingInviteRef.current = true;
 
-      // 1. Update family_invites/{inviteId} in Firestore
+    try {
+      // Validate invite is still pending and not cancelled or superseded
+      const freshInvite = await getInviteDocument(targetInvite.id);
+      const effectiveInvite = freshInvite || targetInvite;
+      if (effectiveInvite.status !== 'pending') {
+        toast.error('This invitation link is no longer active or has been superseded.');
+        setPendingInvite(null);
+        localStorage.removeItem('sprout_pending_invite');
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const userEmail = googleFirebaseUser?.email || user.email || targetInvite.recipientEmail || 'member@sprout.family';
+      const userName = user.name || googleFirebaseUser?.displayName || targetInvite.memberName || 'Family Member';
+
+      // 1. Update family_invites/{inviteId} in Firestore with accepter metadata
       await updateInviteDocument(targetInvite.id, {
         status: 'accepted',
         acceptedAt: now,
@@ -953,57 +1206,74 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         acceptedByName: userName,
       });
 
-      // 2. Update inviter's familyMembers document in Firestore
-      if (targetInvite.inviterUid && targetInvite.memberId) {
-        await saveUserDocument(targetInvite.inviterUid, 'familyMembers', targetInvite.memberId, {
-          inviteStatus: 'accepted',
-          linkedUid: currentUid,
-          email: userEmail,
-          inviteId: targetInvite.id,
-          updatedAt: now,
-        });
-      }
+      // Clear pending invite immediately so repeat auto-triggers do not re-fire
+      setPendingInvite(null);
+      localStorage.removeItem('sprout_pending_invite');
 
-      // 3. Create or link this member in the joined user's local and Firestore state
+      // 2. Create or link this member in the joined user's local and Firestore state (their own users/{currentUid}/familyMembers)
       const memberRecord: FamilyMember = {
         id: targetInvite.memberId || uuidv4(),
         name: userName,
-        relation: targetInvite.relation,
+        relation: targetInvite.relation || 'Family Member',
         age: 28,
         avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
         email: userEmail,
         inviteStatus: 'accepted',
         inviteId: targetInvite.id,
         linkedUid: currentUid,
+        linkedSince: now,
+      };
+
+      // Also create a record for the inviter in the invitee's family circle
+      const inviterMemberRecord: FamilyMember = {
+        id: `inviter_${targetInvite.inviterUid.slice(0, 8)}`,
+        name: targetInvite.inviterName || 'Family Organizer',
+        relation: 'Family Organizer',
+        age: 35,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        email: targetInvite.inviterEmail,
+        inviteStatus: 'accepted',
+        linkedUid: targetInvite.inviterUid,
+        inviteId: targetInvite.id,
+        linkedSince: now,
       };
 
       setFamilyMembers(prev => {
-        const exists = prev.some(m => m.id === memberRecord.id || (m.email && m.email.toLowerCase() === userEmail.toLowerCase()));
-        if (exists) {
-          return prev.map(m => (m.id === memberRecord.id || (m.email && m.email.toLowerCase() === userEmail.toLowerCase())) ? {
+        let list = [...prev];
+        // Ensure self is in list
+        const selfExists = list.some(m => m.id === memberRecord.id || (m.email && m.email.toLowerCase() === userEmail.toLowerCase()));
+        if (selfExists) {
+          list = list.map(m => (m.id === memberRecord.id || (m.email && m.email.toLowerCase() === userEmail.toLowerCase())) ? {
             ...m,
             inviteStatus: 'accepted' as const,
             linkedUid: currentUid,
             inviteId: targetInvite.id,
+            linkedSince: now,
           } : m);
+        } else {
+          list.push(memberRecord);
         }
-        return [...prev, memberRecord];
+
+        // Ensure inviter is in list
+        if (targetInvite.inviterUid && !list.some(m => m.linkedUid === targetInvite.inviterUid || m.name === targetInvite.inviterName)) {
+          list.push(inviterMemberRecord);
+        }
+        return list;
       });
 
       if (currentUid) {
         saveUserDocument(currentUid, 'familyMembers', memberRecord.id, memberRecord);
+        if (targetInvite.inviterUid) {
+          saveUserDocument(currentUid, 'familyMembers', inviterMemberRecord.id, inviterMemberRecord);
+        }
       }
 
-      // 4. Clear pending invite
-      setPendingInvite(null);
-      localStorage.removeItem('sprout_pending_invite');
-
-      toast.success(`🎉 You've joined ${targetInvite.inviterName}'s family circle as ${targetInvite.memberName}!`, {
+      toast.success(`🎉 You've joined ${targetInvite.inviterName}'s family circle!`, {
         duration: 7000,
       });
 
       addNotification({
-        message: `Joined ${targetInvite.inviterName}'s family circle as ${targetInvite.memberName} (${targetInvite.relation})`,
+        message: `Joined ${targetInvite.inviterName}'s family circle as ${targetInvite.memberName || userName} (${targetInvite.relation || 'Member'})`,
         type: 'success',
         domain: 'system',
         path: '/family',
@@ -1011,6 +1281,8 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     } catch (err: any) {
       console.error('Error accepting family invite:', err);
       toast.error('Failed to link family account');
+    } finally {
+      isAcceptingInviteRef.current = false;
     }
   }, [pendingInvite, googleFirebaseUser, user, setFamilyMembers, addNotification]);
 
@@ -1021,34 +1293,112 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   }, [googleFirebaseUser?.uid, pendingInvite, acceptPendingInvite]);
 
-  const sendFamilyInvite = async (memberId: string, email: string, customMessage?: string): Promise<{ success: boolean; error?: string; mailtoFallback?: string }> => {
+  // -------------------------------------------------------------
+  // REAL-TIME LISTENER FOR INVITER'S ACCEPTED FAMILY INVITES
+  // -------------------------------------------------------------
+  // Listens to family_invites where inviterUid == currentUid.
+  // When an invite transitions to 'accepted', the inviter's own client
+  // writes the updated familyMembers entry to their own subcollection.
+  useEffect(() => {
+    if (!googleFirebaseUser?.uid) return;
+    const inviterUid = googleFirebaseUser.uid;
+
+    const unsub = subscribeToInviterInvites(inviterUid, (invites) => {
+      const acceptedInvites = invites.filter(i => i.status === 'accepted' && i.acceptedByUid);
+      if (acceptedInvites.length === 0) return;
+
+      setFamilyMembers(prevMembers => {
+        let hasChanges = false;
+        const updatedList = [...prevMembers];
+
+        acceptedInvites.forEach(invite => {
+          const existingIndex = updatedList.findIndex(m => 
+            (invite.memberId && m.id === invite.memberId) ||
+            (m.inviteId && m.inviteId === invite.id) ||
+            (m.linkedUid && m.linkedUid === invite.acceptedByUid) ||
+            (invite.acceptedByEmail && m.email && m.email.toLowerCase() === invite.acceptedByEmail.toLowerCase()) ||
+            (invite.recipientEmail && m.email && m.email.toLowerCase() === invite.recipientEmail.toLowerCase())
+          );
+
+          if (existingIndex >= 0) {
+            const existing = updatedList[existingIndex];
+            if (existing.inviteStatus !== 'accepted' || existing.linkedUid !== invite.acceptedByUid) {
+              const updated: FamilyMember = {
+                ...existing,
+                name: invite.acceptedByName || existing.name,
+                email: invite.acceptedByEmail || existing.email,
+                inviteStatus: 'accepted',
+                linkedUid: invite.acceptedByUid,
+                inviteId: invite.id,
+                linkedSince: invite.acceptedAt || new Date().toISOString(),
+              };
+              updatedList[existingIndex] = updated;
+              hasChanges = true;
+
+              saveUserDocument(inviterUid, 'familyMembers', updated.id, updated);
+
+              toast.success(`🎉 ${updated.name} accepted your invite and joined your family circle!`, {
+                duration: 6000,
+              });
+              addNotification({
+                message: `${updated.name} accepted your invitation and joined your family circle!`,
+                type: 'success',
+                domain: 'system',
+                path: '/family',
+              });
+            }
+          } else {
+            const newMemberId = invite.memberId || uuidv4();
+            const newMember: FamilyMember = {
+              id: newMemberId,
+              name: invite.acceptedByName || invite.memberName || 'Family Member',
+              relation: invite.relation || 'Family Member',
+              age: 28,
+              avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+              email: invite.acceptedByEmail || invite.recipientEmail,
+              inviteStatus: 'accepted',
+              linkedUid: invite.acceptedByUid,
+              inviteId: invite.id,
+              linkedSince: invite.acceptedAt || new Date().toISOString(),
+            };
+            updatedList.push(newMember);
+            hasChanges = true;
+
+            saveUserDocument(inviterUid, 'familyMembers', newMemberId, newMember);
+
+            toast.success(`🎉 ${newMember.name} joined your family circle!`, {
+              duration: 6000,
+            });
+            addNotification({
+              message: `${newMember.name} joined your family circle!`,
+              type: 'success',
+              domain: 'system',
+              path: '/family',
+            });
+          }
+        });
+
+        return hasChanges ? updatedList : prevMembers;
+      });
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [googleFirebaseUser?.uid, addNotification]);
+
+  const sendFamilyInvite = async (
+    memberId: string, 
+    email: string, 
+    customMessage?: string
+  ): Promise<{ success: boolean; inviteLink?: string; error?: string; mailtoFallback?: string }> => {
     const member = familyMembers.find(m => m.id === memberId);
     if (!member) {
       return { success: false, error: 'Family member not found' };
     }
 
-    const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid || 'organizer';
-    const inviterName = user.name || 'Family Organizer';
-    const inviteId = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const now = new Date().toISOString();
-
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sprout-family.app';
-    const inviteLink = `${origin}/?inviteId=${inviteId}&inviterUid=${encodeURIComponent(currentUid)}&memberId=${encodeURIComponent(memberId)}&inviterName=${encodeURIComponent(inviterName)}&memberName=${encodeURIComponent(member.name)}&recipientEmail=${encodeURIComponent(email)}&relation=${encodeURIComponent(member.relation)}`;
-
-    // Store in Firestore family_invites collection
-    const inviteRecord: FamilyInvite = {
-      id: inviteId,
-      inviterUid: currentUid,
-      inviterName,
-      inviterEmail: user.email,
-      memberId: member.id,
-      memberName: member.name,
-      recipientEmail: email,
-      relation: member.relation,
-      status: 'pending',
-      createdAt: now,
-    };
-    await saveInviteDocument(inviteId, inviteRecord);
+    const { inviteId, inviteLink } = await generateFamilyInviteLink(memberId, email, customMessage);
+    const inviterName = user.name || googleFirebaseUser?.displayName || 'Family Organizer';
 
     const result = await sendFamilyInviteViaGmail({
       toEmail: email,
@@ -1060,37 +1410,35 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       inviteLink,
     });
 
-    if (result.success || result.mailtoFallback) {
-      const updatedMember: FamilyMember = { 
-        ...member, 
-        email: email, 
-        inviteStatus: 'invited', 
-        inviteId: inviteId, 
-        inviteSentAt: now 
-      };
-      setFamilyMembers(prev => prev.map(m => m.id === memberId ? updatedMember : m));
-      if (googleFirebaseUser?.uid) {
-        saveUserDocument(googleFirebaseUser.uid, 'familyMembers', memberId, updatedMember);
-      }
-      if (result.success) {
-        addNotification({
-          message: `Family invite sent to ${member.name} (${email}) via Gmail!`,
-          type: 'success',
-          domain: 'system',
-          path: '/family',
-        });
-      }
+    if (result.success) {
+      addNotification({
+        message: `Family invite sent to ${member.name} (${email}) via Gmail!`,
+        type: 'success',
+        domain: 'system',
+        path: '/family',
+      });
     }
 
-    return result;
+    return {
+      ...result,
+      inviteLink,
+    };
   };
 
   const cancelFamilyInvite = async (memberId: string): Promise<boolean> => {
     const member = familyMembers.find(m => m.id === memberId);
     if (!member) return false;
 
+    const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid;
+    const allInvitesToCancel = [
+      ...(member.inviteId ? [member.inviteId] : []),
+      ...(member.inviteHistory || [])
+    ];
+
     try {
-      if (member.inviteId) {
+      if (currentUid) {
+        await cancelPendingInvitesForMember(currentUid, memberId, allInvitesToCancel, 'cancelled');
+      } else if (member.inviteId) {
         await updateInviteDocument(member.inviteId, { status: 'cancelled' });
       }
 
@@ -1098,6 +1446,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         ...member,
         inviteStatus: 'none',
         inviteId: undefined,
+        inviteHistory: [],
         inviteSentAt: undefined,
       };
 
@@ -1189,7 +1538,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   };
   
-  const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
+  const addTransaction = (transaction: Omit<Transaction, 'id'>): Transaction => {
     const newTransaction: Transaction = {
       id: uuidv4(),
       ...transaction,
@@ -1199,6 +1548,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     if (googleFirebaseUser?.uid) {
       saveUserDocument(googleFirebaseUser.uid, 'transactions', newTransaction.id, newTransaction);
     }
+    return newTransaction;
   };
   
   const updateTransaction = (updatedTransaction: Transaction) => {
@@ -1231,9 +1581,76 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   };
 
   const updateTransactionCategory = (category: TransactionCategory) => {
-    setTransactionCategories(prev => prev.map(c => c.id === category.id ? category : c));
+    setTransactionCategories(prev => {
+      const exists = prev.some(c => c.id === category.id);
+      if (exists) {
+        return prev.map(c => c.id === category.id ? category : c);
+      }
+      return [...prev, category];
+    });
+
     if (googleFirebaseUser?.uid) {
       saveUserDocument(googleFirebaseUser.uid, 'transactionCategories', category.id, category);
+    }
+
+    // Sync updated category name and details to existing transactions
+    setTransactions(prev => prev.map(t => {
+      if (t.categoryId === category.id) {
+        const updated = { ...t, category: category.name };
+        if (googleFirebaseUser?.uid) {
+          saveUserDocument(googleFirebaseUser.uid, 'transactions', t.id, updated);
+        }
+        return updated;
+      }
+      return t;
+    }));
+
+    // Sync updated category name to existing bills
+    setBills(prev => prev.map(b => {
+      if (b.categoryId === category.id) {
+        const updated = { ...b, category: category.name };
+        if (googleFirebaseUser?.uid) {
+          saveUserDocument(googleFirebaseUser.uid, 'bills', b.id, updated);
+        }
+        return updated;
+      }
+      return b;
+    }));
+  };
+
+  const mergeTransactionCategories = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const targetCat = transactionCategories.find(c => c.id === targetId);
+    if (!targetCat) return;
+
+    // 1. Reassign affected transactions
+    setTransactions(prev => prev.map(t => {
+      if (t.categoryId === sourceId) {
+        const updated = { ...t, categoryId: targetId, category: targetCat.name };
+        if (googleFirebaseUser?.uid) {
+          saveUserDocument(googleFirebaseUser.uid, 'transactions', t.id, updated);
+        }
+        return updated;
+      }
+      return t;
+    }));
+
+    // 2. Reassign affected bills
+    setBills(prev => prev.map(b => {
+      if (b.categoryId === sourceId) {
+        const updated = { ...b, categoryId: targetId, category: targetCat.name };
+        if (googleFirebaseUser?.uid) {
+          saveUserDocument(googleFirebaseUser.uid, 'bills', b.id, updated);
+        }
+        return updated;
+      }
+      return b;
+    }));
+
+    // 3. Delete source category
+    setTransactionCategories(prev => prev.filter(c => c.id !== sourceId));
+    if (googleFirebaseUser?.uid) {
+      deleteUserDocument(googleFirebaseUser.uid, 'transactionCategories', sourceId);
     }
   };
 
@@ -1294,7 +1711,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const finalBill = { ...updatedBill };
 
     if (originalBill && !originalBill.paid && finalBill.paid) {
-        addTransaction({
+        const createdTx = addTransaction({
             description: finalBill.name,
             amount: finalBill.amount,
             type: TransactionType.EXPENSE,
@@ -1305,8 +1722,31 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         });
         transactionCreated = true;
         finalBill.paidOn = new Date().toISOString();
+        finalBill.paymentTransactionId = createdTx.id;
     } else if (originalBill && originalBill.paid && !finalBill.paid) {
+        if (originalBill.paymentTransactionId) {
+            deleteTransaction(originalBill.paymentTransactionId);
+        }
         delete finalBill.paidOn;
+        delete finalBill.paymentTransactionId;
+    } else if (originalBill && originalBill.paid && finalBill.paid && originalBill.paymentTransactionId) {
+        const fieldsChanged = originalBill.amount !== finalBill.amount
+            || originalBill.categoryId !== finalBill.categoryId
+            || originalBill.memberId !== finalBill.memberId
+            || originalBill.name !== finalBill.name;
+        if (fieldsChanged) {
+            const existingTx = transactions.find(t => t.id === originalBill.paymentTransactionId);
+            updateTransaction({
+                id: originalBill.paymentTransactionId,
+                description: finalBill.name,
+                amount: finalBill.amount,
+                type: TransactionType.EXPENSE,
+                categoryId: finalBill.categoryId || 'cat-other',
+                category: typeof finalBill.category === 'string' ? finalBill.category : undefined,
+                date: existingTx ? existingTx.date : (finalBill.paidOn || new Date().toISOString()),
+                memberId: finalBill.memberId,
+            });
+        }
     }
 
     setBills(prev => prev.map(b => b.id === finalBill.id ? finalBill : b));
@@ -1317,6 +1757,10 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   };
 
   const deleteBill = (id: string) => {
+    const targetBill = bills.find(b => b.id === id);
+    if (targetBill?.paymentTransactionId) {
+      deleteTransaction(targetBill.paymentTransactionId);
+    }
     setBills(prev => prev.filter(b => b.id !== id));
     if (googleFirebaseUser?.uid) {
       deleteUserDocument(googleFirebaseUser.uid, 'bills', id);
@@ -1451,9 +1895,15 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   };
 
   const updateBorrowing = (item: Borrowing) => {
-    setBorrowings(prev => prev.map(b => b.id === item.id ? item : b));
+    const totalRepaid = (item.repayments || []).reduce((sum, r) => sum + r.amount, 0);
+    const recalculated: Borrowing = {
+      ...item,
+      repayments: item.repayments || [],
+      status: totalRepaid >= item.amount ? 'settled' : 'outstanding'
+    };
+    setBorrowings(prev => prev.map(b => b.id === recalculated.id ? recalculated : b));
     if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'borrowings', item.id, item);
+      saveUserDocument(googleFirebaseUser.uid, 'borrowings', recalculated.id, recalculated);
     }
   };
 
@@ -1530,9 +1980,15 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   };
 
   const updateLending = (item: Lending) => {
-    setLendings(prev => prev.map(l => l.id === item.id ? item : l));
+    const totalReturned = (item.returns || []).reduce((sum, r) => sum + r.amount, 0);
+    const recalculated: Lending = {
+      ...item,
+      returns: item.returns || [],
+      status: totalReturned >= item.amount ? 'returned' : 'outstanding'
+    };
+    setLendings(prev => prev.map(l => l.id === recalculated.id ? recalculated : l));
     if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'lendings', item.id, item);
+      saveUserDocument(googleFirebaseUser.uid, 'lendings', recalculated.id, recalculated);
     }
   };
 
@@ -1648,22 +2104,24 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const withdrawSavingsDeposit = (goalId: string, amount: number) => {
     let goalTitle = '';
+    let actuallyWithdrawn = 0;
     let updatedGoal: SavingsGoal | null = null;
 
     setSavingsGoals(prev => prev.map(g => {
       if (g.id === goalId) {
         goalTitle = g.title;
-        const newAmount = Math.max(0, g.currentAmount - amount);
+        actuallyWithdrawn = Math.min(amount, Math.max(0, g.currentAmount));
+        const newAmount = g.currentAmount - actuallyWithdrawn;
         updatedGoal = { ...g, currentAmount: newAmount };
         return updatedGoal;
       }
       return g;
     }));
 
-    if (goalTitle) {
+    if (goalTitle && actuallyWithdrawn > 0) {
       addTransaction({
         description: `Withdrawal from ${goalTitle}`,
-        amount: amount,
+        amount: actuallyWithdrawn,
         type: TransactionType.INCOME,
         category: 'Savings Withdrawal',
         date: new Date().toISOString()
@@ -1727,7 +2185,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                   const doseDateTime = new Date(d);
                   doseDateTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
 
-                  const historyEntry = med.history.find(h => new Date(h.timestamp).toDateString() === d.toDateString() && new Date(h.timestamp).getHours() === parseInt(hour));
+                  const historyEntry = findDoseHistoryEntry(med.history, d, parseInt(hour, 10), parseInt(minute, 10));
                   
                   events.push({
                       id: `${med.id}-${d.toISOString()}-${time}`,
@@ -1899,6 +2357,8 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     // Firebase Auth
     isGoogleAuthenticated,
     isGoogleLoading,
+    needsGoogleReauth,
+    reconnectGoogle,
     isGuestMode,
     setGuestMode: setIsGuestMode,
     googleFirebaseUser,
@@ -1922,6 +2382,9 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     // Family Invites & Linking
     pendingInvite,
     sendFamilyInvite,
+    generateFamilyInviteLink,
+    copyFamilyInviteLink,
+    getInviteDetails,
     cancelFamilyInvite,
     acceptPendingInvite,
     // Notifications
@@ -1937,7 +2400,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     addNotification,
     // Core Domain
     transactions, addTransaction, updateTransaction, deleteTransaction,
-    transactionCategories, addTransactionCategory, updateTransactionCategory, deleteTransactionCategory,
+    transactionCategories, addTransactionCategory, updateTransactionCategory, deleteTransactionCategory, mergeTransactionCategories,
     bills, addBill, updateBill, deleteBill,
     familyMembers, addFamilyMember, updateFamilyMember, deleteFamilyMember,
     medicines, addMedicine, updateMedicine, deleteMedicine, logDose,

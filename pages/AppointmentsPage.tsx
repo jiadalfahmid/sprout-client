@@ -207,8 +207,8 @@ const AppointmentsPage: React.FC = () => {
                         )}
 
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                           <button onClick={() => handleOpenModal(appointment)} className="text-blue-400 hover:text-blue-300"><HiOutlinePencil className="h-5 w-5"/></button>
-                           <button onClick={() => deleteAppointment(appointment.id)} className="text-red-400 hover:text-red-300"><HiOutlineTrash className="h-5 w-5"/></button>
+                           <button onClick={() => handleOpenModal(appointment)} aria-label="Edit appointment" className="text-blue-400 hover:text-blue-300"><HiOutlinePencil className="h-5 w-5"/></button>
+                           <button onClick={() => deleteAppointment(appointment.id)} aria-label="Delete appointment" className="text-red-400 hover:text-red-300"><HiOutlineTrash className="h-5 w-5"/></button>
                         </div>
                     </div>
                 </div>

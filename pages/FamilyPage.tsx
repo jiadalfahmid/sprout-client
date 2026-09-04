@@ -7,6 +7,8 @@ import PageHeader from '../components/ui/PageHeader';
 import Skeleton from '../components/ui/Skeleton';
 import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { uploadImage } from '../utils/imageUploader';
+import { AvatarPicker } from '../components/ui/AvatarPicker';
+import { AVATAR_PRESETS, getDefaultAvatarForRelation } from '../data/avatarPresets';
 import { 
   HiPlus, 
   HiOutlineCloudArrowUp, 
@@ -16,7 +18,12 @@ import {
   HiOutlineTrash,
   HiOutlineXMark,
   HiOutlineExclamationTriangle,
-  HiOutlineUserMinus
+  HiOutlineUserMinus,
+  HiOutlineLink,
+  HiOutlineClipboardDocument,
+  HiOutlineClipboardDocumentCheck,
+  HiOutlineShare,
+  HiOutlineSparkles
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import { motion } from 'motion/react';
@@ -31,6 +38,8 @@ const FamilyPage: React.FC = () => {
     deleteFamilyMember,
     sendFamilyInvite, 
     cancelFamilyInvite,
+    generateFamilyInviteLink,
+    copyFamilyInviteLink,
     isGoogleAuthenticated, 
     loginWithGoogle 
   } = useAppContext();
@@ -43,6 +52,8 @@ const FamilyPage: React.FC = () => {
   const [age, setAge] = useState('');
   const [email, setEmail] = useState('');
   const [sendInviteOnCreate, setSendInviteOnCreate] = useState(true);
+  const [selectedAvatarUrl, setSelectedAvatarUrl] = useState<string>(AVATAR_PRESETS[0].svgUrl);
+  const [hasManuallySelectedAvatar, setHasManuallySelectedAvatar] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -51,6 +62,14 @@ const FamilyPage: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [customMessage, setCustomMessage] = useState('');
   const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState('');
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // General Family Link Share Modal State
+  const [isGeneralLinkModalOpen, setIsGeneralLinkModalOpen] = useState(false);
+  const [generalLink, setGeneralLink] = useState('');
+  const [copiedGeneralLink, setCopiedGeneralLink] = useState(false);
 
   // Confirmation Modal States
   const [memberToDelete, setMemberToDelete] = useState<FamilyMember | null>(null);
@@ -63,12 +82,27 @@ const FamilyPage: React.FC = () => {
     setAge('');
     setEmail('');
     setSendInviteOnCreate(true);
+    setSelectedAvatarUrl(AVATAR_PRESETS[0].svgUrl);
+    setHasManuallySelectedAvatar(false);
     setAvatarFile(null);
+  };
+
+  const handleRelationChange = (newRelation: string) => {
+    setRelation(newRelation);
+    if (!hasManuallySelectedAvatar && !avatarFile && newRelation.trim()) {
+      const autoAvatar = getDefaultAvatarForRelation(newRelation);
+      setSelectedAvatarUrl(autoAvatar);
+    }
+  };
+
+  const handleSelectAvatarUrl = (url: string) => {
+    setSelectedAvatarUrl(url);
+    setHasManuallySelectedAvatar(true);
   };
 
   const handleAddMember = async () => {
     if (name && relation && age) {
-      let avatarUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face';
+      let avatarUrl = selectedAvatarUrl || AVATAR_PRESETS[0].svgUrl;
       
       if (avatarFile) {
         setIsUploading(true);
@@ -119,12 +153,78 @@ const FamilyPage: React.FC = () => {
     }
   };
 
-  const openInviteModal = (member: FamilyMember, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const openInviteModal = async (member: FamilyMember, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setSelectedMemberForInvite(member);
     setInviteEmail(member.email || '');
     setCustomMessage('');
+    setCopiedLink(false);
+
+    // Pre-generate link so the user can immediately copy it
+    setIsGeneratingLink(true);
+    try {
+      const { inviteLink } = await generateFamilyInviteLink(member.id, member.email || undefined);
+      setGeneratedLink(inviteLink);
+    } catch (err) {
+      console.warn('Could not generate pre-invite link:', err);
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const openGeneralInviteModal = async () => {
+    setIsGeneralLinkModalOpen(true);
+    setCopiedGeneralLink(false);
+    try {
+      const { inviteLink } = await generateFamilyInviteLink();
+      setGeneralLink(inviteLink);
+    } catch (err) {
+      console.warn('Could not generate general invite link:', err);
+    }
+  };
+
+  const handleCopyMemberLink = async (member: FamilyMember, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const link = await copyFamilyInviteLink(member.id, member.email || undefined);
+    if (link) {
+      setGeneratedLink(link);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    }
+  };
+
+  const handleCopyGeneralLink = async () => {
+    const link = await copyFamilyInviteLink();
+    if (link) {
+      setGeneralLink(link);
+      setCopiedGeneralLink(true);
+      setTimeout(() => setCopiedGeneralLink(false), 3000);
+    }
+  };
+
+  const handleShareLink = async (linkToShare: string, titleText: string) => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: titleText,
+          text: 'Join our family care circle on Sprout to coordinate medication, schedules, and health records together!',
+          url: linkToShare,
+        });
+      } catch (err) {
+        // Ignored if user dismissed share sheet
+      }
+    } else {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(linkToShare);
+        toast.success('Link copied to clipboard!');
+      }
+    }
   };
 
   const promptCancelInvite = (member: FamilyMember, e: React.MouseEvent) => {
@@ -191,6 +291,9 @@ const FamilyPage: React.FC = () => {
     try {
       const res = await sendFamilyInvite(selectedMemberForInvite.id, inviteEmail.trim(), customMessage.trim());
       toast.dismiss(toastId);
+      if (res.inviteLink) {
+        setGeneratedLink(res.inviteLink);
+      }
       if (res.success) {
         toast.success(t('googleServices.inviteSentSuccess').replace('{name}', selectedMemberForInvite.name));
         setSelectedMemberForInvite(null);
@@ -242,12 +345,12 @@ const FamilyPage: React.FC = () => {
   };
 
   const renderSkeleton = () => (
-    [...Array(4)].map((_, i) => (
-        <Card key={i} className="text-center">
-            <Skeleton className="w-24 h-24 rounded-full mx-auto mb-4" />
-            <Skeleton className="h-6 w-3/4 mx-auto mb-2" />
-            <Skeleton className="h-4 w-1/2 mx-auto mb-2" />
-            <Skeleton className="h-4 w-1/3 mx-auto" />
+    [...Array(6)].map((_, i) => (
+        <Card key={i} className="text-center p-3.5">
+            <Skeleton className="w-14 h-14 rounded-full mx-auto mb-2.5" />
+            <Skeleton className="h-4 w-3/4 mx-auto mb-1.5" />
+            <Skeleton className="h-3 w-1/2 mx-auto mb-1" />
+            <Skeleton className="h-3 w-1/3 mx-auto" />
         </Card>
     ))
   );
@@ -264,15 +367,22 @@ const FamilyPage: React.FC = () => {
       },
     },
     {
+      id: 'copy_general_link',
+      label: 'Copy Family Invite Link',
+      icon: HiOutlineLink,
+      color: 'emerald',
+      onClick: () => {
+        openGeneralInviteModal();
+      },
+    },
+    {
       id: 'invite_gmail',
       label: 'Invite via Gmail',
       icon: HiOutlineEnvelope,
       color: 'indigo',
       onClick: () => {
         if (familyMembers.length > 0) {
-          setSelectedMemberForInvite(familyMembers[0]);
-          setInviteEmail(familyMembers[0].email || '');
-          setCustomMessage('');
+          openInviteModal(familyMembers[0]);
         } else {
           resetForm();
           setIsModalOpen(true);
@@ -287,15 +397,54 @@ const FamilyPage: React.FC = () => {
         title={t('family.title')}
         subtitle={t('family.subtitle')}
         action={
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-primary text-white font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm shrink-0 text-xs sm:text-sm whitespace-nowrap"
-          >
-            <HiPlus className="h-4 w-4" />
-            {t('family.addMember')}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={openGeneralInviteModal}
+              className="px-3 py-2 sm:px-3.5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm shrink-0 text-xs sm:text-sm whitespace-nowrap"
+            >
+              <HiOutlineLink className="h-4 w-4" />
+              <span>Invite via Link</span>
+            </button>
+            <button 
+              onClick={() => {
+                resetForm();
+                setIsModalOpen(true);
+              }}
+              className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-primary text-white font-semibold rounded-xl hover:opacity-90 transition flex items-center gap-1.5 shadow-sm shrink-0 text-xs sm:text-sm whitespace-nowrap"
+            >
+              <HiPlus className="h-4 w-4" />
+              {t('family.addMember')}
+            </button>
+          </div>
         }
       />
+
+      {/* Quick Invite Link Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-primary/10 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <HiOutlineLink className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-light-text-primary dark:text-text-primary flex items-center gap-1.5">
+              <span>Instant Family Invitation Link</span>
+            </h4>
+            <p className="text-xs text-light-text-secondary dark:text-text-secondary">
+              Share a secure link via WhatsApp, SMS, or email. Anyone who opens it joins your family circle.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={openGeneralInviteModal}
+            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center justify-center gap-1.5"
+          >
+            <HiOutlineClipboardDocument className="w-4 h-4" />
+            <span>Get Invite Link</span>
+          </button>
+        </div>
+      </div>
 
       {/* Google Workspace Banner */}
       {!isGoogleAuthenticated && (
@@ -323,123 +472,127 @@ const FamilyPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Compact, Small Family Member Cards Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
         {loading ? renderSkeleton() : 
             familyMembers.length > 0 ? (
                 familyMembers.map((member) => (
                     <div key={member.id} className="relative group">
                       <Link to={`/family/${member.id}`} className="block h-full">
-                        <Card className="text-center h-full p-6 hover:shadow-md transition-all flex flex-col justify-between relative group/card border border-slate-200/80 dark:border-zinc-800">
+                        <Card className="text-center h-full p-3.5 sm:p-4 hover:shadow-md transition-all flex flex-col justify-between relative group/card border border-slate-200/80 dark:border-zinc-800 rounded-2xl">
                           
                           {/* Remove Member Top Button */}
                           <button
                             type="button"
                             onClick={(e) => promptDeleteMember(member, e)}
-                            className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-60 group-hover/card:opacity-100"
+                            className="absolute top-2.5 right-2.5 p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-0 group-hover/card:opacity-100"
                             title="Remove Member"
                             aria-label="Remove Member"
                           >
-                            <HiOutlineTrash className="w-4 h-4" />
+                            <HiOutlineTrash className="w-3.5 h-3.5" />
                           </button>
 
                           <div>
-                            <div className="relative inline-block mb-4">
+                            <div className="relative inline-block mb-2.5">
                               <img 
                                 src={member.avatar} 
                                 alt={member.name} 
-                                className="w-24 h-24 rounded-full mx-auto border-4 border-primary/40 object-cover shadow-inner" 
+                                className="w-14 h-14 sm:w-16 sm:h-16 rounded-full mx-auto border-2 border-primary/30 object-cover shadow-xs" 
                               />
                               {member.inviteStatus === 'invited' && (
-                                <span className="absolute bottom-0 right-0 p-1 bg-amber-500 text-white rounded-full ring-2 ring-white dark:ring-zinc-800" title="Invited via Gmail">
-                                  <HiOutlineEnvelope className="w-3.5 h-3.5" />
+                                <span className="absolute bottom-0 right-0 p-0.5 bg-amber-500 text-white rounded-full ring-2 ring-white dark:ring-zinc-800" title="Invited">
+                                  <HiOutlineEnvelope className="w-3 h-3" />
                                 </span>
                               )}
                               {member.inviteStatus === 'accepted' && (
-                                <span className="absolute bottom-0 right-0 p-1 bg-emerald-500 text-white rounded-full ring-2 ring-white dark:ring-zinc-800" title="Joined &amp; Linked">
-                                  <HiCheckCircle className="w-3.5 h-3.5" />
+                                <span className="absolute bottom-0 right-0 p-0.5 bg-emerald-500 text-white rounded-full ring-2 ring-white dark:ring-zinc-800" title="Joined &amp; Linked">
+                                  <HiCheckCircle className="w-3 h-3" />
                                 </span>
                               )}
                             </div>
-                            <h3 className="text-xl font-bold text-light-text-primary dark:text-text-primary truncate">{member.name}</h3>
-                            <p className="text-sm font-medium text-primary mb-1">{member.relation}</p>
-                            <p className="text-xs text-light-text-secondary dark:text-text-secondary">{member.age} {t('family.yearsOld')}</p>
+                            <h3 className="text-sm sm:text-base font-bold text-light-text-primary dark:text-text-primary truncate">{member.name}</h3>
+                            <div className="flex items-center justify-center gap-1.5 flex-wrap mt-0.5">
+                              <span className="text-xs font-semibold text-primary">{member.relation}</span>
+                              <span className="text-[11px] text-light-text-secondary dark:text-text-secondary">· {member.age}y</span>
+                            </div>
                             
                             {member.email && (
-                              <p className="text-[11px] text-light-text-secondary dark:text-text-secondary truncate mt-1 flex items-center justify-center gap-1">
-                                <HiOutlineEnvelope className="w-3 h-3 text-slate-400 shrink-0" />
+                              <p className="text-[10px] text-light-text-secondary dark:text-text-secondary truncate mt-1 flex items-center justify-center gap-1 max-w-full">
+                                <HiOutlineEnvelope className="w-2.5 h-2.5 text-slate-400 shrink-0" />
                                 <span className="truncate">{member.email}</span>
                               </p>
                             )}
                           </div>
 
                           {/* Invite / Status Actions */}
-                          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60">
+                          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/60">
                             {member.inviteStatus === 'invited' ? (
-                              <div className="space-y-2">
+                              <div className="space-y-1.5">
                                 <div className="flex items-center justify-between gap-1">
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/30">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/30">
                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                    {t('googleServices.statusInvited')}
+                                    Invited
                                   </span>
                                   <button
                                     type="button"
                                     onClick={(e) => openInviteModal(member, e)}
-                                    className="text-[11px] text-primary hover:underline font-semibold"
+                                    className="text-[10px] text-primary hover:underline font-semibold"
                                   >
-                                    {t('googleServices.resendInvite')}
+                                    Resend
                                   </button>
                                 </div>
-                                <div className="flex items-center gap-2 pt-1">
+                                <div className="grid grid-cols-2 gap-1 pt-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleCopyMemberLink(member, e)}
+                                    className="py-1 px-1.5 rounded-lg text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition flex items-center justify-center gap-1"
+                                    title="Copy Invite Link"
+                                  >
+                                    <HiOutlineLink className="w-3 h-3" />
+                                    <span>Link</span>
+                                  </button>
                                   <button
                                     type="button"
                                     onClick={(e) => promptCancelInvite(member, e)}
-                                    className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-100/60 dark:bg-amber-900/30 hover:bg-amber-200/60 dark:hover:bg-amber-900/50 transition flex items-center justify-center gap-1"
+                                    className="py-1 px-1.5 rounded-lg text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100/60 dark:bg-amber-900/30 hover:bg-amber-200/60 dark:hover:bg-amber-900/50 transition flex items-center justify-center gap-0.5"
                                   >
-                                    <HiOutlineXMark className="w-3.5 h-3.5" />
-                                    {t('family.cancelInvite')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => promptDeleteMember(member, e)}
-                                    className="py-1.5 px-2.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition flex items-center justify-center"
-                                    title="Remove Member"
-                                  >
-                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                    <HiOutlineXMark className="w-3 h-3" />
+                                    <span>Cancel</span>
                                   </button>
                                 </div>
                               </div>
                             ) : member.inviteStatus === 'accepted' ? (
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/30">
-                                  <HiCheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                                  {t('googleServices.statusJoined')}
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/30">
+                                  <HiCheckCircle className="w-3 h-3 text-emerald-500" />
+                                  Joined
                                 </span>
                                 <button
                                   type="button"
                                   onClick={(e) => promptDeleteMember(member, e)}
-                                  className="text-[11px] text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-medium flex items-center gap-1"
+                                  className="text-[10px] text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-medium flex items-center gap-0.5"
                                 >
                                   <HiOutlineTrash className="w-3 h-3" />
-                                  {t('family.removeMember')}
+                                  Remove
                                 </button>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
                                 <button
                                   type="button"
                                   onClick={(e) => openInviteModal(member, e)}
-                                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-primary hover:text-white dark:hover:bg-primary text-light-text-secondary dark:text-text-secondary transition-colors"
+                                  className="flex-1 flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg text-[11px] font-semibold bg-primary text-white hover:bg-primary-focus transition shadow-2xs"
                                 >
-                                  <HiOutlinePaperAirplane className="w-3.5 h-3.5" />
-                                  {t('googleServices.sendInviteBtn')}
+                                  <HiOutlinePaperAirplane className="w-2.5 h-2.5" />
+                                  <span>Invite</span>
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={(e) => promptDeleteMember(member, e)}
-                                  className="py-1.5 px-2 rounded-lg text-xs text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
-                                  title="Remove Member"
+                                  onClick={(e) => handleCopyMemberLink(member, e)}
+                                  className="py-1 px-2 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary transition"
+                                  title="Copy Invite Link"
                                 >
-                                  <HiOutlineTrash className="w-3.5 h-3.5" />
+                                  <HiOutlineLink className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                 </button>
                               </div>
                             )}
@@ -449,7 +602,7 @@ const FamilyPage: React.FC = () => {
                     </div>
                 ))
             ) : (
-                <Card className="sm:col-span-2 lg:col-span-3 text-center py-12">
+                <Card className="col-span-full text-center py-12">
                     <p className="text-light-text-secondary dark:text-text-secondary">{t('family.noMembers')}</p>
                 </Card>
             )
@@ -462,7 +615,7 @@ const FamilyPage: React.FC = () => {
         mainLabel="Family Actions"
       />
 
-      {/* Add Member Modal */}
+      {/* Add Member Modal with TP-Link Tether Style Vector Avatar Selection */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('family.modal.title')}>
         <div className="space-y-4 py-1">
           <div>
@@ -485,9 +638,9 @@ const FamilyPage: React.FC = () => {
               </label>
               <input 
                 type="text" 
-                placeholder="e.g. Mother, Spouse, Son" 
+                placeholder="e.g. Mother, Son, Father, Sister" 
                 value={relation} 
-                onChange={e => setRelation(e.target.value)} 
+                onChange={e => handleRelationChange(e.target.value)} 
                 className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" 
               />
             </div>
@@ -530,17 +683,14 @@ const FamilyPage: React.FC = () => {
             </label>
           )}
 
+          {/* TP-Link Tether Style Vector Art Avatar Selector */}
           <div>
-            <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">
-              {t('family.photoLabel')}
-            </label>
-            <label className="block w-full cursor-pointer p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-center text-light-text-secondary dark:text-text-secondary hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors">
-              <div className="flex flex-col items-center justify-center">
-                <HiOutlineCloudArrowUp className="h-6 w-6 mb-1 text-primary" />
-                <span className="text-xs font-medium">{avatarFile ? avatarFile.name : t('family.modal.uploadAvatar')}</span>
-              </div>
-              <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
-            </label>
+            <AvatarPicker
+              selectedAvatarUrl={selectedAvatarUrl}
+              onSelectAvatarUrl={handleSelectAvatarUrl}
+              avatarFile={avatarFile}
+              onSelectAvatarFile={setAvatarFile}
+            />
           </div>
 
           <button 
@@ -553,11 +703,11 @@ const FamilyPage: React.FC = () => {
         </div>
       </Modal>
 
-      {/* Gmail Family Invite Modal */}
+      {/* Member-Specific Invite Modal with Copy Link */}
       <Modal 
         isOpen={!!selectedMemberForInvite} 
         onClose={() => setSelectedMemberForInvite(null)} 
-        title={t('googleServices.inviteModalTitle')}
+        title={`Invite ${selectedMemberForInvite?.name || 'Member'}`}
       >
         {selectedMemberForInvite && (
           <div className="space-y-4">
@@ -567,15 +717,70 @@ const FamilyPage: React.FC = () => {
                 alt={selectedMemberForInvite.name} 
                 className="w-12 h-12 rounded-full object-cover border border-primary/50"
               />
-              <div>
-                <h4 className="text-sm font-bold text-light-text-primary dark:text-text-primary">{selectedMemberForInvite.name}</h4>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-bold text-light-text-primary dark:text-text-primary truncate">{selectedMemberForInvite.name}</h4>
                 <p className="text-xs text-primary font-medium">{selectedMemberForInvite.relation}</p>
               </div>
             </div>
 
+            {/* Direct Copyable Link Section */}
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                  <HiOutlineLink className="w-4 h-4 text-emerald-600" />
+                  Direct Invitation Link
+                </span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  Copy & send anywhere
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={generatedLink || 'Generating link...'}
+                  className="w-full text-xs font-mono bg-white dark:bg-zinc-900 border border-emerald-300 dark:border-emerald-700 rounded-xl px-2.5 py-1.5 text-slate-700 dark:text-zinc-200 select-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCopyMemberLink(selectedMemberForInvite)}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 shadow-xs"
+                >
+                  {copiedLink ? (
+                    <>
+                      <HiOutlineClipboardDocumentCheck className="w-4 h-4" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <HiOutlineClipboardDocument className="w-4 h-4" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+                {typeof navigator !== 'undefined' && 'share' in navigator && (
+                  <button
+                    type="button"
+                    onClick={() => handleShareLink(generatedLink, `Join Sprout Family Circle for ${selectedMemberForInvite.name}`)}
+                    className="p-2 bg-emerald-100 dark:bg-emerald-900/50 hover:bg-emerald-200 dark:hover:bg-emerald-800 text-emerald-800 dark:text-emerald-200 rounded-xl text-xs font-bold transition shrink-0"
+                    title="Share via app"
+                  >
+                    <HiOutlineShare className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="relative flex items-center justify-center my-1">
+              <div className="border-t border-slate-200 dark:border-zinc-700/80 w-full" />
+              <span className="bg-light-surface dark:bg-surface px-2.5 text-[10px] font-bold uppercase tracking-wider text-light-text-secondary dark:text-text-secondary absolute">
+                or send via gmail
+              </span>
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1">
-                {t('googleServices.inviteEmailPlaceholder')} *
+                {t('googleServices.inviteEmailPlaceholder')}
               </label>
               <input 
                 type="email" 
@@ -591,20 +796,12 @@ const FamilyPage: React.FC = () => {
                 {t('googleServices.inviteMessagePlaceholder')}
               </label>
               <textarea 
-                rows={3} 
-                placeholder="Hey! Join our family care portal on Sprout to track appointments, health records, and home tasks together." 
+                rows={2} 
+                placeholder="Join our family care portal on Sprout to coordinate health records and home tasks together." 
                 value={customMessage} 
                 onChange={e => setCustomMessage(e.target.value)} 
                 className="w-full p-2.5 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent text-sm resize-none" 
               />
-            </div>
-
-            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 text-xs text-blue-800 dark:text-blue-300 space-y-1">
-              <p className="font-semibold flex items-center gap-1.5">
-                <HiOutlineEnvelope className="w-4 h-4 text-blue-500" />
-                {t('family.directGmailDelivery')}
-              </p>
-              <p className="text-[11px]">{t('family.gmailInviteNote')}</p>
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -627,6 +824,87 @@ const FamilyPage: React.FC = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* General Family Invite Link Modal */}
+      <Modal
+        isOpen={isGeneralLinkModalOpen}
+        onClose={() => setIsGeneralLinkModalOpen(false)}
+        title="Family Circle Invite Link"
+      >
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 space-y-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <HiOutlineSparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                  Share with Family Members
+                </h4>
+                <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80">
+                  Anyone who opens this link can create an account or sign in with Google to automatically join your family circle.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={generalLink || 'Generating link...'}
+                className="w-full text-xs font-mono bg-white dark:bg-zinc-900 border border-emerald-300 dark:border-emerald-700 rounded-xl px-3 py-2 text-slate-700 dark:text-zinc-200 select-all"
+              />
+              <button
+                type="button"
+                onClick={handleCopyGeneralLink}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 shadow-xs"
+              >
+                {copiedGeneralLink ? (
+                  <>
+                    <HiOutlineClipboardDocumentCheck className="w-4 h-4" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <HiOutlineClipboardDocument className="w-4 h-4" />
+                    <span>Copy</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="text-xs text-light-text-secondary dark:text-text-secondary space-y-1.5 p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200/80 dark:border-zinc-700/60">
+            <p className="font-semibold text-light-text-primary dark:text-text-primary">How link invitations work:</p>
+            <ul className="list-disc list-inside space-y-1 text-[11px]">
+              <li>Send this link via WhatsApp, SMS, Discord, or Email.</li>
+              <li>When the recipient clicks it, they will see your invitation banner.</li>
+              <li>They can sign in with 1-click Google Auth or create an account with email.</li>
+              <li>Once authenticated, their account is instantly linked to your family portal!</li>
+            </ul>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            {typeof navigator !== 'undefined' && 'share' in navigator && (
+              <button
+                type="button"
+                onClick={() => handleShareLink(generalLink, 'Join Sprout Family Circle')}
+                className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <HiOutlineShare className="w-4 h-4" />
+                <span>Share via App</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsGeneralLinkModalOpen(false)}
+              className="flex-1 py-2 px-3 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800 transition"
+            >
+              Done
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Cancel Invite Confirmation Modal */}

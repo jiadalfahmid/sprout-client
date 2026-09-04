@@ -178,7 +178,7 @@ const DayDetailsModal: React.FC<{
                             {events?.length || 0} event{(events?.length || 0) === 1 ? '' : 's'} scheduled
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
+                    <button onClick={onClose} aria-label="Close timeline modal" className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
                         <HiOutlineXMark className="h-5 w-5" />
                     </button>
                 </div>
@@ -228,6 +228,8 @@ const CalendarPage: React.FC = () => {
         familyMembers, 
         getCalendarEvents, 
         isGoogleAuthenticated, 
+        needsGoogleReauth,
+        reconnectGoogle,
         loginWithGoogle,
         isCalendarSyncing, 
         fetchGoogleEvents,
@@ -296,11 +298,14 @@ const CalendarPage: React.FC = () => {
             if (!isGoogleAuthenticated) {
                 const ok = await loginWithGoogle();
                 if (!ok) return;
+            } else if (needsGoogleReauth) {
+                const ok = await reconnectGoogle();
+                if (!ok) return;
             }
             const res = await syncAllToGoogleCalendar();
             toast.success(`Google Calendar synced! (${res.appointmentsSynced} appointments & ${res.billsSynced} bills synced)`);
         } catch (err: any) {
-            if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+            if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
                 return;
             }
             console.error(err);
@@ -325,7 +330,7 @@ const CalendarPage: React.FC = () => {
         },
         {
             id: 'sync_gcal',
-            label: isCalendarSyncing ? 'Syncing...' : (isGoogleAuthenticated ? 'Sync Google Calendar' : 'Connect Google Calendar'),
+            label: isCalendarSyncing ? 'Syncing...' : (needsGoogleReauth ? 'Reconnect Google' : (isGoogleAuthenticated ? 'Sync Google Calendar' : 'Connect Google Calendar')),
             icon: HiOutlineArrowPath,
             color: 'cyan',
             onClick: handleSyncCalendar,
@@ -341,9 +346,9 @@ const CalendarPage: React.FC = () => {
             <Card className="!p-0 overflow-hidden">
                 <div className="flex flex-col md:flex-row justify-between items-center p-3.5 sm:p-4 border-b border-slate-200 dark:border-zinc-700 gap-3 sm:gap-4">
                     <div className="flex items-center gap-1.5 sm:gap-2 self-start md:self-center">
-                        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary"><HiChevronLeft className="h-5 w-5" /></button>
+                        <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary"><HiChevronLeft className="h-5 w-5" /></button>
                         <h2 className="text-base sm:text-lg font-bold w-40 text-center text-light-text-primary dark:text-text-primary">{currentDate.toLocaleString(language, { month: 'long', year: 'numeric' })}</h2>
-                        <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary"><HiChevronRight className="h-5 w-5" /></button>
+                        <button onClick={() => changeMonth(1)} aria-label="Next month" className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary"><HiChevronRight className="h-5 w-5" /></button>
                     </div>
                     
                     <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
@@ -351,7 +356,7 @@ const CalendarPage: React.FC = () => {
                             <HiMagnifyingGlass className="absolute top-1/2 left-3 -translate-y-1/2 h-4 w-4 text-light-text-secondary dark:text-text-secondary" />
                             <input type="text" placeholder={t('calendar.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full p-2 pl-9 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-base sm:text-sm"/>
                         </div>
-                        <select value={filterType} onChange={e => setFilterType(e.target.value as any)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-base sm:text-sm">
+                        <select aria-label="Filter events by category" value={filterType} onChange={e => setFilterType(e.target.value as any)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-base sm:text-sm">
                             <option value="all">{t('calendar.filter.allTypes')}</option>
                             <option value="medicine">{t('calendar.filter.medicine')}</option>
                             <option value="bill">{t('calendar.filter.bills')}</option>

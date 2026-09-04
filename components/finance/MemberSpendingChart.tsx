@@ -3,6 +3,7 @@ import { Transaction, TransactionType, FamilyMember } from '../../types';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import Card from '../ui/Card';
 import { HiOutlineUserGroup } from 'react-icons/hi2';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface MemberSpendingProps {
   transactions: Transaction[];
@@ -30,6 +31,8 @@ export const MemberSpendingChart: React.FC<MemberSpendingProps> = ({
   currencySymbol,
   theme,
 }) => {
+  const { t, language } = useTranslation();
+
   // Filter current month expense transactions
   const monthExpenses = transactions.filter((t) => {
     const txDate = new Date(t.date);
@@ -43,11 +46,12 @@ export const MemberSpendingChart: React.FC<MemberSpendingProps> = ({
   const totalExpense = monthExpenses.reduce((sum, t) => sum + t.amount, 0);
 
   // Group by memberId
-  const spendingByMemberMap = new Map<string, { name: string; avatar?: string; amount: number; color: string }>();
+  const spendingByMemberMap = new Map<string, { id: string; name: string; avatar?: string; amount: number; color: string }>();
 
   // Initialize all family members with 0
   familyMembers.forEach((member, index) => {
     spendingByMemberMap.set(member.id, {
+      id: member.id,
       name: member.name,
       avatar: member.avatar,
       amount: 0,
@@ -69,17 +73,19 @@ export const MemberSpendingChart: React.FC<MemberSpendingProps> = ({
 
   if (sharedExpense > 0 || spendingByMemberMap.size === 0) {
     spendingByMemberMap.set('shared', {
-      name: 'Family (Shared)',
+      id: 'shared',
+      name: t('finance.memberSpending.shared') || 'Family (Shared)',
       amount: sharedExpense,
       color: '#64748B',
     });
   }
 
+  // Show all members sorted by amount
   const spendingList = Array.from(spendingByMemberMap.values())
-    .filter((item) => item.amount > 0 || familyMembers.length <= 4)
     .sort((a, b) => b.amount - a.amount);
 
   const chartData = spendingList.map((item) => ({
+    id: item.id,
     name: item.name.length > 10 ? `${item.name.slice(0, 9)}…` : item.name,
     fullName: item.name,
     amount: parseFloat(item.amount.toFixed(2)),
@@ -91,14 +97,16 @@ export const MemberSpendingChart: React.FC<MemberSpendingProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">
-            Spending by Person
+            {t('finance.memberSpending.title') || 'Spending by Person'}
           </h2>
           <p className="text-xs text-light-text-secondary dark:text-text-secondary">
-            Monthly expense breakdown per family member
+            {t('finance.memberSpending.subtitle') || 'Monthly expense breakdown per family member'}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-light-text-secondary dark:text-text-secondary">Total Expenses</p>
+          <p className="text-xs text-light-text-secondary dark:text-text-secondary">
+            {t('finance.totalExpenses') || 'Total Expenses'}
+          </p>
           <p className="text-sm sm:text-base font-bold text-expense">
             {currencySymbol}{totalExpense.toFixed(2)}
           </p>
@@ -129,12 +137,12 @@ export const MemberSpendingChart: React.FC<MemberSpendingProps> = ({
                     border: `1px solid ${theme === 'dark' ? '#3f3f46' : '#e2e8f0'}`,
                     borderRadius: '0.75rem',
                   }}
-                  formatter={(val: number) => [`${currencySymbol}${val.toFixed(2)}`, 'Spent']}
+                  formatter={(val: number) => [`${currencySymbol}${val.toFixed(2)}`, t('finance.memberSpending.spent') || 'Spent']}
                   labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName || label}
                 />
                 <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
-                  {chartData.map((entry, idx) => (
-                    <Cell key={`cell-${idx}`} fill={entry.color} />
+                  {chartData.map((entry) => (
+                    <Cell key={`cell-${entry.id}`} fill={entry.color} />
                   ))}
                 </Bar>
               </BarChart>
@@ -146,7 +154,7 @@ export const MemberSpendingChart: React.FC<MemberSpendingProps> = ({
             {spendingList.map((item) => {
               const percentage = totalExpense > 0 ? Math.round((item.amount / totalExpense) * 100) : 0;
               return (
-                <div key={item.name} className="space-y-1">
+                <div key={item.id} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5 min-w-0">
                       {item.avatar ? (
@@ -193,7 +201,9 @@ export const MemberSpendingChart: React.FC<MemberSpendingProps> = ({
         </div>
       ) : (
         <div className="py-6 text-center text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary">
-          No expenses recorded for {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })} yet.
+          {t('finance.memberSpending.noExpenses', {
+            date: currentDate.toLocaleString(language || 'en', { month: 'long', year: 'numeric' })
+          }) || `No expenses recorded for ${currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })} yet.`}
         </div>
       )}
     </Card>

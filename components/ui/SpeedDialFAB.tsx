@@ -160,6 +160,7 @@ const SpeedDialFAB: React.FC<SpeedDialFABProps> = ({
                     onClick={() => handleActionClick(action)}
                     className="flex items-center gap-3 group focus:outline-none"
                     type="button"
+                    aria-label={action.label}
                   >
                     {/* Action Label Chip */}
                     <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm text-slate-800 dark:text-zinc-100 shadow-md border border-slate-200/80 dark:border-zinc-700/80 whitespace-nowrap group-hover:bg-slate-50 dark:group-hover:bg-zinc-700 transition-colors">

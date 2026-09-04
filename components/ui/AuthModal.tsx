@@ -455,7 +455,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             )}
 
             <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-[11px] text-emerald-800 dark:text-emerald-300">
-              🔒 Your health and family data is encrypted and synced securely to your private account in real time.
+              Your health and family data is encrypted and synced securely to your private account in real time.
             </div>
 
             <div className="pt-2 text-center text-[11px] text-light-text-secondary dark:text-text-secondary flex items-center justify-center gap-3">

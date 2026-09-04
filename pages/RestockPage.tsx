@@ -72,7 +72,7 @@ const RestockPage: React.FC = () => {
     return (
         <div>
              <div className="flex items-center gap-4 mb-6">
-                <button onClick={() => step === 'cart' ? navigate(-1) : setStep('cart')} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 transition">
+                <button onClick={() => step === 'cart' ? navigate(-1) : setStep('cart')} aria-label={step === 'cart' ? 'Go back' : 'Back to cart'} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 transition">
                     <HiArrowLeft className="h-6 w-6"/>
                 </button>
                 <PageHeader 

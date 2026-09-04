@@ -189,10 +189,10 @@ const MedicinesSettingsPage: React.FC = () => {
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
                                             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                                <button onClick={() => handleOpenModal(med)} className="text-blue-400 hover:text-blue-300"><HiPencil className="h-5 w-5"/></button>
-                                                <button onClick={() => deleteMedicine(med.id)} className="text-red-400 hover:text-red-300"><HiTrash className="h-5 w-5"/></button>
+                                                <button onClick={() => handleOpenModal(med)} aria-label={`Edit ${med.name}`} className="text-blue-400 hover:text-blue-300"><HiPencil className="h-5 w-5"/></button>
+                                                <button onClick={() => deleteMedicine(med.id)} aria-label={`Delete ${med.name}`} className="text-red-400 hover:text-red-300"><HiTrash className="h-5 w-5"/></button>
                                             </div>
-                                            <button onClick={() => handleAddToCart(med.id)} className="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl text-primary hover:bg-primary/20"><HiOutlineShoppingCart className="h-5 w-5" /></button>
+                                            <button onClick={() => handleAddToCart(med.id)} aria-label={`Add ${med.name} to restock cart`} className="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-xl text-primary hover:bg-primary/20"><HiOutlineShoppingCart className="h-5 w-5" /></button>
                                         </div>
                                     </div>
                                 </Card>

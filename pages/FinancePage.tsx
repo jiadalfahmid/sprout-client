@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
-import PageHeader from '../components/ui/PageHeader';
 import { Transaction, TransactionType, Bill, BillCategory, Borrowing, Lending, SavingsGoal, Repayment, Return } from '../types';
 import { 
     HiPlus, 
@@ -284,7 +283,10 @@ const DashboardView: React.FC<{ currentDate: Date, currencySymbol: string }> = (
     const dailyChartData = useMemo(() => {
         const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
         const data = [];
-        const monthTxs = transactions.filter(t => new Date(t.date).getMonth() === currentDate.getMonth());
+        const monthTxs = transactions.filter(t => {
+            const txDate = new Date(t.date);
+            return txDate.getMonth() === currentDate.getMonth() && txDate.getFullYear() === currentDate.getFullYear();
+        });
         for (let day = 1; day <= daysInMonth; day++) {
             const dailyIncome = monthTxs.filter(t => t.type === TransactionType.INCOME && new Date(t.date).getDate() === day).reduce((sum, t) => sum + t.amount, 0);
             const dailyExpense = monthTxs.filter(t => t.type === TransactionType.EXPENSE && new Date(t.date).getDate() === day).reduce((sum, t) => sum + t.amount, 0);
@@ -385,6 +387,7 @@ const TransactionsView: React.FC<{
         deleteTransaction,
         transactionCategories,
         addTransactionCategory,
+        updateTransactionCategory,
         familyMembers
     } = useAppContext();
     const { t } = useTranslation();
@@ -1142,6 +1145,7 @@ const TransactionsView: React.FC<{
                         selectedCategoryId={categoryId}
                         onSelect={setCategoryId}
                         onAddCategory={addTransactionCategory}
+                        onUpdateCategory={updateTransactionCategory}
                     />
 
                     {/* Family Member Picker */}
@@ -1175,6 +1179,7 @@ const BillsView: React.FC<{
         deleteBill,
         transactionCategories,
         addTransactionCategory,
+        updateTransactionCategory,
         familyMembers
     } = useAppContext();
     const { t, language } = useTranslation();
@@ -1507,6 +1512,7 @@ const BillsView: React.FC<{
                         selectedCategoryId={billForm.categoryId}
                         onSelect={(id) => setBillForm(s => ({ ...s, categoryId: id }))}
                         onAddCategory={addTransactionCategory}
+                        onUpdateCategory={updateTransactionCategory}
                     />
 
                     {/* Family Member Picker */}

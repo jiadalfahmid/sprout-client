@@ -17,6 +17,7 @@ import {
   HiArrowTrendingUp, HiArrowTrendingDown, HiOutlineWallet, HiChevronRight
 } from 'react-icons/hi2';
 import { PiPill } from 'react-icons/pi';
+import { findDoseHistoryEntry } from '../services/notificationService';
 
 const HomePage: React.FC = () => {
   const { 
@@ -63,7 +64,8 @@ const HomePage: React.FC = () => {
           const [hour, minute] = time.split(':');
           const doseTime = new Date();
           doseTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
-          const hasBeenTaken = med.history.some(h => new Date(h.timestamp).toDateString() === now.toDateString() && new Date(h.timestamp).getHours() === parseInt(hour));
+          const historyEntry = findDoseHistoryEntry(med.history, now, parseInt(hour, 10), parseInt(minute, 10));
+          const hasBeenTaken = historyEntry?.status === 'taken';
           if (doseTime > now && !hasBeenTaken) {
             return {
               id: `${med.id}-${time}`,

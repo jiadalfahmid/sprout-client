@@ -77,7 +77,7 @@ const TaskListCard: React.FC<{
                       )}
                     </div>
                   </label>
-                  <button onClick={() => onDeleteTask(task.id)} className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                  <button onClick={() => onDeleteTask(task.id)} aria-label="Delete task" className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
                     <HiOutlineTrash className="h-5 w-5" />
                   </button>
                 </motion.li>
@@ -99,7 +99,7 @@ const TaskListCard: React.FC<{
             placeholder={t('tasks.addTaskPlaceholder')}
             className="w-full bg-transparent p-2 focus:outline-none"
           />
-           <button onClick={handleAddTask} className="p-2 text-primary rounded-full hover:bg-primary/10 transition-colors disabled:text-slate-400 disabled:hover:bg-transparent" disabled={!newItem.trim()}>
+           <button onClick={handleAddTask} aria-label="Add task" className="p-2 text-primary rounded-full hover:bg-primary/10 transition-colors disabled:text-slate-400 disabled:hover:bg-transparent" disabled={!newItem.trim()}>
               <HiPlus className="h-5 w-5" />
            </button>
         </div>
@@ -116,10 +116,10 @@ const TaskListCard: React.FC<{
         )}
       </div>
        <div className="mt-2 flex items-center justify-end">
-            <button onClick={() => {setShowDueDate(!showDueDate); setTimeout(() => dueDateInputRef.current?.focus(), 0)}} className="p-2 text-light-text-secondary dark:text-text-secondary rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
+            <button onClick={() => {setShowDueDate(!showDueDate); setTimeout(() => dueDateInputRef.current?.focus(), 0)}} aria-label="Set due date" className="p-2 text-light-text-secondary dark:text-text-secondary rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
                 <HiOutlineCalendarDays className="h-5 w-5"/>
             </button>
-            <button onClick={() => onDeleteList(list)} className="p-2 text-light-text-secondary dark:text-text-secondary rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
+            <button onClick={() => onDeleteList(list)} aria-label="Delete list" className="p-2 text-light-text-secondary dark:text-text-secondary rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
                 <HiOutlineTrash className="h-5 w-5" />
             </button>
        </div>
