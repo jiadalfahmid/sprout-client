@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import toast from 'react-hot-toast';
 import { 
   getAuth, 
   signInWithPopup, 
@@ -27,10 +28,11 @@ import {
   onSnapshot,
   deleteDoc,
   updateDoc,
+  deleteField,
   serverTimestamp
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
-import { FamilyInvite } from '../types';
+import { FamilyInvite, Household, HouseholdMemberInfo, UserHouseholdMembership } from '../types';
 
 // Standardized Firestore error handling types adhering to Firebase Integration skill
 export enum OperationType {
@@ -96,6 +98,15 @@ export const db = (() => {
         tabManager: persistentMultipleTabManager()
       }),
       experimentalForceLongPolling: true,
+      // Without this, setDoc()/updateDoc() THROW on any field whose value is
+      // `undefined` (e.g. transaction.memberId when "Shared/Household" is
+      // selected). That throw was being silently swallowed by
+      // handleFirestoreError below, so the write never reached Firestore
+      // while the UI had already optimistically added the item — it would
+      // then vanish the next time the collection's onSnapshot listener
+      // refreshed from the server. This makes the SDK drop undefined fields
+      // instead of rejecting the whole write.
+      ignoreUndefinedProperties: true,
     }, databaseId);
   } catch (err) {
     console.info('Using fallback getFirestore instance with databaseId:', err);
@@ -255,16 +266,43 @@ export const logoutFirebase = async (): Promise<void> => {
 };
 
 /**
+ * Strips keys whose value is `undefined` before a Firestore write (recursively in nested objects/arrays).
+ * Belt-and-suspenders alongside `ignoreUndefinedProperties`: this ensures
+ * doc writes can never be rejected by an explicit `undefined` field
+ * regardless of how Firestore was initialized or how this instance was constructed.
+ */
+export const stripUndefined = <T = any>(data: T): T => {
+  if (data === null || data === undefined) return data;
+  if (Array.isArray(data)) {
+    return data.map(item => stripUndefined(item)) as unknown as T;
+  }
+  if (typeof data !== 'object' || data instanceof Date) {
+    return data;
+  }
+  const cleaned: Record<string, any> = {};
+  Object.keys(data as Record<string, any>).forEach((key) => {
+    const val = (data as Record<string, any>)[key];
+    if (val !== undefined) {
+      cleaned[key] = stripUndefined(val);
+    }
+  });
+  return cleaned as T;
+};
+
+/**
  * Firestore Helper: Save or Update a Document in a user's subcollection
  */
 export const saveUserDocument = async (userId: string, subcollection: string, docId: string, data: any) => {
   const path = `users/${userId}/${subcollection}/${docId}`;
   try {
     const docRef = doc(db, 'users', userId, subcollection, docId);
-    await setDoc(docRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(docRef, { ...stripUndefined(data), updatedAt: new Date().toISOString() }, { merge: true });
     return true;
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
+    if (typeof window !== 'undefined') {
+      toast.error('Cloud sync error: Record could not be saved to Firestore.', { id: 'firestore-write-error' });
+    }
     return false;
   }
 };
@@ -276,10 +314,13 @@ export const saveInviteDocument = async (inviteId: string, data: any) => {
   const path = `family_invites/${inviteId}`;
   try {
     const inviteRef = doc(db, 'family_invites', inviteId);
-    await setDoc(inviteRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(inviteRef, { ...stripUndefined(data), updatedAt: new Date().toISOString() }, { merge: true });
     return true;
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
+    if (typeof window !== 'undefined') {
+      toast.error('Cloud sync error: Invitation could not be saved to Firestore.', { id: 'firestore-write-error' });
+    }
     return false;
   }
 };
@@ -309,10 +350,13 @@ export const updateInviteDocument = async (inviteId: string, data: any) => {
   const path = `family_invites/${inviteId}`;
   try {
     const inviteRef = doc(db, 'family_invites', inviteId);
-    await setDoc(inviteRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(inviteRef, { ...stripUndefined(data), updatedAt: new Date().toISOString() }, { merge: true });
     return true;
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, path);
+    if (typeof window !== 'undefined') {
+      toast.error('Cloud sync error: Invitation could not be updated in Firestore.', { id: 'firestore-write-error' });
+    }
     return false;
   }
 };
@@ -328,6 +372,9 @@ export const deleteUserDocument = async (userId: string, subcollection: string, 
     return true;
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
+    if (typeof window !== 'undefined') {
+      toast.error('Cloud sync error: Record could not be deleted from Firestore.', { id: 'firestore-delete-error' });
+    }
     return false;
   }
 };
@@ -381,9 +428,14 @@ export const saveUserProfile = async (userId: string, profileData: any) => {
   const path = `users/${userId}`;
   try {
     const userRef = doc(db, 'users', userId);
-    await setDoc(userRef, { ...profileData, updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(userRef, { ...stripUndefined(profileData), updatedAt: new Date().toISOString() }, { merge: true });
+    return true;
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
+    if (typeof window !== 'undefined') {
+      toast.error('Cloud sync error: Profile could not be saved to Firestore.', { id: 'firestore-write-error' });
+    }
+    return false;
   }
 };
 
@@ -486,4 +538,339 @@ export const clearAllCloudUserData = async (userId: string): Promise<void> => {
       console.warn(`Could not clear subcollection ${subcol} in Firestore:`, e);
     }
   }
+};
+
+/**
+ * Fetch a household document by householdId
+ */
+export const getHousehold = async (householdId: string): Promise<Household | null> => {
+  const path = `households/${householdId}`;
+  try {
+    const householdRef = doc(db, 'households', householdId);
+    const snap = await getDoc(householdRef);
+    if (snap.exists()) {
+      return { id: snap.id, ...snap.data() } as Household;
+    }
+    return null;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, path);
+    return null;
+  }
+};
+
+/**
+ * Ensure the user's personal household document exists (creates if missing)
+ */
+export const ensureHousehold = async (
+  userId: string,
+  userInfo: { name?: string; email?: string }
+): Promise<Household | null> => {
+  const path = `households/${userId}`;
+  try {
+    const householdRef = doc(db, 'households', userId);
+    const snap = await getDoc(householdRef);
+    if (snap.exists()) {
+      return { id: snap.id, ...snap.data() } as Household;
+    }
+
+    const initialHousehold: Household = {
+      name: `${userInfo.name ? `${userInfo.name}'s ` : ''}Family Circle`,
+      ownerUid: userId,
+      ownerName: userInfo.name || 'Family Organizer',
+      ownerEmail: userInfo.email || '',
+      members: {
+        [userId]: {
+          role: 'owner',
+          name: userInfo.name || 'Household Owner',
+          email: userInfo.email || '',
+          joinedAt: new Date().toISOString(),
+        },
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await setDoc(householdRef, stripUndefined(initialHousehold));
+    return initialHousehold;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+    return null;
+  }
+};
+
+/**
+ * Fetch user's household membership document
+ */
+export const getUserHouseholdMembership = async (userId: string): Promise<UserHouseholdMembership | null> => {
+  const path = `user_household_memberships/${userId}`;
+  try {
+    const memRef = doc(db, 'user_household_memberships', userId);
+    const snap = await getDoc(memRef);
+    if (snap.exists()) {
+      return snap.data() as UserHouseholdMembership;
+    }
+    return null;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, path);
+    return null;
+  }
+};
+
+/**
+ * Save user household membership document
+ */
+export const saveUserHouseholdMembership = async (
+  userId: string, 
+  data: UserHouseholdMembership
+): Promise<boolean> => {
+  const path = `user_household_memberships/${userId}`;
+  try {
+    const memRef = doc(db, 'user_household_memberships', userId);
+    await setDoc(memRef, { ...stripUndefined(data), updatedAt: new Date().toISOString() }, { merge: true });
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+    return false;
+  }
+};
+
+/**
+ * Ensure user's household membership document exists
+ */
+export const ensureUserHouseholdMembership = async (
+  userId: string
+): Promise<UserHouseholdMembership> => {
+  const path = `user_household_memberships/${userId}`;
+  try {
+    const memRef = doc(db, 'user_household_memberships', userId);
+    const snap = await getDoc(memRef);
+    if (snap.exists()) {
+      const data = snap.data() as UserHouseholdMembership;
+      const rawIds = Array.isArray(data.householdIds) ? data.householdIds : [userId];
+      const householdIds = Array.from(new Set(rawIds.length > 0 ? rawIds : [userId]));
+      const activeHouseholdId = data.activeHouseholdId || userId;
+      return {
+        householdIds,
+        activeHouseholdId,
+        updatedAt: data.updatedAt,
+      };
+    }
+
+    const initial: UserHouseholdMembership = {
+      householdIds: [userId],
+      activeHouseholdId: userId,
+      updatedAt: new Date().toISOString(),
+    };
+    await setDoc(memRef, stripUndefined(initial));
+    return initial;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+    return {
+      householdIds: [userId],
+      activeHouseholdId: userId,
+    };
+  }
+};
+
+/**
+ * Subscribe to user's household membership changes
+ */
+export const subscribeToUserHouseholdMembership = (
+  userId: string,
+  onUpdate: (membership: UserHouseholdMembership | null) => void
+) => {
+  const path = `user_household_memberships/${userId}`;
+  const memRef = doc(db, 'user_household_memberships', userId);
+  return onSnapshot(memRef, (snapshot) => {
+    if (snapshot.exists()) {
+      onUpdate(snapshot.data() as UserHouseholdMembership);
+    } else {
+      onUpdate(null);
+    }
+  }, (error) => {
+    handleFirestoreError(error, OperationType.GET, path);
+  });
+};
+
+/**
+ * Subscribe to a household document
+ */
+export const subscribeToHousehold = (
+  householdId: string,
+  onUpdate: (household: Household | null) => void
+) => {
+  const path = `households/${householdId}`;
+  const householdRef = doc(db, 'households', householdId);
+  return onSnapshot(householdRef, (snapshot) => {
+    if (snapshot.exists()) {
+      onUpdate({ id: snapshot.id, ...snapshot.data() } as Household);
+    } else {
+      onUpdate(null);
+    }
+  }, (error) => {
+    handleFirestoreError(error, OperationType.GET, path);
+  });
+};
+
+/**
+ * Call the secure serverless API endpoint to accept an invitation
+ */
+export const acceptInviteViaApi = async (
+  inviteId: string,
+  idToken: string,
+  name?: string
+): Promise<{ success: boolean; householdId?: string; error?: string }> => {
+  try {
+    const res = await fetch('/api/accept-invite', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ inviteId, name }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { success: false, error: data.error || `Server returned ${res.status}` };
+    }
+    return { success: true, householdId: data.householdId };
+  } catch (err: any) {
+    console.warn('Call to /api/accept-invite failed:', err);
+    return { success: false, error: err.message || 'Network error calling /api/accept-invite' };
+  }
+};
+
+/**
+ * Add or confirm a member in a household document by the household owner
+ */
+export const addUserToHouseholdByOwner = async (
+  householdId: string, 
+  memberUid: string, 
+  memberInfo: HouseholdMemberInfo
+): Promise<boolean> => {
+  const path = `households/${householdId}`;
+  try {
+    const householdRef = doc(db, 'households', householdId);
+    await updateDoc(householdRef, {
+      [`members.${memberUid}`]: stripUndefined(memberInfo),
+      updatedAt: new Date().toISOString(),
+    });
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, path);
+    return false;
+  }
+};
+
+/**
+ * Register a joined household in the user's personal membership document
+ */
+export const registerJoinedHousehold = async (
+  userId: string,
+  householdId: string,
+  setActiveIfConfirmed: boolean = true
+): Promise<boolean> => {
+  const currentMembership = await getUserHouseholdMembership(userId);
+  const existingIds = currentMembership?.householdIds || [userId];
+  const newHouseholdIds = Array.from(new Set([...existingIds, householdId]));
+
+  let newActiveId = currentMembership?.activeHouseholdId || userId;
+  if (setActiveIfConfirmed) {
+    if (householdId === userId) {
+      newActiveId = userId;
+    } else {
+      const targetHousehold = await getHousehold(householdId);
+      if (targetHousehold?.members && userId in targetHousehold.members) {
+        newActiveId = householdId;
+      }
+    }
+  }
+
+  return saveUserHouseholdMembership(userId, {
+    householdIds: newHouseholdIds,
+    activeHouseholdId: newActiveId,
+    updatedAt: new Date().toISOString(),
+  });
+};
+
+/**
+ * Add a member to a household (after accepting an invite)
+ * In client-side execution, only the owner can write to household doc,
+ * while members register in their personal membership document.
+ */
+export const addUserToHousehold = async (
+  householdId: string, 
+  memberUid: string, 
+  memberInfo: HouseholdMemberInfo
+): Promise<boolean> => {
+  // If the caller is the owner of the household, update the household doc directly
+  if (householdId === memberUid) {
+    await addUserToHouseholdByOwner(householdId, memberUid, memberInfo);
+  }
+  return registerJoinedHousehold(memberUid, householdId);
+};
+
+/**
+ * Leave a joined household (non-owner only)
+ */
+export const leaveHousehold = async (
+  householdId: string,
+  memberUid: string
+): Promise<boolean> => {
+  if (householdId === memberUid) {
+    return false;
+  }
+  const path = `households/${householdId}`;
+  try {
+    const householdRef = doc(db, 'households', householdId);
+    await updateDoc(householdRef, {
+      [`members.${memberUid}`]: deleteField(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const currentMembership = await getUserHouseholdMembership(memberUid);
+    const existingIds = currentMembership?.householdIds || [memberUid];
+    const newHouseholdIds = existingIds.filter(id => id !== householdId);
+    if (!newHouseholdIds.includes(memberUid)) {
+      newHouseholdIds.unshift(memberUid);
+    }
+
+    await saveUserHouseholdMembership(memberUid, {
+      householdIds: newHouseholdIds,
+      activeHouseholdId: memberUid,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, path);
+    return false;
+  }
+};
+
+/**
+ * Switch active household for a user, validating verified membership
+ */
+export const switchActiveHousehold = async (
+  userId: string,
+  newActiveHouseholdId: string
+): Promise<boolean> => {
+  // If switching to another household circle, verify caller is in that household's members map
+  if (newActiveHouseholdId !== userId) {
+    const targetHousehold = await getHousehold(newActiveHouseholdId);
+    if (!targetHousehold || !targetHousehold.members || !(userId in targetHousehold.members)) {
+      console.warn(`Cannot switch: User ${userId} is not a verified member of household ${newActiveHouseholdId}`);
+      return false;
+    }
+  }
+
+  const currentMembership = await getUserHouseholdMembership(userId);
+  const existingIds = currentMembership?.householdIds || [userId];
+  const newHouseholdIds = Array.from(new Set([...existingIds, newActiveHouseholdId]));
+
+  return saveUserHouseholdMembership(userId, {
+    householdIds: newHouseholdIds,
+    activeHouseholdId: newActiveHouseholdId,
+    updatedAt: new Date().toISOString(),
+  });
 };

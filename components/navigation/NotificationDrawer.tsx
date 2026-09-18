@@ -20,6 +20,9 @@ import {
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import { useTranslation } from '../../hooks/useTranslation';
+import SectionHeading from '../ui/SectionHeading';
+import Button from '../ui/Button';
+import SegmentedControl from '../ui/SegmentedControl';
 
 interface NotificationDrawerProps {
   isOpen: boolean;
@@ -87,30 +90,6 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
     deleteNotification(id);
   };
 
-  const FilterButton: React.FC<{ type: 'all' | 'health' | 'finance' | 'system'; icon?: React.ElementType; label: string }> = ({ type, icon: Icon, label }) => {
-    const count = notifications.filter(n => type === 'all' ? true : n.domain === type).length;
-    return (
-      <button
-        onClick={() => setFilter(type)}
-        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-          filter === type 
-            ? 'bg-primary text-white shadow-xs' 
-            : 'bg-slate-100 dark:bg-zinc-800 text-light-text-secondary dark:text-text-secondary hover:bg-slate-200 dark:hover:bg-zinc-700'
-        }`}
-      >
-        {Icon && <Icon className="h-3.5 w-3.5" />}
-        <span>{label}</span>
-        {count > 0 && (
-          <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-            filter === type ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-text-primary'
-          }`}>
-            {count}
-          </span>
-        )}
-      </button>
-    );
-  };
-
   const handleClearAll = () => {
     clearNotifications();
     toast.success('All notifications cleared!');
@@ -142,9 +121,9 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
                   <HiOutlineBell className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-light-text-primary dark:text-text-primary">
+                  <SectionHeading>
                     {t('notifications.title')}
-                  </h2>
+                  </SectionHeading>
                   <p className="text-xs text-light-text-secondary dark:text-text-secondary">
                     {unreadCount > 0 ? `${unreadCount} unread alerts` : 'All alerts up to date'}
                   </p>
@@ -154,7 +133,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
                 {notifications.length > 0 && (
                   <button
                     onClick={handleClearAll}
-                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-colors"
                     title="Clear All Notifications"
                   >
                     <HiOutlineTrash className="h-3.5 w-3.5" />
@@ -171,12 +150,21 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
               </div>
             </div>
 
-            {/* Filter Pills */}
-            <div className="p-3 flex gap-2 overflow-x-auto border-b border-slate-200 dark:border-zinc-700 no-scrollbar">
-              <FilterButton type="all" label={t('notifications.all') || 'All'} />
-              <FilterButton type="health" icon={HiOutlineHeart} label={t('nav.health')} />
-              <FilterButton type="finance" icon={HiOutlineCurrencyDollar} label={t('nav.finance')} />
-              <FilterButton type="system" icon={HiOutlineSparkles} label="System" />
+            {/* Filter Tabs */}
+            <div className="p-3 overflow-x-auto border-b border-slate-200 dark:border-zinc-700 no-scrollbar">
+              <SegmentedControl
+                options={[
+                  { value: 'all', label: t('notifications.all') || 'All', badge: notifications.length > 0 ? notifications.length : undefined },
+                  { value: 'health', icon: HiOutlineHeart, label: t('nav.health'), badge: notifications.filter(n => n.domain === 'health').length || undefined },
+                  { value: 'finance', icon: HiOutlineCurrencyDollar, label: t('nav.finance'), badge: notifications.filter(n => n.domain === 'finance').length || undefined },
+                  { value: 'system', icon: HiOutlineSparkles, label: 'System', badge: notifications.filter(n => n.domain === 'system').length || undefined },
+                ]}
+                value={filter}
+                onChange={(val) => setFilter(val as any)}
+                variant="primary"
+                size="sm"
+                ariaLabel="Notification filter tabs"
+              />
             </div>
 
             {/* Notification List */}
@@ -203,7 +191,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
                           {timeSince(notif.createdAt)}
                         </span>
                         {notif.domain && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-zinc-700 text-light-text-secondary dark:text-text-secondary uppercase tracking-wider font-semibold">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-zinc-700 text-light-text-secondary dark:text-text-secondary uppercase tracking-wider font-semibold">
                             {notif.domain}
                           </span>
                         )}
@@ -242,20 +230,24 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
             {/* Bottom Actions Bar */}
             <div className="p-3 border-t border-slate-200 dark:border-zinc-700 bg-light-background/60 dark:bg-background/60 flex gap-2">
               {unreadCount > 0 && (
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={markAllAsRead}
-                  className="flex-1 py-2 text-xs font-semibold text-center text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors"
+                  className="flex-1 text-primary border-primary/20 hover:bg-primary/10"
                 >
                   {t('notifications.markAllRead')}
-                </button>
+                </Button>
               )}
               {notifications.length > 0 && (
-                <button
+                <Button
+                  variant="danger"
+                  size="sm"
                   onClick={handleClearAll}
-                  className="flex-1 py-2 text-xs font-semibold text-center text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl transition-colors"
+                  className="flex-1"
                 >
                   Clear All
-                </button>
+                </Button>
               )}
             </div>
           </motion.div>

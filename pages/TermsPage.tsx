@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { 
   HiOutlineDocumentCheck, 
   HiOutlineScale, 
-  HiOutlineSparkles, 
   HiOutlineShieldExclamation, 
   HiOutlineEnvelope, 
   HiOutlineArrowLeft 
 } from 'react-icons/hi2';
 import Card from '../components/ui/Card';
+import SectionHeading from '../components/ui/SectionHeading';
 
 const TermsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -51,10 +51,10 @@ const TermsPage: React.FC = () => {
       <Card className="p-6 sm:p-8 space-y-8 divide-y divide-slate-100 dark:divide-zinc-800 text-light-text-primary dark:text-text-primary">
         {/* 1. Acceptance */}
         <section className="space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">1</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">1</span>
             Acceptance of Terms
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2 leading-relaxed pl-8">
             <p>
               By accessing or using Sprout, creating an account, or syncing data with our services, you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree to these terms, please do not use the application.
@@ -64,10 +64,10 @@ const TermsPage: React.FC = () => {
 
         {/* 2. Medical & Health Disclaimer */}
         <section className="pt-6 space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2 text-amber-600 dark:text-amber-400">
+          <SectionHeading className="flex items-center gap-2 !text-amber-600 dark:!text-amber-400">
             <HiOutlineShieldExclamation className="w-6 h-6 shrink-0" />
             Medical & Healthcare Advisory Disclaimer
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2.5 leading-relaxed pl-8">
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 font-medium">
               Sprout is an organization and tracking tool, not a licensed healthcare provider. Medication logs, reminder notifications, and AI health summaries do not constitute medical diagnoses, clinical advice, or prescriptions.
@@ -80,10 +80,10 @@ const TermsPage: React.FC = () => {
 
         {/* 3. Account Responsibilities */}
         <section className="pt-6 space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">3</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">3</span>
             Account Security & Family Access
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2 leading-relaxed pl-8">
             <p>
               You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account. When inviting family members or caregivers to your household, you represent that you have authorization to share the associated family logs.
@@ -93,10 +93,10 @@ const TermsPage: React.FC = () => {
 
         {/* 4. AI Features & Smart Advice */}
         <section className="pt-6 space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">4</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">4</span>
             AI Assistant & Generative Summaries
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2 leading-relaxed pl-8">
             <p>
               Sprout leverages artificial intelligence models (such as Google Gemini) to generate budget recommendations, meal suggestions, and routine optimizations. While we strive for high accuracy, AI outputs should be reviewed by users for factual correctness before making financial or household commitments.
@@ -106,10 +106,10 @@ const TermsPage: React.FC = () => {
 
         {/* 5. Contact */}
         <section className="pt-6 space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">5</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">5</span>
             Questions Regarding Terms
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2 leading-relaxed pl-8">
             <p>
               For legal inquiries or questions concerning these terms:

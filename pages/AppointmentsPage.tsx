@@ -5,6 +5,8 @@ import { Appointment } from '../types';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { uploadImage } from '../utils/imageUploader';
 import toast from 'react-hot-toast';
@@ -12,9 +14,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
     HiPlus, HiOutlinePencil, HiOutlineTrash, HiOutlineCheckCircle, 
     HiOutlineXCircle, HiOutlineCloudArrowUp, HiOutlineCalendarDays,
-    HiOutlineArrowPath
+    HiOutlineArrowPath, HiOutlineUserCircle
 } from 'react-icons/hi2';
-import { FaUserDoctor } from 'react-icons/fa6';
 
 const AppointmentsPage: React.FC = () => {
     const { 
@@ -104,7 +105,7 @@ const AppointmentsPage: React.FC = () => {
             dateTime: new Date(formState.dateTime).toISOString(),
             purpose: formState.purpose,
             specialization: formState.specialization,
-            documentUrl: documentUrl,
+            ...(documentUrl ? { documentUrl } : {}),
         };
 
         if (editingAppointment) {
@@ -186,7 +187,7 @@ const AppointmentsPage: React.FC = () => {
                         </div>
                         <p className="text-sm font-semibold text-primary">{t('medicines.for')}: {member?.name || 'N/A'}</p>
                         <div className="text-sm text-light-text-secondary dark:text-text-secondary mt-2 space-y-1">
-                            <p className="flex items-center gap-2"><FaUserDoctor className="text-primary" /> {appointment.doctorName} {appointment.specialization && `(${appointment.specialization})`}</p>
+                            <p className="flex items-center gap-2"><HiOutlineUserCircle className="text-primary w-4 h-4" /> {appointment.doctorName} {appointment.specialization && `(${appointment.specialization})`}</p>
                             <p className="text-xs text-slate-500 dark:text-slate-400">🏥 {appointment.clinicName}</p>
                             <p className="font-semibold text-xs text-slate-700 dark:text-slate-200">🗓️ {date.toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}</p>
                         </div>
@@ -199,7 +200,7 @@ const AppointmentsPage: React.FC = () => {
                             <button
                                 onClick={(e) => handleSyncToGoogle(appointment.id, e)}
                                 disabled={syncingApptId === appointment.id}
-                                className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition shadow-xs disabled:opacity-60"
+                                className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition shadow-sm disabled:opacity-60"
                             >
                                 <HiOutlineArrowPath className={`w-3.5 h-3.5 ${syncingApptId === appointment.id ? 'animate-spin' : ''}`} />
                                 {syncingApptId === appointment.id ? 'Syncing...' : 'Sync to GCal'}
@@ -214,10 +215,10 @@ const AppointmentsPage: React.FC = () => {
                 </div>
                  {appointment.status === 'upcoming' && !isPast && (
                     <div className="flex gap-2 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-700">
-                        <button onClick={() => handleStatusChange(appointment, 'completed')} className="w-full flex items-center justify-center gap-2 py-2 text-sm bg-green-500/10 text-green-600 dark:text-green-300 rounded-lg hover:bg-green-500/20">
+                        <button onClick={() => handleStatusChange(appointment, 'completed')} className="w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold bg-green-500/10 text-green-600 dark:text-green-300 rounded-xl hover:bg-green-500/20 transition-colors">
                             <HiOutlineCheckCircle /> {t('appointments.markComplete')}
                         </button>
-                        <button onClick={() => handleStatusChange(appointment, 'cancelled')} className="w-full flex items-center justify-center gap-2 py-2 text-sm bg-red-500/10 text-red-600 dark:text-red-300 rounded-lg hover:bg-red-500/20">
+                        <button onClick={() => handleStatusChange(appointment, 'cancelled')} className="w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold bg-red-500/10 text-red-600 dark:text-red-300 rounded-xl hover:bg-red-500/20 transition-colors">
                            <HiOutlineXCircle /> {t('appointments.cancel')}
                         </button>
                     </div>
@@ -255,15 +256,29 @@ const AppointmentsPage: React.FC = () => {
                 title={t('appointments.title')}
                 subtitle={t('appointments.subtitle')}
                 action={
-                    <button onClick={() => handleOpenModal()} className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-primary text-white font-semibold rounded-xl flex items-center gap-1.5 shadow-sm shrink-0 text-xs sm:text-sm whitespace-nowrap hover:opacity-90 transition-opacity">
-                        <HiPlus className="w-4 h-4" /> {t('appointments.add')}
-                    </button>
+                    <Button 
+                        onClick={() => handleOpenModal()} 
+                        icon={<HiPlus className="w-4 h-4" />}
+                        size="md"
+                    >
+                        {t('appointments.add')}
+                    </Button>
                 }
             />
 
-            <div className="flex justify-center items-center gap-2 mb-8 bg-slate-100 dark:bg-surface p-1 rounded-full max-w-md mx-auto">
-                <button onClick={() => setActiveTab('upcoming')} className={`w-1/2 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${activeTab === 'upcoming' ? 'bg-primary text-white shadow-lg' : 'text-light-text-secondary dark:text-text-secondary'}`}>{t('appointments.upcomingTitle')}</button>
-                <button onClick={() => setActiveTab('past')} className={`w-1/2 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${activeTab === 'past' ? 'bg-primary text-white shadow-lg' : 'text-light-text-secondary dark:text-text-secondary'}`}>{t('appointments.pastTitle')}</button>
+            <div className="flex justify-center mb-8 max-w-md mx-auto">
+                <SegmentedControl
+                    options={[
+                        { value: 'upcoming', label: t('appointments.upcomingTitle'), badge: upcoming.length > 0 ? upcoming.length : undefined },
+                        { value: 'past', label: t('appointments.pastTitle'), badge: past.length > 0 ? past.length : undefined },
+                    ]}
+                    value={activeTab}
+                    onChange={(val) => setActiveTab(val as 'upcoming' | 'past')}
+                    variant="primary"
+                    size="md"
+                    fullWidth
+                    ariaLabel="Appointment status filter"
+                />
             </div>
             
             <div className="space-y-4">
@@ -380,12 +395,21 @@ const AppointmentsPage: React.FC = () => {
                         </label>
                     </div>
 
-                    <button 
-                        onClick={handleSaveAppointment} 
-                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-focus transition shadow-md active:scale-[0.99] text-sm"
-                    >
-                        {editingAppointment ? t('finance.modal.saveChanges') : t('finance.modal.addRecord')}
-                    </button>
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+                        <Button
+                            variant="secondary"
+                            onClick={() => setModalOpen(false)}
+                            className="w-full sm:w-auto"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleSaveAppointment} 
+                            className="w-full sm:w-auto"
+                        >
+                            {editingAppointment ? t('finance.modal.saveChanges') : t('finance.modal.addRecord')}
+                        </Button>
+                    </div>
                 </div>
             </Modal>
         </div>

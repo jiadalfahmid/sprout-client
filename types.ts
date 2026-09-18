@@ -260,3 +260,29 @@ export interface Language {
   code: string; // e.g., 'en'
   name: string; // e.g., 'English'
 }
+
+export interface HouseholdMemberInfo {
+  role: 'owner' | 'member';
+  name: string;
+  email: string;
+  joinedAt: string; // ISO string
+}
+
+export interface Household {
+  id?: string;
+  name?: string;
+  ownerUid: string;
+  ownerName?: string;
+  ownerEmail?: string;
+  members: {
+    [uid: string]: HouseholdMemberInfo;
+  };
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface UserHouseholdMembership {
+  householdIds: string[];
+  activeHouseholdId: string;
+  updatedAt?: string;
+}

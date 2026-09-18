@@ -4,6 +4,7 @@ import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
 import Skeleton from '../components/ui/Skeleton';
 import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { uploadImage } from '../utils/imageUploader';
@@ -23,7 +24,8 @@ import {
   HiOutlineClipboardDocument,
   HiOutlineClipboardDocumentCheck,
   HiOutlineShare,
-  HiOutlineSparkles
+  HiOutlineSparkles,
+  HiOutlineUsers
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import { motion } from 'motion/react';
@@ -41,7 +43,13 @@ const FamilyPage: React.FC = () => {
     generateFamilyInviteLink,
     copyFamilyInviteLink,
     isGoogleAuthenticated, 
-    loginWithGoogle 
+    loginWithGoogle,
+    googleFirebaseUser,
+    activeHouseholdId,
+    activeHousehold,
+    userMemberships,
+    switchHousehold,
+    leaveHouseholdCircle
   } = useAppContext();
   const { t } = useTranslation();
   
@@ -120,8 +128,8 @@ const FamilyPage: React.FC = () => {
         relation, 
         age: parseInt(age) || 0, 
         avatar: avatarUrl,
-        email: email.trim() || undefined,
-        inviteStatus: email.trim() && sendInviteOnCreate ? 'none' : undefined,
+        ...(email.trim() ? { email: email.trim() } : {}),
+        ...(email.trim() && sendInviteOnCreate ? { inviteStatus: 'none' } : {}),
       });
 
       toast.success(t('family.modal.memberAdded'));
@@ -133,15 +141,16 @@ const FamilyPage: React.FC = () => {
           toast((toastT) => (
             <div className="flex items-center gap-2">
               <span>{t('family.signInToInvite')}</span>
-              <button 
+              <Button 
+                size="sm"
+                variant="primary"
                 onClick={async () => {
                   toast.dismiss(toastT.id);
                   await loginWithGoogle();
                 }}
-                className="px-2 py-1 bg-primary text-white rounded text-xs font-bold"
               >
                 {t('common.signIn')}
-              </button>
+              </Button>
             </div>
           ), { duration: 6000 });
         }
@@ -303,25 +312,24 @@ const FamilyPage: React.FC = () => {
             <div className="flex flex-col gap-1 text-xs">
               <span className="font-semibold text-amber-600 dark:text-amber-400">{res.error || 'Gmail API notice'}</span>
               <div className="flex items-center gap-2 mt-1">
-                <a
-                  href={res.mailtoFallback}
-                  target="_blank"
-                  rel="noreferrer"
+                <Button
+                  size="sm"
                   onClick={() => {
+                    window.location.href = res.mailtoFallback;
                     toast.dismiss(tItem.id);
                     setSelectedMemberForInvite(null);
                   }}
-                  className="px-2.5 py-1 bg-primary text-white rounded font-bold hover:bg-primary-focus transition inline-flex items-center gap-1.5"
+                  icon={<HiOutlineEnvelope className="w-3.5 h-3.5" />}
                 >
-                  <HiOutlineEnvelope className="w-3.5 h-3.5" />
                   Send via Email Client
-                </a>
-                <button
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
                   onClick={() => toast.dismiss(tItem.id)}
-                  className="px-2 py-1 bg-slate-200 dark:bg-zinc-700 text-slate-700 dark:text-slate-300 rounded"
                 >
                   Dismiss
-                </button>
+                </Button>
               </div>
             </div>
           ), { duration: 9000 });
@@ -405,22 +413,87 @@ const FamilyPage: React.FC = () => {
               <HiOutlineLink className="h-4 w-4" />
               <span>Invite via Link</span>
             </button>
-            <button 
+            <Button 
               onClick={() => {
                 resetForm();
                 setIsModalOpen(true);
               }}
-              className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-primary text-white font-semibold rounded-xl hover:opacity-90 transition flex items-center gap-1.5 shadow-sm shrink-0 text-xs sm:text-sm whitespace-nowrap"
+              icon={<HiPlus className="h-4 w-4" />}
             >
-              <HiPlus className="h-4 w-4" />
               {t('family.addMember')}
-            </button>
+            </Button>
           </div>
         }
       />
 
+      {/* Active Household Circle Banner & Switcher */}
+      {isGoogleAuthenticated && googleFirebaseUser?.uid && (
+        <div className="p-4 rounded-2xl bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <HiOutlineUsers className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-light-text-primary dark:text-text-primary">
+                  {activeHousehold?.name || 'Home & Family Circle'}
+                </h3>
+                {activeHouseholdId !== googleFirebaseUser.uid ? (
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    Shared Circle
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    Your Household (Owner)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-light-text-secondary dark:text-text-secondary mt-0.5">
+                {activeHouseholdId !== googleFirebaseUser.uid
+                  ? `Managed by ${activeHousehold?.ownerName || activeHousehold?.ownerEmail || 'Family Organizer'}. All items, medicines, tasks, and bills are shared with you in real time.`
+                  : `Your family's primary household circle. Inviting members will grant them shared real-time access.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            {userMemberships?.householdIds && userMemberships.householdIds.length > 1 && (
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
+                <span className="text-xs text-light-text-secondary dark:text-text-secondary px-2 font-medium">
+                  Switch:
+                </span>
+                {userMemberships.householdIds.map((hid) => (
+                  <button
+                    key={hid}
+                    onClick={() => switchHousehold(hid)}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-xl transition ${
+                      activeHouseholdId === hid
+                        ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm'
+                        : 'text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary'
+                    }`}
+                  >
+                    {hid === googleFirebaseUser.uid ? 'My Circle' : 'Shared Circle'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeHouseholdId && activeHouseholdId !== googleFirebaseUser.uid && (
+              <button
+                onClick={() => leaveHouseholdCircle(activeHouseholdId)}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10 border border-red-500/20 transition flex items-center gap-1"
+                title="Leave this shared family circle and return to your own"
+              >
+                <HiOutlineUserMinus className="w-3.5 h-3.5" />
+                <span>Leave Circle</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Quick Invite Link Banner */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-primary/10 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-primary/10 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <HiOutlineLink className="w-5 h-5" />
@@ -463,12 +536,14 @@ const FamilyPage: React.FC = () => {
               <p className="text-xs text-light-text-secondary dark:text-text-secondary">{t('family.connectGmailDesc')}</p>
             </div>
           </div>
-          <button
+          <Button
             onClick={loginWithGoogle}
-            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-primary-focus transition-colors shadow-sm shrink-0"
+            variant="primary"
+            size="sm"
+            className="shrink-0"
           >
             {t('auth.googleSignIn')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -485,7 +560,7 @@ const FamilyPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={(e) => promptDeleteMember(member, e)}
-                            className="absolute top-2.5 right-2.5 p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-0 group-hover/card:opacity-100"
+                            className="absolute top-2.5 right-2.5 p-1 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-0 group-hover/card:opacity-100"
                             title="Remove Member"
                             aria-label="Remove Member"
                           >
@@ -497,7 +572,7 @@ const FamilyPage: React.FC = () => {
                               <img 
                                 src={member.avatar} 
                                 alt={member.name} 
-                                className="w-14 h-14 sm:w-16 sm:h-16 rounded-full mx-auto border-2 border-primary/30 object-cover shadow-xs" 
+                                className="w-14 h-14 sm:w-16 sm:h-16 rounded-full mx-auto border-2 border-primary/30 object-cover shadow-sm" 
                               />
                               {member.inviteStatus === 'invited' && (
                                 <span className="absolute bottom-0 right-0 p-0.5 bg-amber-500 text-white rounded-full ring-2 ring-white dark:ring-zinc-800" title="Invited">
@@ -545,7 +620,7 @@ const FamilyPage: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={(e) => handleCopyMemberLink(member, e)}
-                                    className="py-1 px-1.5 rounded-lg text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition flex items-center justify-center gap-1"
+                                    className="py-1 px-1.5 rounded-xl text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition flex items-center justify-center gap-1"
                                     title="Copy Invite Link"
                                   >
                                     <HiOutlineLink className="w-3 h-3" />
@@ -554,7 +629,7 @@ const FamilyPage: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={(e) => promptCancelInvite(member, e)}
-                                    className="py-1 px-1.5 rounded-lg text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100/60 dark:bg-amber-900/30 hover:bg-amber-200/60 dark:hover:bg-amber-900/50 transition flex items-center justify-center gap-0.5"
+                                    className="py-1 px-1.5 rounded-xl text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100/60 dark:bg-amber-900/30 hover:bg-amber-200/60 dark:hover:bg-amber-900/50 transition flex items-center justify-center gap-0.5"
                                   >
                                     <HiOutlineXMark className="w-3 h-3" />
                                     <span>Cancel</span>
@@ -578,18 +653,20 @@ const FamilyPage: React.FC = () => {
                               </div>
                             ) : (
                               <div className="flex items-center gap-1">
-                                <button
+                                <Button
                                   type="button"
                                   onClick={(e) => openInviteModal(member, e)}
-                                  className="flex-1 flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg text-[11px] font-semibold bg-primary text-white hover:bg-primary-focus transition shadow-2xs"
+                                  variant="primary"
+                                  size="sm"
+                                  icon={<HiOutlinePaperAirplane className="w-3 h-3" />}
+                                  className="flex-1 text-[11px] py-1 px-1.5 min-h-[36px]"
                                 >
-                                  <HiOutlinePaperAirplane className="w-2.5 h-2.5" />
-                                  <span>Invite</span>
-                                </button>
+                                  Invite
+                                </Button>
                                 <button
                                   type="button"
                                   onClick={(e) => handleCopyMemberLink(member, e)}
-                                  className="py-1 px-2 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary transition"
+                                  className="py-1 px-2 rounded-xl text-[11px] font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary transition"
                                   title="Copy Invite Link"
                                 >
                                   <HiOutlineLink className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
@@ -672,7 +749,7 @@ const FamilyPage: React.FC = () => {
           </div>
 
           {email.trim() && (
-            <label className="flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 dark:bg-zinc-800/50 cursor-pointer text-xs text-light-text-secondary dark:text-text-secondary">
+            <label className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 dark:bg-zinc-800/50 cursor-pointer text-xs text-light-text-secondary dark:text-text-secondary">
               <input 
                 type="checkbox" 
                 checked={sendInviteOnCreate} 
@@ -693,13 +770,22 @@ const FamilyPage: React.FC = () => {
             />
           </div>
 
-          <button 
-            onClick={handleAddMember} 
-            disabled={isUploading} 
-            className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-focus transition disabled:opacity-60 shadow-md active:scale-[0.99] text-sm"
-          >
-            {isUploading ? t('family.modal.uploading') : t('family.modal.addMemberBtn')}
-          </button>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+            <Button 
+              variant="secondary"
+              onClick={() => setIsModalOpen(false)}
+              className="w-full sm:w-auto"
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button 
+              onClick={handleAddMember} 
+              disabled={isUploading} 
+              className="w-full sm:w-auto"
+            >
+              {isUploading ? t('family.modal.uploading') : t('family.modal.addMemberBtn')}
+            </Button>
+          </div>
         </div>
       </Modal>
 
@@ -744,7 +830,7 @@ const FamilyPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleCopyMemberLink(selectedMemberForInvite)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 shadow-xs"
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 shadow-sm"
                 >
                   {copiedLink ? (
                     <>
@@ -812,15 +898,16 @@ const FamilyPage: React.FC = () => {
               >
                 {t('family.cancel')}
               </button>
-              <button 
+              <Button 
                 type="button" 
                 onClick={handleSendGmailInvite} 
                 disabled={isSendingInvite} 
-                className="flex-1 py-2 px-3 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-primary-focus transition disabled:opacity-60 flex items-center justify-center gap-1.5 shadow-sm"
+                className="flex-1"
+                size="sm"
+                icon={<HiOutlinePaperAirplane className="w-3.5 h-3.5" />}
               >
-                <HiOutlinePaperAirplane className="w-3.5 h-3.5" />
                 {isSendingInvite ? t('googleServices.sendingInvite') : t('googleServices.sendInviteBtn')}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -858,7 +945,7 @@ const FamilyPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCopyGeneralLink}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 shadow-xs"
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 shadow-sm"
               >
                 {copiedGeneralLink ? (
                   <>
@@ -928,22 +1015,23 @@ const FamilyPage: React.FC = () => {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex-1"
                 onClick={() => setMemberToCancelInvite(null)}
-                className="flex-1 py-2 px-3 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800 transition"
               >
                 {t('family.cancel')}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
                 onClick={handleConfirmCancelInvite}
                 disabled={isCancellingInvite}
-                className="flex-1 py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold transition disabled:opacity-60 flex items-center justify-center gap-1.5 shadow-sm"
+                icon={<HiOutlineXMark className="w-4 h-4" />}
               >
-                <HiOutlineXMark className="w-4 h-4" />
                 {isCancellingInvite ? 'Cancelling...' : t('family.cancelInvite')}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -970,21 +1058,23 @@ const FamilyPage: React.FC = () => {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex-1"
                 onClick={() => setMemberToDelete(null)}
-                className="flex-1 py-2 px-3 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800 transition"
               >
                 {t('family.cancel')}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                className="flex-1"
                 onClick={handleConfirmDeleteMember}
-                className="flex-1 py-2 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm"
+                icon={<HiOutlineTrash className="w-4 h-4" />}
               >
-                <HiOutlineTrash className="w-4 h-4" />
                 {t('family.confirmDelete')}
-              </button>
+              </Button>
             </div>
           </div>
         )}

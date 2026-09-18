@@ -5,11 +5,12 @@ import { useTranslation } from '../hooks/useTranslation';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+import SectionHeading from '../components/ui/SectionHeading';
 import { Medicine, MedicalReportCategory, MedicalReport } from '../types';
 import { uploadImage } from '../utils/imageUploader';
 import toast from 'react-hot-toast';
-import { HiOutlineDocumentText, HiOutlineCalendar, HiOutlineTag, HiPlus, HiOutlineCloudArrowUp, HiOutlineClock } from 'react-icons/hi2';
-import { FaUserDoctor } from 'react-icons/fa6';
+import { HiOutlineDocumentText, HiOutlineCalendar, HiOutlineTag, HiPlus, HiOutlineCloudArrowUp, HiOutlineClock, HiOutlineUserCircle } from 'react-icons/hi2';
 
 const MedicalProfilePage: React.FC = () => {
     const { memberId } = useParams<{ memberId: string }>();
@@ -75,13 +76,13 @@ const MedicalProfilePage: React.FC = () => {
 
         return (
             <Card>
-                <h2 className="text-xl font-semibold mb-4">{t('medicalProfile.medicines.title')}</h2>
+                <SectionHeading className="mb-4">{t('medicalProfile.medicines.title')}</SectionHeading>
                 {memberMedicines.length > 0 ? (
                     <div className="space-y-3">
                         {memberMedicines.map(med => {
                             const nextDoseInfo = getNextDoseInfo(med);
                             return (
-                                <div key={med.id} className="p-3 bg-light-background dark:bg-background rounded-lg flex justify-between items-center">
+                                <div key={med.id} className="p-3 bg-light-background dark:bg-background rounded-xl flex justify-between items-center">
                                     <div>
                                         <p className="font-bold text-light-text-primary dark:text-text-primary">{med.name} <span className="text-sm font-normal text-light-text-secondary dark:text-text-secondary">{med.dosage}{med.unit}</span></p>
                                         <p className="text-xs text-light-text-secondary dark:text-text-secondary capitalize">{med.times.join(', ')} - {med.mealRelation} meal</p>
@@ -99,14 +100,14 @@ const MedicalProfilePage: React.FC = () => {
     // Upcoming Appointments Component
     const UpcomingAppointments = () => (
         <Card>
-            <h2 className="text-xl font-semibold mb-4">{t('appointments.upcomingTitle')}</h2>
+            <SectionHeading className="mb-4">{t('appointments.upcomingTitle')}</SectionHeading>
             {memberAppointments.length > 0 ? (
                 <div className="space-y-3">
                     {memberAppointments.map(appt => (
-                        <div key={appt.id} className="p-3 bg-light-background dark:bg-background rounded-lg">
+                        <div key={appt.id} className="p-3 bg-light-background dark:bg-background rounded-xl">
                             <p className="font-bold text-light-text-primary dark:text-text-primary">{appt.purpose}</p>
                             <div className="flex items-center gap-3 text-sm text-light-text-secondary dark:text-text-secondary mt-1">
-                                <span className="flex items-center gap-1"><FaUserDoctor /> {appt.doctorName}</span>
+                                <span className="flex items-center gap-1"><HiOutlineUserCircle className="w-4 h-4" /> {appt.doctorName}</span>
                                 <span className="flex items-center gap-1"><HiOutlineClock /> {new Date(appt.dateTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
                             </div>
                         </div>
@@ -142,12 +143,14 @@ const MedicalProfilePage: React.FC = () => {
         }, [filter, memberMedicines]);
 
         const FilterButton = ({ type, label }: { type: 'daily' | 'weekly' | 'monthly', label: string }) => (
-            <button onClick={() => setFilter(type)} className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${filter === type ? 'bg-primary text-white' : 'bg-slate-200 dark:bg-zinc-700'}`}>{label}</button>
+            <Button size="sm" variant={filter === type ? 'primary' : 'secondary'} onClick={() => setFilter(type)}>
+                {label}
+            </Button>
         );
 
         return (
             <Card>
-                 <h2 className="text-xl font-semibold mb-4">{t('medicalProfile.history.title')}</h2>
+                 <SectionHeading className="mb-4">{t('medicalProfile.history.title')}</SectionHeading>
                  <div className="flex justify-center gap-2 mb-4">
                      <FilterButton type="daily" label={t('medicalProfile.history.daily')} />
                      <FilterButton type="weekly" label={t('medicalProfile.history.weekly')} />
@@ -176,15 +179,15 @@ const MedicalProfilePage: React.FC = () => {
     const HealthDocuments = () => (
         <Card>
              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">{t('medicalProfile.documents.title')}</h2>
-                <button onClick={() => setUploadModalOpen(true)} className="px-3 py-1.5 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-opacity-90 transition flex items-center gap-2">
-                    <HiPlus/> {t('medicalProfile.documents.upload')}
-                </button>
+                <SectionHeading>{t('medicalProfile.documents.title')}</SectionHeading>
+                <Button onClick={() => setUploadModalOpen(true)} icon={<HiPlus className="w-4 h-4"/>} size="sm">
+                    {t('medicalProfile.documents.upload')}
+                </Button>
             </div>
             {memberReports.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {memberReports.map(report => (
-                        <a key={report.id} href={report.fileUrl} target="_blank" rel="noopener noreferrer" aria-label={`View document ${report.name}`} className="block p-3 bg-light-background dark:bg-background rounded-lg hover:shadow-md transition-shadow">
+                        <a key={report.id} href={report.fileUrl} target="_blank" rel="noopener noreferrer" aria-label={`View document ${report.name}`} className="block p-3 bg-light-background dark:bg-background rounded-xl hover:shadow-lg transition-shadow">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 text-primary flex-shrink-0">
                                     <HiOutlineDocumentText className="h-7 w-7" />
@@ -292,13 +295,22 @@ const MedicalProfilePage: React.FC = () => {
                         </label>
                     </div>
 
-                    <button 
-                        onClick={handleUpload} 
-                        disabled={isUploading} 
-                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 disabled:bg-slate-500 shadow-md active:scale-[0.99] text-sm transition-colors"
-                    >
-                        {isUploading ? t('medicalProfile.documents.modal.uploading') : t('medicalProfile.documents.modal.add')}
-                    </button>
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+                        <Button 
+                            variant="secondary" 
+                            onClick={() => setUploadModalOpen(false)} 
+                            className="w-full sm:w-auto"
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button 
+                            onClick={handleUpload} 
+                            disabled={isUploading} 
+                            className="w-full sm:w-auto"
+                        >
+                            {isUploading ? t('medicalProfile.documents.modal.uploading') : t('medicalProfile.documents.modal.add')}
+                        </Button>
+                    </div>
                 </div>
             </Modal>
         )

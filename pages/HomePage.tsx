@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+import SectionHeading from '../components/ui/SectionHeading';
 import { TransactionType } from '../types';
 import { ResponsiveContainer, RadialBarChart, RadialBar, Legend, Tooltip, Cell, PolarAngleAxis } from 'recharts';
 import { useTranslation } from '../hooks/useTranslation';
@@ -14,9 +16,9 @@ import {
   HiOutlineFlag, HiOutlineArrowsRightLeft, HiOutlineCog6Tooth, HiOutlineChevronDown,
   HiOutlineChartPie, HiOutlineHeart, HiOutlineReceiptRefund, HiOutlinePaintBrush, 
   HiOutlineBell, HiOutlineArrowsUpDown, HiOutlineClipboardDocumentCheck,
-  HiArrowTrendingUp, HiArrowTrendingDown, HiOutlineWallet, HiChevronRight
+  HiArrowTrendingUp, HiArrowTrendingDown, HiOutlineWallet, HiChevronRight,
+  HiOutlineBeaker
 } from 'react-icons/hi2';
-import { PiPill } from 'react-icons/pi';
 import { findDoseHistoryEntry } from '../services/notificationService';
 
 const HomePage: React.FC = () => {
@@ -112,7 +114,7 @@ const HomePage: React.FC = () => {
     { label: t('home.actions.settings'), icon: HiOutlineCog6Tooth, path: '/settings', color: 'gray' },
     
     { label: t('home.actions.health'), icon: HiOutlineHeart, path: '/health', color: 'red' },
-    { label: t('home.actions.medicine'), icon: PiPill, path: '/settings/medicines', color: 'blue' },
+    { label: t('home.actions.medicine'), icon: HiOutlineBeaker, path: '/settings/medicines', color: 'blue' },
     { label: t('home.actions.appointment'), icon: HiOutlineCalendar, path: '/settings/appointments', color: 'indigo' },
     { label: t('home.actions.buyMedicine'), icon: HiOutlineShoppingCart, path: '/restock', color: 'orange' },
     
@@ -181,7 +183,7 @@ const HomePage: React.FC = () => {
 
       <Card>
         <motion.div layout>
-            <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 text-light-text-primary dark:text-text-primary">{t('home.actions.title')}</h2>
+            <SectionHeading className="mb-3 sm:mb-4">{t('home.actions.title')}</SectionHeading>
             <div className="grid grid-cols-4 gap-x-2 sm:gap-x-3 gap-y-4 sm:gap-y-5 justify-items-center">
                 {actionsToDisplay.map((action, index) => (
                   <motion.div key={action.label} initial={{opacity: 0, scale: 0.8}} animate={{opacity: 1, scale: 1}} transition={{delay: index < 8 ? 0 : (index-8) * 0.05}}>
@@ -192,7 +194,7 @@ const HomePage: React.FC = () => {
             <div className="flex justify-center mt-3 sm:mt-4">
                 <button
                     onClick={() => setActionsExpanded(prev => !prev)}
-                    className="bg-light-surface dark:bg-surface px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-primary border border-slate-200 dark:border-zinc-700 hover:bg-primary/10 transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-1.5 sm:gap-2"
+                    className="bg-light-surface dark:bg-surface px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-primary border border-slate-200 dark:border-zinc-700 hover:bg-primary/10 transition-all duration-200 shadow-sm flex items-center gap-1.5 sm:gap-2"
                 >
                     {isActionsExpanded ? t('home.actions.showLess') : t('home.actions.showMore')}
                     <motion.div animate={{ rotate: isActionsExpanded ? 180 : 0 }}>
@@ -206,7 +208,7 @@ const HomePage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">{t('home.financialSnapshot.title')}</h2>
+            <SectionHeading>{t('home.financialSnapshot.title')}</SectionHeading>
             <button 
               onClick={() => navigate('/finance')}
               className="text-xs font-semibold text-primary hover:text-primary-focus flex items-center gap-1 transition-colors group"
@@ -221,7 +223,7 @@ const HomePage: React.FC = () => {
               {/* Income */}
               <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/15">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                     <HiArrowTrendingUp className="h-4 w-4" />
                   </div>
                   <span className="text-xs font-medium text-light-text-secondary dark:text-text-secondary truncate">
@@ -236,7 +238,7 @@ const HomePage: React.FC = () => {
               {/* Expenses */}
               <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/15">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                     <HiArrowTrendingDown className="h-4 w-4" />
                   </div>
                   <span className="text-xs font-medium text-light-text-secondary dark:text-text-secondary truncate">
@@ -251,7 +253,7 @@ const HomePage: React.FC = () => {
               {/* Balance */}
               <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200/80 dark:border-zinc-700/70">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                     <HiOutlineWallet className="h-4 w-4" />
                   </div>
                   <span className="text-xs font-medium text-light-text-secondary dark:text-text-secondary truncate">
@@ -281,7 +283,7 @@ const HomePage: React.FC = () => {
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-center p-3 border border-dashed border-slate-200 dark:border-zinc-700 rounded-2xl">
                   <p className="text-xs text-light-text-secondary dark:text-text-secondary mb-2">
-                    No expense transactions logged for this month.
+                    Nothing planted here yet — log your first expense to track monthly spending.
                   </p>
                   <button
                     onClick={() => navigate('/finance')}
@@ -296,7 +298,7 @@ const HomePage: React.FC = () => {
         </Card>
         
         <Card>
-          <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 text-light-text-primary dark:text-text-primary">{t('home.atAGlance.title')}</h2>
+          <SectionHeading className="mb-3 sm:mb-4">{t('home.atAGlance.title')}</SectionHeading>
           <ul className="space-y-3 sm:space-y-4 text-light-text-primary dark:text-text-primary">
             <li className="flex items-center justify-between">
               <span className="flex items-center gap-2.5 sm:gap-3 text-xs sm:text-sm font-medium">
@@ -329,13 +331,13 @@ const HomePage: React.FC = () => {
         </Card>
 
         <Card className="lg:col-span-2">
-          <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 text-light-text-primary dark:text-text-primary">{t('home.healthReminders.title')}</h2>
+          <SectionHeading className="mb-3 sm:mb-4">{t('home.healthReminders.title')}</SectionHeading>
           {upcomingReminders.length > 0 ? (
             <ul className="space-y-2 sm:space-y-3">
               {upcomingReminders.map(r => (
                 <li key={r.id} className="flex items-center gap-3 p-2.5 sm:p-3 bg-light-surface dark:bg-surface rounded-xl border border-slate-100 dark:border-zinc-800">
                   <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-300 rounded-xl shrink-0">
-                    <PiPill className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <HiOutlineBeaker className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-xs sm:text-sm text-light-text-primary dark:text-text-primary truncate">{r.name} {t('home.healthReminders.for')} {r.memberName}</p>
@@ -348,17 +350,17 @@ const HomePage: React.FC = () => {
         </Card>
 
         <Card ref={notesRef}>
-          <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 text-light-text-primary dark:text-text-primary">{t('home.quickNotes.title')}</h2>
+          <SectionHeading className="mb-3 sm:mb-4">{t('home.quickNotes.title')}</SectionHeading>
           <div className="flex gap-2 mb-3 sm:mb-4">
-            <input type="text" value={newNote} onChange={(e) => setNewNote(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddNote()} placeholder={t('home.quickNotes.placeholder')} className="flex-grow p-2.5 text-base border rounded-lg bg-light-surface dark:bg-surface border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary"/>
-            <button onClick={handleAddNote} className="px-3.5 bg-primary text-white font-semibold rounded-lg hover:bg-opacity-90 transition flex items-center justify-center"><HiOutlinePencil className="h-4 w-4"/></button>
+            <input type="text" value={newNote} onChange={(e) => setNewNote(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddNote()} placeholder={t('home.quickNotes.placeholder')} className="flex-grow p-2.5 text-base border rounded-xl bg-light-surface dark:bg-surface border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary"/>
+            <Button onClick={handleAddNote} aria-label="Add note" size="sm" icon={<HiOutlinePencil className="h-4 w-4"/>}>{''}</Button>
           </div>
           {notes.length > 0 ? (
             <ul className="space-y-1.5 sm:space-y-2">
               {notes.map(note => (
-                <li key={note.id} className="flex justify-between items-center p-2 sm:p-2.5 bg-light-surface dark:bg-surface rounded-lg group border border-slate-100 dark:border-zinc-800">
+                <li key={note.id} className="flex justify-between items-center p-2 sm:p-2.5 bg-light-surface dark:bg-surface rounded-xl group border border-slate-100 dark:border-zinc-800">
                   <p className="text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{note.content}</p>
-                  <button onClick={() => deleteNote(note.id)} className="text-red-400 p-1.5 rounded hover:bg-red-500/10 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"><HiOutlineTrash className="h-4 w-4" /></button>
+                  <button onClick={() => deleteNote(note.id)} className="text-red-400 p-1.5 rounded-xl hover:bg-red-500/10 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"><HiOutlineTrash className="h-4 w-4" /></button>
                 </li>
               ))}
             </ul>

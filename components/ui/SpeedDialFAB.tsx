@@ -135,7 +135,8 @@ const SpeedDialFAB: React.FC<SpeedDialFABProps> = ({
 
       <div
         ref={containerRef}
-        className={`fixed bottom-20 right-4 sm:right-6 md:right-8 z-40 flex flex-col items-end pointer-events-auto ${className}`}
+        className={`fixed right-4 sm:right-6 md:right-8 z-40 flex flex-col items-end pointer-events-auto ${className}`}
+        style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
       >
         {/* Speed Dial Menu Items styled like homepage / finance dashboard icons */}
         <AnimatePresence>
@@ -163,7 +164,7 @@ const SpeedDialFAB: React.FC<SpeedDialFABProps> = ({
                     aria-label={action.label}
                   >
                     {/* Action Label Chip */}
-                    <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm text-slate-800 dark:text-zinc-100 shadow-md border border-slate-200/80 dark:border-zinc-700/80 whitespace-nowrap group-hover:bg-slate-50 dark:group-hover:bg-zinc-700 transition-colors">
+                    <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm text-slate-800 dark:text-zinc-100 shadow-sm border border-slate-200/80 dark:border-zinc-700/80 whitespace-nowrap group-hover:bg-slate-50 dark:group-hover:bg-zinc-700 transition-colors">
                       {action.label}
                     </span>
 

@@ -4,6 +4,9 @@ import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import FilterChip from '../components/ui/FilterChip';
 import Skeleton from '../components/ui/Skeleton';
 import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { Medicine } from '../types';
@@ -96,8 +99,8 @@ const MedicinesSettingsPage: React.FC = () => {
             times: formState.times,
             mealRelation: formState.mealRelation,
             schedule: { type: formState.scheduleType as 'daily' | 'alternate_days' },
-            stripPrice: formState.stripPrice ? parseFloat(formState.stripPrice) : undefined,
-            piecesPerStrip: formState.piecesPerStrip ? parseInt(formState.piecesPerStrip) : undefined,
+            ...(formState.stripPrice ? { stripPrice: parseFloat(formState.stripPrice) } : {}),
+            ...(formState.piecesPerStrip ? { piecesPerStrip: parseInt(formState.piecesPerStrip) } : {}),
         };
 
         if (editingMedicine) {
@@ -160,14 +163,18 @@ const MedicinesSettingsPage: React.FC = () => {
                 action={
                     <div className="flex items-center gap-2">
                         {cart.length > 0 && 
-                            <button onClick={() => navigate('/restock')} className="px-3 py-2 sm:px-3.5 sm:py-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl transition flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap shadow-xs">
+                            <button onClick={() => navigate('/restock')} className="px-3 py-2 sm:px-3.5 sm:py-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl transition flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap shadow-sm">
                                 <HiOutlineShoppingCart className="h-4 w-4" />
                                 {t('medicines.cart')} ({cart.length})
                             </button>
                         }
-                        <button onClick={() => handleOpenModal()} className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-primary text-white font-semibold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm text-xs sm:text-sm whitespace-nowrap">
-                            <HiPlus className="h-4 w-4" /> {t('medicines.add')}
-                        </button>
+                        <Button 
+                            onClick={() => handleOpenModal()} 
+                            icon={<HiPlus className="h-4 w-4" />}
+                            size="md"
+                        >
+                            {t('medicines.add')}
+                        </Button>
                     </div>
                 }
             />
@@ -246,25 +253,27 @@ const MedicinesSettingsPage: React.FC = () => {
                     
                     <div>
                         <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.intakeTime')}</label>
-                        <div className="flex justify-around p-1.5 bg-light-background dark:bg-background rounded-xl border border-slate-200 dark:border-slate-600">
+                        <div className="flex gap-2">
                             {['Morning', 'Noon', 'Night'].map(timeOfDay => {
                                 const timeValue = timeOfDay === 'Morning' ? '08:00' : timeOfDay === 'Noon' ? '14:00' : '20:00';
                                 const isChecked = formState.times.includes(timeValue);
+                                const toggleTime = () => {
+                                    const newTimes = isChecked
+                                        ? formState.times.filter(t => t !== timeValue)
+                                        : [...formState.times, timeValue];
+                                    setFormState(s => ({ ...s, times: newTimes.sort() }));
+                                };
                                 return (
-                                    <label key={timeOfDay} className={`cursor-pointer flex-1 text-center py-2 rounded-lg text-xs font-semibold transition-colors ${isChecked ? 'bg-primary text-white shadow-sm' : 'hover:bg-primary/10'}`}>
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only"
-                                            checked={isChecked}
-                                            onChange={() => {
-                                                const newTimes = isChecked
-                                                    ? formState.times.filter(t => t !== timeValue)
-                                                    : [...formState.times, timeValue];
-                                                setFormState(s => ({ ...s, times: newTimes.sort() }));
-                                            }}
-                                        />
-                                        {t(`medicines.modal.${timeOfDay.toLowerCase()}`)}
-                                    </label>
+                                    <FilterChip
+                                        key={timeOfDay}
+                                        selected={isChecked}
+                                        onClick={toggleTime}
+                                        size="md"
+                                        variant="rounded"
+                                        className="flex-1 justify-center"
+                                        label={t(`medicines.modal.${timeOfDay.toLowerCase()}`)}
+                                        aria-label={t(`medicines.modal.${timeOfDay.toLowerCase()}`)}
+                                    />
                                 );
                             })}
                         </div>
@@ -272,22 +281,17 @@ const MedicinesSettingsPage: React.FC = () => {
 
                     <div>
                         <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary mb-1.5">{t('medicines.modal.mealRelation')}</label>
-                        <div className="flex justify-around p-1.5 bg-light-background dark:bg-background rounded-xl border border-slate-200 dark:border-slate-600">
-                            <button
-                                type="button"
-                                onClick={() => setFormState(s => ({...s, mealRelation: 'before'}))}
-                                className={`w-1/2 py-2 rounded-lg font-semibold transition-colors text-xs ${formState.mealRelation === 'before' ? 'bg-primary text-white shadow-sm' : 'hover:bg-primary/10'}`}
-                            >
-                                {t('medicines.modal.beforeMeal')}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setFormState(s => ({...s, mealRelation: 'after'}))}
-                                className={`w-1/2 py-2 rounded-lg font-semibold transition-colors text-xs ${formState.mealRelation === 'after' ? 'bg-primary text-white shadow-sm' : 'hover:bg-primary/10'}`}
-                            >
-                                {t('medicines.modal.afterMeal')}
-                            </button>
-                        </div>
+                        <SegmentedControl
+                            fullWidth
+                            size="md"
+                            variant="primary"
+                            options={[
+                                { value: 'before', label: t('medicines.modal.beforeMeal') },
+                                { value: 'after', label: t('medicines.modal.afterMeal') },
+                            ]}
+                            value={formState.mealRelation}
+                            onChange={(val) => setFormState(s => ({ ...s, mealRelation: val as 'before' | 'after' }))}
+                        />
                     </div>
                     
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -300,7 +304,21 @@ const MedicinesSettingsPage: React.FC = () => {
                             <input id="piecesPerStrip" type="number" placeholder="e.g. 10 (Optional)" value={formState.piecesPerStrip} onChange={e => setFormState(s => ({...s, piecesPerStrip: e.target.value}))} className="w-full p-2.5 sm:p-3 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-slate-600 text-sm text-light-text-primary dark:text-text-primary placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent" />
                         </div>
                     </div>
-                    <button onClick={handleSaveMedicine} className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 mt-2 shadow-md active:scale-[0.99] text-sm">{editingMedicine ? t('finance.modal.saveChanges') : t('medicines.add')}</button>
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+                        <Button 
+                            variant="secondary"
+                            onClick={() => setModalOpen(false)}
+                            className="w-full sm:w-auto"
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button 
+                            onClick={handleSaveMedicine} 
+                            className="w-full sm:w-auto"
+                        >
+                            {editingMedicine ? t('finance.modal.saveChanges') : t('medicines.add')}
+                        </Button>
+                    </div>
                 </div>
             </Modal>
 

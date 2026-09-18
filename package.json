@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:rules": "vitest run tests/firestore.rules.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.25.0",
     "firebase": "^12.18.0",
+    "firebase-admin": "^14.4.0",
     "framer-motion": "^11.3.11",
     "motion": "^13.1.1",
     "react": "^19.2.0",
@@ -22,11 +24,14 @@
     "recharts": "^3.3.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
+    "@vercel/node": "^13.0.1",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vitest": "^5.0.1"
   }
 }

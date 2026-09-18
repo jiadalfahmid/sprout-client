@@ -38,39 +38,42 @@ export const CategoryChipPicker: React.FC<CategoryChipPickerProps> = ({
 
       <div 
         id="category-chips-container"
-        className="flex flex-wrap gap-1.5 max-h-[136px] overflow-y-auto p-1.5 border border-slate-200 dark:border-zinc-700/70 rounded-xl bg-slate-50/50 dark:bg-zinc-900/30"
+        className="overflow-x-auto overflow-y-hidden no-scrollbar p-1.5 border border-slate-200 dark:border-zinc-700/70 rounded-xl bg-slate-50/50 dark:bg-zinc-900/30 touch-pan-x"
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        {categories.map((cat) => {
-          const isSelected = selectedCategoryId === cat.id;
-          const Icon = getCategoryIcon(cat.icon);
-          return (
-            <button
-              key={cat.id}
-              id={`category-chip-${cat.id}`}
-              type="button"
-              onClick={() => onSelect(cat.id)}
-              className={`h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all shrink-0 border cursor-pointer select-none ${
-                isSelected
-                  ? 'ring-2 shadow-xs'
-                  : 'bg-light-surface dark:bg-surface border-slate-200 dark:border-zinc-700 text-light-text-primary dark:text-text-primary hover:border-slate-300 dark:hover:border-zinc-600 hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 active:scale-[0.98]'
-              }`}
-              style={{
-                backgroundColor: isSelected ? `${cat.color}20` : undefined,
-                borderColor: isSelected ? cat.color : undefined,
-                color: isSelected ? cat.color : undefined,
-                boxShadow: isSelected ? `0 0 0 1px ${cat.color}` : undefined,
-              }}
-              title={cat.name}
-            >
-              <Icon 
-                className="h-3.5 w-3.5 shrink-0" 
-                style={{ color: cat.color }} 
-              />
-              <span className="whitespace-nowrap">{cat.name}</span>
-              {isSelected && <HiOutlineCheck className="h-3.5 w-3.5 shrink-0 ml-0.5" />}
-            </button>
-          );
-        })}
+        <div className="grid grid-flow-col grid-rows-2 auto-cols-max gap-1.5 pr-3">
+          {categories.map((cat) => {
+            const isSelected = selectedCategoryId === cat.id;
+            const Icon = getCategoryIcon(cat.icon);
+            return (
+              <button
+                key={cat.id}
+                id={`category-chip-${cat.id}`}
+                type="button"
+                onClick={() => onSelect(cat.id)}
+                className={`h-8 px-3 inline-flex items-center gap-1.5 rounded-xl text-xs font-medium transition-all shrink-0 border cursor-pointer select-none ${
+                  isSelected
+                    ? 'ring-2 shadow-sm font-semibold'
+                    : 'bg-light-surface dark:bg-surface border-slate-200 dark:border-zinc-700 text-light-text-primary dark:text-text-primary hover:border-slate-300 dark:hover:border-zinc-600 hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 active:scale-[0.98]'
+                }`}
+                style={{
+                  backgroundColor: isSelected ? `${cat.color}20` : undefined,
+                  borderColor: isSelected ? cat.color : undefined,
+                  color: isSelected ? cat.color : undefined,
+                  boxShadow: isSelected ? `0 0 0 1px ${cat.color}` : undefined,
+                }}
+                title={cat.name}
+              >
+                <Icon 
+                  className="h-3.5 w-3.5 shrink-0" 
+                  style={{ color: cat.color }} 
+                />
+                <span className="whitespace-nowrap">{cat.name}</span>
+                {isSelected && <HiOutlineCheck className="h-3.5 w-3.5 shrink-0 ml-0.5" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

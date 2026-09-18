@@ -1,5 +1,22 @@
 {
   "entities": {
+    "Household": {
+      "collection": "households",
+      "fields": {
+        "ownerUid": { "type": "string" },
+        "members": { "type": "map" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "UserHouseholdMembership": {
+      "collection": "user_household_memberships",
+      "fields": {
+        "householdIds": { "type": "array" },
+        "activeHouseholdId": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
     "UserProfile": {
       "collection": "users",
       "fields": {

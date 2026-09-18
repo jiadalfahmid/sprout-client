@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../context/AppContext';
+import Button from '../components/ui/Button';
+import SectionHeading from '../components/ui/SectionHeading';
 import { FamilyInvite } from '../types';
 import { 
   HiOutlineSparkles, 
@@ -16,9 +18,9 @@ import {
   HiOutlineExclamationTriangle,
   HiOutlineCheck,
   HiOutlineEye,
-  HiOutlineEyeSlash
+  HiOutlineEyeSlash,
+  HiOutlineBeaker
 } from 'react-icons/hi2';
-import { PiPill } from 'react-icons/pi';
 import toast from 'react-hot-toast';
 
 const JoinFamilyPage: React.FC = () => {
@@ -168,34 +170,36 @@ const JoinFamilyPage: React.FC = () => {
     <div className="min-h-[80vh] flex items-center justify-center py-6 px-3 sm:px-6">
       <div className="w-full max-w-xl">
         {loadingInvite ? (
-          <div className="bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 rounded-3xl p-8 text-center space-y-4 animate-pulse shadow-xl">
+          <div className="bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 rounded-2xl p-8 text-center space-y-4 animate-pulse shadow-xl">
             <div className="w-14 h-14 bg-primary/20 rounded-2xl mx-auto" />
             <div className="h-6 bg-slate-200 dark:bg-zinc-700 rounded-xl w-3/4 mx-auto" />
-            <div className="h-4 bg-slate-100 dark:bg-zinc-800 rounded-lg w-1/2 mx-auto" />
+            <div className="h-4 bg-slate-100 dark:bg-zinc-800 rounded-xl w-1/2 mx-auto" />
           </div>
         ) : !invite ? (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 rounded-3xl p-8 text-center space-y-5 shadow-xl"
+            className="bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 rounded-2xl p-8 text-center space-y-5 shadow-xl"
           >
             <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center mx-auto">
               <HiOutlineExclamationTriangle className="w-7 h-7" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-light-text-primary dark:text-text-primary">
+              <SectionHeading className="text-xl font-bold">
                 This invite link is invalid or has expired
-              </h2>
+              </SectionHeading>
               <p className="text-xs text-light-text-secondary dark:text-text-secondary mt-1.5 max-w-sm mx-auto leading-relaxed">
                 We could not verify this invitation in our system. The link may have expired, been cancelled, or is invalid. Please ask your family organizer for an updated invite link.
               </p>
             </div>
-            <Link
-              to="/home"
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-primary text-white text-xs font-bold shadow-md hover:bg-primary-hover transition"
-            >
-              <span>Go to Sprout Home</span>
-              <HiOutlineArrowRight className="w-4 h-4" />
+            <Link to="/home">
+              <Button
+                variant="primary"
+                size="md"
+                icon={<HiOutlineArrowRight className="w-4 h-4" />}
+              >
+                Go to Sprout Home
+              </Button>
             </Link>
           </motion.div>
         ) : (
@@ -203,14 +207,14 @@ const JoinFamilyPage: React.FC = () => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden"
+            className="bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden"
           >
             {/* Top Accent Gradient Bar */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-primary" />
 
             {/* Header / Inviter Badge */}
             <div className="text-center mb-6">
-              <div className="inline-flex p-3.5 rounded-2xl bg-primary/10 dark:bg-primary/20 border border-primary/25 text-primary mb-3 shadow-xs">
+              <div className="inline-flex p-3.5 rounded-2xl bg-primary/10 dark:bg-primary/20 border border-primary/25 text-primary mb-3 shadow-sm">
                 <HiOutlineUsers className="w-7 h-7" />
               </div>
               <span className="block text-[11px] font-bold uppercase tracking-wider text-primary mb-1">
@@ -234,7 +238,7 @@ const JoinFamilyPage: React.FC = () => {
               </div>
               <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-200/50 dark:border-zinc-700/50">
                 <span className="text-light-text-secondary dark:text-text-secondary">Family Role:</span>
-                <span className="px-2 py-0.5 rounded-lg bg-primary/10 text-primary font-bold text-[11px]">
+                <span className="px-2.5 py-0.5 rounded-xl bg-primary/10 text-primary font-bold text-[11px]">
                   {invite.relation || 'Member'}
                 </span>
               </div>
@@ -256,7 +260,7 @@ const JoinFamilyPage: React.FC = () => {
             {/* Feature Highlights Grid */}
             <div className="grid grid-cols-2 gap-2.5 mb-6 text-[11px] text-light-text-secondary dark:text-text-secondary">
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-100/50 dark:bg-zinc-800/40 border border-slate-200/40 dark:border-zinc-700/40">
-                <PiPill className="w-4 h-4 text-emerald-500 shrink-0" />
+                <HiOutlineBeaker className="w-4 h-4 text-emerald-500 shrink-0" />
                 <span className="truncate">Medicine Reminders</span>
               </div>
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-100/50 dark:bg-zinc-800/40 border border-slate-200/40 dark:border-zinc-700/40">
@@ -288,21 +292,23 @@ const JoinFamilyPage: React.FC = () => {
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="button"
                   onClick={handleAcceptInvite}
                   disabled={isProcessing}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-2xl bg-primary hover:bg-primary-hover text-white font-bold text-xs shadow-md transition disabled:opacity-60"
+                  variant="primary"
+                  size="md"
+                  className="w-full"
                 >
                   {isProcessing ? (
                     <span>Linking Family Account...</span>
                   ) : (
-                    <>
+                    <span className="flex items-center justify-center gap-2">
                       <span>Accept Invitation & Join Circle</span>
                       <HiOutlineArrowRight className="w-4 h-4" />
-                    </>
+                    </span>
                   )}
-                </button>
+                </Button>
 
                 <div className="text-center">
                   <button
@@ -324,7 +330,7 @@ const JoinFamilyPage: React.FC = () => {
                   type="button"
                   onClick={handleGoogleJoin}
                   disabled={isProcessing || isGoogleLoading}
-                  className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl bg-white dark:bg-zinc-800/90 text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 font-semibold text-xs transition shadow-xs disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white dark:bg-zinc-800/90 text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 font-semibold text-xs transition shadow-sm disabled:opacity-60"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -349,7 +355,7 @@ const JoinFamilyPage: React.FC = () => {
                     onClick={() => setAuthMode('signup')}
                     className={`py-1.5 text-xs font-bold rounded-xl transition ${
                       authMode === 'signup'
-                        ? 'bg-light-surface dark:bg-zinc-700 text-primary shadow-xs'
+                        ? 'bg-light-surface dark:bg-zinc-700 text-primary shadow-sm'
                         : 'text-light-text-secondary dark:text-text-secondary'
                     }`}
                   >
@@ -360,7 +366,7 @@ const JoinFamilyPage: React.FC = () => {
                     onClick={() => setAuthMode('login')}
                     className={`py-1.5 text-xs font-bold rounded-xl transition ${
                       authMode === 'login'
-                        ? 'bg-light-surface dark:bg-zinc-700 text-primary shadow-xs'
+                        ? 'bg-light-surface dark:bg-zinc-700 text-primary shadow-sm'
                         : 'text-light-text-secondary dark:text-text-secondary'
                     }`}
                   >
@@ -423,13 +429,15 @@ const JoinFamilyPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <button
+                  <Button
                     type="submit"
+                    variant="primary"
+                    size="sm"
                     disabled={isProcessing}
-                    className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-xs shadow-md transition disabled:opacity-60"
+                    className="w-full"
                   >
                     {isProcessing ? 'Connecting...' : authMode === 'signup' ? 'Create Account & Join Family' : 'Sign In & Join Family'}
-                  </button>
+                  </Button>
                 </form>
               </div>
             )}

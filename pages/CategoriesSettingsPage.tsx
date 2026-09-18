@@ -4,6 +4,8 @@ import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import { 
   AVAILABLE_CATEGORY_ICONS, 
   AVAILABLE_CATEGORY_COLORS, 
@@ -21,7 +23,6 @@ import {
   HiCheck,
   HiOutlineFunnel,
   HiOutlineMagnifyingGlass,
-  HiOutlineSparkles,
   HiOutlineReceiptPercent,
   HiOutlineDocumentText
 } from 'react-icons/hi2';
@@ -208,13 +209,13 @@ export const CategoriesSettingsPage: React.FC = () => {
           </p>
         </div>
 
-        <button
+        <Button
           onClick={handleOpenAdd}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-opacity-95 active:scale-[0.98] shadow-sm transition-all self-start sm:self-auto"
+          icon={<HiPlus className="w-4 h-4" />}
+          className="self-start sm:self-auto"
         >
-          <HiPlus className="w-4 h-4" />
           New Category
-        </button>
+        </Button>
       </div>
 
       {/* Auto-Generated Anomaly Banner */}
@@ -237,7 +238,7 @@ export const CategoriesSettingsPage: React.FC = () => {
 
             <button
               onClick={() => setIsCleanupModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 dark:bg-amber-500 text-white text-xs font-semibold rounded-xl hover:bg-amber-700 active:scale-95 transition-all shadow-xs shrink-0 self-start sm:self-center"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 dark:bg-amber-500 text-white text-xs font-semibold rounded-xl hover:bg-amber-700 active:scale-95 transition-all shadow-sm shrink-0 self-start sm:self-center"
             >
               <HiOutlineArrowPath className="w-4 h-4" />
               Clean Up & Merge to Other
@@ -298,52 +299,24 @@ export const CategoriesSettingsPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          <button
-            onClick={() => setFilterType('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-              filterType === 'all'
-                ? 'bg-primary text-white'
-                : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700'
-            }`}
-          >
-            All ({transactionCategories.length})
-          </button>
-          <button
-            onClick={() => setFilterType('custom')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-              filterType === 'custom'
-                ? 'bg-primary text-white'
-                : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700'
-            }`}
-          >
-            Custom ({transactionCategories.filter(c => c.isCustom).length})
-          </button>
-          <button
-            onClick={() => setFilterType('default')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-              filterType === 'default'
-                ? 'bg-primary text-white'
-                : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700'
-            }`}
-          >
-            System Default
-          </button>
-          {anomalyCategories.length > 0 && (
-            <button
-              onClick={() => setFilterType('anomalies')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1 ${
-                filterType === 'anomalies'
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20'
-              }`}
-            >
-              <span>Auto-Generated</span>
-              <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
-                {anomalyCategories.length}
-              </span>
-            </button>
-          )}
+        <div className="overflow-x-auto pb-1 sm:pb-0">
+          <SegmentedControl
+            options={[
+              { value: 'all', label: `All (${transactionCategories.length})` },
+              { value: 'custom', label: `Custom (${transactionCategories.filter(c => c.isCustom).length})` },
+              { value: 'default', label: 'System Default' },
+              ...(anomalyCategories.length > 0 ? [{
+                value: 'anomalies',
+                label: 'Auto-Generated',
+                badge: anomalyCategories.length,
+              }] : []),
+            ]}
+            value={filterType}
+            onChange={(val) => setFilterType(val as any)}
+            variant="primary"
+            size="sm"
+            ariaLabel="Category filter"
+          />
         </div>
       </div>
 
@@ -358,7 +331,7 @@ export const CategoriesSettingsPage: React.FC = () => {
             <div 
               key={cat.id}
               onClick={() => handleOpenEdit(cat)}
-              className={`p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border transition-all flex flex-col justify-between gap-3 shadow-xs cursor-pointer hover:shadow-md hover:border-primary/50 ${
+              className={`p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border transition-all flex flex-col justify-between gap-3 shadow-sm cursor-pointer hover:shadow-lg hover:border-primary/50 ${
                 isAnomaly 
                   ? 'border-amber-500/40 dark:border-amber-500/30 bg-amber-500/5' 
                   : 'border-slate-200/80 dark:border-zinc-700/80'
@@ -368,7 +341,7 @@ export const CategoriesSettingsPage: React.FC = () => {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
                   <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
                     style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
                   >
                     <Icon className="w-5 h-5" />
@@ -399,7 +372,7 @@ export const CategoriesSettingsPage: React.FC = () => {
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => handleOpenEdit(cat)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-light-text-primary dark:text-text-primary hover:text-primary transition-colors text-xs font-semibold"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-light-text-primary dark:text-text-primary hover:text-primary transition-colors text-xs font-semibold"
                     title="Edit Category Name, Icon & Color"
                     aria-label={`Edit ${cat.name}`}
                   >
@@ -409,7 +382,7 @@ export const CategoriesSettingsPage: React.FC = () => {
 
                   <button
                     onClick={() => setDeletingCategory(cat)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-light-text-secondary dark:text-text-secondary hover:text-red-500 transition-colors"
+                    className="p-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-light-text-secondary dark:text-text-secondary hover:text-red-500 transition-colors"
                     title="Delete Category"
                     aria-label={`Delete ${cat.name}`}
                   >
@@ -467,7 +440,7 @@ export const CategoriesSettingsPage: React.FC = () => {
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700/80 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center shadow-xs"
+                className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm"
                 style={{ backgroundColor: `${formColor}20`, color: formColor }}
               >
                 {(() => {
@@ -528,7 +501,7 @@ export const CategoriesSettingsPage: React.FC = () => {
                     }`}
                     style={{ backgroundColor: c }}
                   >
-                    {isSelected && <HiCheck className="w-4 h-4 text-white drop-shadow-xs" />}
+                    {isSelected && <HiCheck className="w-4 h-4 text-white drop-shadow-sm" />}
                   </button>
                 );
               })}
@@ -552,7 +525,7 @@ export const CategoriesSettingsPage: React.FC = () => {
                     title={item.label}
                     className={`p-2 rounded-xl flex items-center justify-center transition-all ${
                       isSelected
-                        ? 'bg-primary text-white shadow-xs scale-105'
+                        ? 'bg-primary text-white shadow-sm scale-105'
                         : 'bg-white dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-700 border border-slate-200 dark:border-zinc-700'
                     }`}
                   >
@@ -564,23 +537,26 @@ export const CategoriesSettingsPage: React.FC = () => {
           </div>
 
           {/* Action buttons */}
-          <div className="flex justify-end gap-2.5 pt-2">
-            <button
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 pt-2">
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full sm:w-auto"
               onClick={() => {
                 setIsAddModalOpen(false);
                 setEditingCategory(null);
               }}
-              className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-600 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-primary text-white hover:bg-opacity-90 transition-colors shadow-xs"
+              size="sm"
+              className="w-full sm:w-auto"
             >
               {editingCategory ? 'Save Changes' : 'Create Category'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -604,19 +580,23 @@ export const CategoriesSettingsPage: React.FC = () => {
             </div>
           )}
 
-          <div className="flex justify-end gap-2.5 pt-2">
-            <button
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 pt-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full sm:w-auto"
               onClick={() => setDeletingCategory(null)}
-              className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-600 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              className="w-full sm:w-auto"
               onClick={handleConfirmDelete}
-              className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors shadow-xs"
             >
               Yes, Delete & Reassign
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>
@@ -635,19 +615,22 @@ export const CategoriesSettingsPage: React.FC = () => {
             💡 If any of these categories represent real transactions you wish to keep categorized, you can simply click <strong>Edit</strong> on them instead of batch cleaning!
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-2">
-            <button
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 pt-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full sm:w-auto"
               onClick={() => setIsCleanupModalOpen(false)}
-              className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-600 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
+              className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white"
               onClick={handleBatchCleanup}
-              className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-amber-600 text-white hover:bg-amber-700 transition-colors shadow-xs"
             >
               Merge All into Other
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>

@@ -3,7 +3,7 @@ import {
     Transaction, TransactionType, Bill, FamilyMember, Medicine, Task, Note, User, Notification, 
     NotificationSettings, CalendarEvent, CartItem, HealthRecord, Currency, Language, MedicalReport,
     Borrowing, Lending, SavingsGoal, Repayment, Return, Appointment, TaskList, FamilyInvite,
-    TransactionCategory
+    TransactionCategory, Household, UserHouseholdMembership
 } from '../types';
 import { 
     mockUser, mockFamilyMembers, mockTransactions, mockBills, mockMedicines, mockTasks, mockNotes, mockNotifications, mockMedicalReports,
@@ -22,6 +22,7 @@ import {
   saveInviteDocument,
   getInviteDocument,
   updateInviteDocument,
+  stripUndefined,
   subscribeToUserSubcollection,
   subscribeToInviterInvites,
   saveUserProfile,
@@ -30,7 +31,19 @@ import {
   setCachedAccessToken,
   getAccessToken,
   cancelPendingInvitesForMember,
-  clearAllCloudUserData
+  clearAllCloudUserData,
+  ensureHousehold,
+  getHousehold,
+  ensureUserHouseholdMembership,
+  getUserHouseholdMembership,
+  subscribeToUserHouseholdMembership,
+  subscribeToHousehold,
+  addUserToHousehold,
+  addUserToHouseholdByOwner,
+  registerJoinedHousehold,
+  acceptInviteViaApi,
+  leaveHousehold,
+  switchActiveHousehold
 } from '../services/firebaseService';
 import { 
   defaultNotificationSettings, 
@@ -224,6 +237,12 @@ interface AppContextType {
   isDrawerOpen: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
+  // Shared Household System
+  activeHouseholdId: string | null;
+  activeHousehold: Household | null;
+  userMemberships: UserHouseholdMembership | null;
+  switchHousehold: (targetHouseholdId: string) => Promise<boolean>;
+  leaveHouseholdCircle: (targetHouseholdId: string) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -298,9 +317,83 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   });
 
+  // Shared Household System State
+  const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
+  const [activeHousehold, setActiveHousehold] = useState<Household | null>(null);
+  const [userMemberships, setUserMemberships] = useState<UserHouseholdMembership | null>(null);
+
   // UI State
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const previousAlertIdsRef = useRef<Set<string>>(new Set());
+
+  // In-flight write tracking for optimistic updates & reconciliation
+  const inFlightWritesRef = useRef<Map<string, { subcollection: string; id: string; item: any }>>(new Map());
+
+  const reconcileWithInFlight = useCallback(<T extends { id: string }>(subcollection: string, serverItems: T[]): T[] => {
+    const serverIds = new Set(serverItems.map(item => item.id));
+    const merged = [...serverItems];
+
+    inFlightWritesRef.current.forEach((entry) => {
+      if (entry.subcollection === subcollection && !serverIds.has(entry.id)) {
+        merged.unshift(entry.item as T);
+      }
+    });
+
+    return merged;
+  }, []);
+
+  const persistDocument = async (
+    subcollection: string,
+    docId: string,
+    data: any,
+    rollback?: () => void,
+    scopeOverride?: string
+  ): Promise<boolean> => {
+    if (!googleFirebaseUser?.uid) return true;
+    const targetScope = scopeOverride || activeHouseholdId || googleFirebaseUser.uid;
+    const key = `${subcollection}:${docId}`;
+    const cleaned = stripUndefined(data);
+    inFlightWritesRef.current.set(key, { subcollection, id: docId, item: cleaned });
+
+    try {
+      const success = await saveUserDocument(targetScope, subcollection, docId, cleaned);
+      if (!success) {
+        console.warn(`Write returned false for ${subcollection}/${docId}, rolling back.`);
+        if (rollback) rollback();
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn(`Write threw error for ${subcollection}/${docId}, rolling back:`, err);
+      if (rollback) rollback();
+      return false;
+    } finally {
+      inFlightWritesRef.current.delete(key);
+    }
+  };
+
+  const removeDocument = async (
+    subcollection: string,
+    docId: string,
+    rollback?: () => void,
+    scopeOverride?: string
+  ): Promise<boolean> => {
+    if (!googleFirebaseUser?.uid) return true;
+    const targetScope = scopeOverride || activeHouseholdId || googleFirebaseUser.uid;
+    try {
+      const success = await deleteUserDocument(targetScope, subcollection, docId);
+      if (!success) {
+        console.warn(`Delete returned false for ${subcollection}/${docId}, rolling back.`);
+        if (rollback) rollback();
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn(`Delete threw error for ${subcollection}/${docId}, rolling back:`, err);
+      if (rollback) rollback();
+      return false;
+    }
+  };
 
   // URL Invitation Parameter Scanner
   useEffect(() => {
@@ -313,8 +406,8 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           id: inviteId,
           inviterUid: params.get('inviterUid') || '',
           inviterName: decodeURIComponent(params.get('inviterName') || 'Family Admin'),
-          inviterEmail: params.get('inviterEmail') || undefined,
-          memberId: params.get('memberId') || undefined,
+          ...(params.get('inviterEmail') ? { inviterEmail: params.get('inviterEmail')! } : {}),
+          ...(params.get('memberId') ? { memberId: params.get('memberId')! } : {}),
           memberName: decodeURIComponent(params.get('memberName') || 'Family Member'),
           recipientEmail: decodeURIComponent(params.get('recipientEmail') || ''),
           relation: decodeURIComponent(params.get('relation') || 'Family Member'),
@@ -343,20 +436,22 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, []);
 
   const unsubsRef = useRef<(() => void)[]>([]);
+  const membershipUnsubRef = useRef<(() => void) | null>(null);
 
-  // Firebase Auth State Listener & Real-time Cloud Sync
+  // Firebase Auth State Listener & Household Initialization
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
-      // Explicitly tear down any prior subscriptions
-      unsubsRef.current.forEach(u => u && u());
-      unsubsRef.current = [];
+      if (membershipUnsubRef.current) {
+        membershipUnsubRef.current();
+        membershipUnsubRef.current = null;
+      }
 
       if (fbUser) {
         setGoogleFirebaseUser(fbUser);
         setIsGoogleAuthenticated(true);
         setIsGuestMode(false);
 
-        // Fetch user profile from Firestore
+        // Fetch user profile from Firestore (stays keyed to logged in user)
         const savedProfile = await getUserProfile(fbUser.uid);
 
         const isGoogleAccount = fbUser.providerData.some(p => p.providerId === 'google.com');
@@ -366,7 +461,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         const updatedUser: User = {
           name: savedProfile?.name || fbUser.displayName || fbUser.email?.split('@')[0] || 'Sprout User',
           avatar: savedProfile?.avatar || fbUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-          email: fbUser.email || undefined,
+          ...(fbUser.email ? { email: fbUser.email } : {}),
           googleId: fbUser.uid,
           firebaseUid: fbUser.uid,
           isGoogleUser: isGoogleAccount,
@@ -377,86 +472,136 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         if (savedProfile?.language) setLanguage(savedProfile.language);
         if (savedProfile?.notificationSettings) setNotificationSettings(savedProfile.notificationSettings);
 
-        // Sync user profile to Firestore
+        // Sync user profile to Firestore (strictly private to user)
         saveUserProfile(fbUser.uid, {
           name: updatedUser.name,
-          email: updatedUser.email,
+          ...(updatedUser.email ? { email: updatedUser.email } : {}),
           avatar: updatedUser.avatar,
           currency: savedProfile?.currency || currency,
           language: savedProfile?.language || language,
         });
 
-        // Set up real-time Firestore collection listeners
-        unsubsRef.current = [
-          subscribeToUserSubcollection<FamilyMember>(fbUser.uid, 'familyMembers', (items) => {
-            setFamilyMembers(items);
-          }),
-          subscribeToUserSubcollection<Medicine>(fbUser.uid, 'medicines', (items) => {
-            setMedicines(items);
-          }),
-          subscribeToUserSubcollection<Bill>(fbUser.uid, 'bills', (items) => {
-            setBills(items);
-          }),
-          subscribeToUserSubcollection<Appointment>(fbUser.uid, 'appointments', (items) => {
-            setAppointments(items);
-          }),
-          subscribeToUserSubcollection<TransactionCategory>(fbUser.uid, 'transactionCategories', (items) => {
-            if (items && items.length > 0) {
-              setTransactionCategories(prev => {
-                const itemMap = new Map(items.map(it => [it.id, it]));
-                const merged = [...items];
-                DEFAULT_TRANSACTION_CATEGORIES.forEach(defCat => {
-                  if (!itemMap.has(defCat.id) && !items.some(it => it.name.toLowerCase() === defCat.name.toLowerCase())) {
-                    merged.push(defCat);
-                  }
-                });
-                return merged;
-              });
+        // Step 1: Ensure user's own household exists in Firestore (Lazy Backfill)
+        await ensureHousehold(fbUser.uid, {
+          name: updatedUser.name || 'My Family Circle',
+          email: updatedUser.email,
+        });
+
+        // Step 1: Ensure user_household_memberships document exists in Firestore
+        const memberships = await ensureUserHouseholdMembership(fbUser.uid);
+        setUserMemberships(memberships);
+        const resolvedActiveId = memberships?.activeHouseholdId || fbUser.uid;
+        setActiveHouseholdId(resolvedActiveId);
+
+        // Listen for real-time changes to membership (e.g. invites accepted or switched on other devices)
+        membershipUnsubRef.current = subscribeToUserHouseholdMembership(fbUser.uid, (m) => {
+          if (m) {
+            setUserMemberships(m);
+            if (m.activeHouseholdId) {
+              setActiveHouseholdId(m.activeHouseholdId);
             }
-          }),
-          subscribeToUserSubcollection<Transaction>(fbUser.uid, 'transactions', (items) => {
-            setTransactions(items);
-          }),
-          subscribeToUserSubcollection<Task>(fbUser.uid, 'tasks', (items) => {
-            setTasks(items);
-          }),
-          subscribeToUserSubcollection<TaskList>(fbUser.uid, 'taskLists', (items) => {
-            setTaskLists(items);
-          }),
-          subscribeToUserSubcollection<Note>(fbUser.uid, 'notes', (items) => {
-            setNotes(items);
-          }),
-          subscribeToUserSubcollection<MedicalReport>(fbUser.uid, 'medicalReports', (items) => {
-            setMedicalReports(items);
-          }),
-          subscribeToUserSubcollection<Borrowing>(fbUser.uid, 'borrowings', (items) => {
-            setBorrowings(items);
-          }),
-          subscribeToUserSubcollection<Lending>(fbUser.uid, 'lendings', (items) => {
-            setLendings(items);
-          }),
-          subscribeToUserSubcollection<SavingsGoal>(fbUser.uid, 'savingsGoals', (items) => {
-            setSavingsGoals(items);
-          }),
-          subscribeToUserSubcollection<Notification>(fbUser.uid, 'notifications', (items) => {
-            setNotifications(items);
-          }),
-        ];
+          }
+        });
       } else {
-        unsubsRef.current.forEach(u => u && u());
-        unsubsRef.current = [];
         setGoogleFirebaseUser(null);
         setIsGoogleAuthenticated(false);
         setNeedsGoogleReauth(false);
+        setActiveHouseholdId(null);
+        setActiveHousehold(null);
+        setUserMemberships(null);
       }
     });
 
     return () => {
-      unsubsRef.current.forEach(u => u && u());
-      unsubsRef.current = [];
+      if (membershipUnsubRef.current) {
+        membershipUnsubRef.current();
+        membershipUnsubRef.current = null;
+      }
       unsubscribeAuth();
     };
   }, []);
+
+  // Real-time Firestore subscriptions scoped to activeHouseholdId
+  useEffect(() => {
+    // Explicitly tear down any prior subscriptions
+    unsubsRef.current.forEach(u => u && u());
+    unsubsRef.current = [];
+
+    const effectiveHouseholdId = activeHouseholdId || googleFirebaseUser?.uid;
+    if (!effectiveHouseholdId || !googleFirebaseUser?.uid) {
+      setActiveHousehold(null);
+      return;
+    }
+
+    // 1. Subscribe to active household document metadata
+    const unsubHousehold = subscribeToHousehold(effectiveHouseholdId, (h) => {
+      setActiveHousehold(h);
+    });
+
+    // 2. Set up real-time Firestore domain data subcollection listeners scoped to effectiveHouseholdId
+    unsubsRef.current = [
+      unsubHousehold,
+      subscribeToUserSubcollection<FamilyMember>(effectiveHouseholdId, 'familyMembers', (items) => {
+        setFamilyMembers(reconcileWithInFlight('familyMembers', items));
+      }),
+      subscribeToUserSubcollection<Medicine>(effectiveHouseholdId, 'medicines', (items) => {
+        setMedicines(reconcileWithInFlight('medicines', items));
+      }),
+      subscribeToUserSubcollection<Bill>(effectiveHouseholdId, 'bills', (items) => {
+        setBills(reconcileWithInFlight('bills', items));
+      }),
+      subscribeToUserSubcollection<Appointment>(effectiveHouseholdId, 'appointments', (items) => {
+        setAppointments(reconcileWithInFlight('appointments', items));
+      }),
+      subscribeToUserSubcollection<TransactionCategory>(effectiveHouseholdId, 'transactionCategories', (items) => {
+        if (items && items.length > 0) {
+          const reconciled = reconcileWithInFlight('transactionCategories', items);
+          setTransactionCategories(prev => {
+            const itemMap = new Map(reconciled.map(it => [it.id, it]));
+            const merged = [...reconciled];
+            DEFAULT_TRANSACTION_CATEGORIES.forEach(defCat => {
+              if (!itemMap.has(defCat.id) && !reconciled.some(it => it.name.toLowerCase() === defCat.name.toLowerCase())) {
+                merged.push(defCat);
+              }
+            });
+            return merged;
+          });
+        }
+      }),
+      subscribeToUserSubcollection<Transaction>(effectiveHouseholdId, 'transactions', (items) => {
+        setTransactions(reconcileWithInFlight('transactions', items));
+      }),
+      subscribeToUserSubcollection<Task>(effectiveHouseholdId, 'tasks', (items) => {
+        setTasks(reconcileWithInFlight('tasks', items));
+      }),
+      subscribeToUserSubcollection<TaskList>(effectiveHouseholdId, 'taskLists', (items) => {
+        setTaskLists(reconcileWithInFlight('taskLists', items));
+      }),
+      subscribeToUserSubcollection<Note>(effectiveHouseholdId, 'notes', (items) => {
+        setNotes(reconcileWithInFlight('notes', items));
+      }),
+      subscribeToUserSubcollection<MedicalReport>(effectiveHouseholdId, 'medicalReports', (items) => {
+        setMedicalReports(reconcileWithInFlight('medicalReports', items));
+      }),
+      subscribeToUserSubcollection<Borrowing>(effectiveHouseholdId, 'borrowings', (items) => {
+        setBorrowings(reconcileWithInFlight('borrowings', items));
+      }),
+      subscribeToUserSubcollection<Lending>(effectiveHouseholdId, 'lendings', (items) => {
+        setLendings(reconcileWithInFlight('lendings', items));
+      }),
+      subscribeToUserSubcollection<SavingsGoal>(effectiveHouseholdId, 'savingsGoals', (items) => {
+        setSavingsGoals(reconcileWithInFlight('savingsGoals', items));
+      }),
+      subscribeToUserSubcollection<Notification>(effectiveHouseholdId, 'notifications', (items) => {
+        setNotifications(reconcileWithInFlight('notifications', items));
+      }),
+    ];
+
+    return () => {
+      unsubsRef.current.forEach(u => u && u());
+      unsubsRef.current = [];
+    };
+  }, [activeHouseholdId, googleFirebaseUser?.uid, reconcileWithInFlight]);
 
   useEffect(() => {
     // Initial data load simulation
@@ -514,9 +659,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       };
       currentCategories = [...currentCategories, newCategory];
       categoriesUpdated = true;
-      if (googleFirebaseUser?.uid) {
-        saveUserDocument(googleFirebaseUser.uid, 'transactionCategories', newCategory.id, newCategory);
-      }
+      persistDocument('transactionCategories', newCategory.id, newCategory);
       return newCategory.id;
     };
 
@@ -526,9 +669,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         const validId = ensureCategory(tx.categoryId || tx.category);
         transactionsUpdated = true;
         const updated = { ...tx, categoryId: validId };
-        if (googleFirebaseUser?.uid) {
-          saveUserDocument(googleFirebaseUser.uid, 'transactions', tx.id, updated);
-        }
+        persistDocument('transactions', tx.id, updated);
         return updated;
       }
       return tx;
@@ -540,9 +681,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         const validId = ensureCategory(bill.categoryId || (typeof bill.category === 'string' ? bill.category : undefined));
         billsUpdated = true;
         const updated = { ...bill, categoryId: validId };
-        if (googleFirebaseUser?.uid) {
-          saveUserDocument(googleFirebaseUser.uid, 'bills', bill.id, updated);
-        }
+        persistDocument('bills', bill.id, updated);
         return updated;
       }
       return bill;
@@ -557,7 +696,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     if (billsUpdated) {
       setBills(migratedBills);
     }
-  }, [loading, categoryMigrationSignature]);
+  }, [loading, categoryMigrationSignature, persistDocument]);
 
   // -------------------------------------------------------------
   // NOTIFICATION SYSTEM
@@ -571,43 +710,45 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     };
     setNotifications(prev => [newNotif, ...prev]);
 
-    // Save to Firestore if authenticated
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'notifications', newNotif.id, newNotif);
-    }
-  }, [googleFirebaseUser, setNotifications]);
+    // Save to Firestore with in-flight tracking
+    persistDocument('notifications', newNotif.id, newNotif);
+  }, [persistDocument, setNotifications]);
 
   const markAsRead = useCallback((id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'notifications', id, { read: true });
+    let updatedNotif: Notification | undefined;
+    setNotifications(prev => prev.map(n => {
+      if (n.id === id) {
+        updatedNotif = { ...n, read: true };
+        return updatedNotif;
+      }
+      return n;
+    }));
+    if (updatedNotif) {
+      persistDocument('notifications', id, updatedNotif);
     }
-  }, [googleFirebaseUser, setNotifications]);
+  }, [persistDocument, setNotifications]);
 
   const markAllAsRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    if (googleFirebaseUser?.uid) {
-      notifications.forEach(n => {
-        saveUserDocument(googleFirebaseUser.uid, 'notifications', n.id, { read: true });
-      });
-    }
-  }, [googleFirebaseUser, notifications, setNotifications]);
+    setNotifications(prev => prev.map(n => {
+      const updated = { ...n, read: true };
+      persistDocument('notifications', n.id, updated);
+      return updated;
+    }));
+  }, [persistDocument, setNotifications]);
 
   const clearNotifications = useCallback(() => {
-    setNotifications([]);
-    if (googleFirebaseUser?.uid) {
-      notifications.forEach(n => {
-        deleteUserDocument(googleFirebaseUser.uid, 'notifications', n.id);
+    setNotifications(prev => {
+      prev.forEach(n => {
+        removeDocument('notifications', n.id);
       });
-    }
-  }, [googleFirebaseUser, notifications, setNotifications]);
+      return [];
+    });
+  }, [removeDocument, setNotifications]);
 
   const deleteNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'notifications', id);
-    }
-  }, [googleFirebaseUser, setNotifications]);
+    removeDocument('notifications', id);
+  }, [removeDocument, setNotifications]);
 
   const updateNotificationSettings = useCallback((settings: Partial<NotificationSettings>) => {
     setNotificationSettings(prev => {
@@ -923,8 +1064,23 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const clearAllUserData = async (): Promise<void> => {
     try {
       if (googleFirebaseUser?.uid) {
+        const currentUid = googleFirebaseUser.uid;
+        const targetHousehold = activeHouseholdId || currentUid;
+
+        // If the calling user is a joined member (not the owner), leave the household circle
+        if (targetHousehold !== currentUid) {
+          toast.loading('Leaving shared family circle...');
+          await leaveHousehold(targetHousehold, currentUid);
+          await switchActiveHousehold(currentUid, currentUid);
+          setActiveHouseholdId(currentUid);
+          toast.dismiss();
+          toast.success('Successfully left the shared family circle.');
+          return;
+        }
+
+        // Owner: clear all synced records from their own household storage
         toast.loading('Clearing all synced records from cloud storage...');
-        await clearAllCloudUserData(googleFirebaseUser.uid);
+        await clearAllCloudUserData(currentUid);
         toast.dismiss();
       }
       setFamilyMembers([]);
@@ -976,9 +1132,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     if (result.success) {
       const updated = { ...appt, googleEventId: result.googleEventId || appt.googleEventId, syncedWithGoogle: true };
       setAppointments(prev => prev.map(a => a.id === appointmentId ? updated : a));
-      if (googleFirebaseUser?.uid) {
-        saveUserDocument(googleFirebaseUser.uid, 'appointments', appointmentId, updated);
-      }
+      persistDocument('appointments', appointmentId, updated);
       addNotification({
         message: `Appointment with ${appt.doctorName} synced to Google Calendar.`,
         type: 'success',
@@ -1023,9 +1177,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             apptCount++;
             const updated = { ...appt, googleEventId: res.googleEventId || appt.googleEventId, syncedWithGoogle: true };
             setAppointments(prev => prev.map(a => a.id === appt.id ? updated : a));
-            if (googleFirebaseUser?.uid) {
-              saveUserDocument(googleFirebaseUser.uid, 'appointments', appt.id, updated);
-            }
+            persistDocument('appointments', appt.id, updated);
           }
         }
       }
@@ -1084,14 +1236,14 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       id: inviteId,
       inviterUid: currentUid,
       inviterName,
-      inviterEmail: user.email || googleFirebaseUser?.email || undefined,
-      memberId: memberId || undefined,
-      memberName: memberName || undefined,
-      recipientEmail: recipientEmail || undefined,
       relation: relation || 'Family Member',
-      customMessage: customMessage || undefined,
       status: 'pending',
       createdAt: now,
+      ...((user.email || googleFirebaseUser?.email) ? { inviterEmail: user.email || googleFirebaseUser?.email || '' } : {}),
+      ...(memberId ? { memberId } : {}),
+      ...(memberName ? { memberName } : {}),
+      ...(recipientEmail ? { recipientEmail } : {}),
+      ...(customMessage ? { customMessage } : {}),
     };
 
     try {
@@ -1122,13 +1274,11 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         inviteSentAt: now,
       };
       setFamilyMembers(prev => prev.map(m => m.id === memberId ? updatedMember : m));
-      if (googleFirebaseUser?.uid) {
-        saveUserDocument(googleFirebaseUser.uid, 'familyMembers', memberId, updatedMember);
-      }
+      persistDocument('familyMembers', memberId, updatedMember);
     }
 
     return { inviteId, inviteLink };
-  }, [googleFirebaseUser, user, familyMembers]);
+  }, [googleFirebaseUser, user, familyMembers, persistDocument]);
 
   const copyFamilyInviteLink = useCallback(async (memberId?: string, email?: string): Promise<string> => {
     try {
@@ -1183,58 +1333,93 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     isAcceptingInviteRef.current = true;
 
     try {
-      // Validate invite is still pending and not cancelled or superseded
+      // Validate invite is still pending and not cancelled or superseded (BUG-5)
       const freshInvite = await getInviteDocument(targetInvite.id);
-      const effectiveInvite = freshInvite || targetInvite;
-      if (effectiveInvite.status !== 'pending') {
+      if (!freshInvite) {
+        toast.error('This invitation link is invalid or no longer exists.');
+        setPendingInvite(null);
+        localStorage.removeItem('sprout_pending_invite');
+        return;
+      }
+      if (freshInvite.status !== 'pending') {
         toast.error('This invitation link is no longer active or has been superseded.');
         setPendingInvite(null);
         localStorage.removeItem('sprout_pending_invite');
         return;
       }
+      const effectiveInvite = freshInvite;
 
       const now = new Date().toISOString();
-      const userEmail = googleFirebaseUser?.email || user.email || targetInvite.recipientEmail || 'member@sprout.family';
-      const userName = user.name || googleFirebaseUser?.displayName || targetInvite.memberName || 'Family Member';
+      const userEmail = googleFirebaseUser?.email || user.email || effectiveInvite.recipientEmail || 'member@sprout.family';
+      const userName = user.name || googleFirebaseUser?.displayName || effectiveInvite.memberName || 'Family Member';
 
-      // 1. Update family_invites/{inviteId} in Firestore with accepter metadata
-      await updateInviteDocument(targetInvite.id, {
-        status: 'accepted',
-        acceptedAt: now,
-        acceptedByUid: currentUid,
-        acceptedByEmail: userEmail,
-        acceptedByName: userName,
-      });
+      // 1. Attempt trusted serverless verification via /api/accept-invite first
+      let joinedViaApi = false;
+      try {
+        const idToken = await googleFirebaseUser?.getIdToken();
+        if (idToken) {
+          const apiRes = await acceptInviteViaApi(effectiveInvite.id, idToken, userName);
+          if (apiRes.success) {
+            joinedViaApi = true;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('API accept-invite invocation error, proceeding with client verification:', apiErr);
+      }
+
+      // If serverless endpoint wasn't reached, update invite doc directly (allowed by rules for recipient)
+      if (!joinedViaApi) {
+        await updateInviteDocument(effectiveInvite.id, {
+          status: 'accepted',
+          acceptedAt: now,
+          acceptedByUid: currentUid,
+          acceptedByEmail: userEmail,
+          acceptedByName: userName,
+        });
+      }
 
       // Clear pending invite immediately so repeat auto-triggers do not re-fire
       setPendingInvite(null);
       localStorage.removeItem('sprout_pending_invite');
 
-      // 2. Create or link this member in the joined user's local and Firestore state (their own users/{currentUid}/familyMembers)
+      // 2. Register membership in user's personal membership doc (BUG-4)
+      // Only switch activeHouseholdId if the caller is verified in the household's members map
+      let isConfirmedMember = joinedViaApi;
+      if (!isConfirmedMember) {
+        const targetHousehold = await getHousehold(effectiveInvite.inviterUid);
+        isConfirmedMember = Boolean(targetHousehold?.members && currentUid in targetHousehold.members);
+      }
+
+      await registerJoinedHousehold(currentUid, effectiveInvite.inviterUid, isConfirmedMember);
+      if (isConfirmedMember) {
+        setActiveHouseholdId(effectiveInvite.inviterUid);
+      }
+
+      // 3. Create or link this member in the joined user's local and Firestore state
       const memberRecord: FamilyMember = {
-        id: targetInvite.memberId || uuidv4(),
+        id: effectiveInvite.memberId || uuidv4(),
         name: userName,
-        relation: targetInvite.relation || 'Family Member',
+        relation: effectiveInvite.relation || 'Family Member',
         age: 28,
         avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
         email: userEmail,
         inviteStatus: 'accepted',
-        inviteId: targetInvite.id,
+        inviteId: effectiveInvite.id,
         linkedUid: currentUid,
         linkedSince: now,
       };
 
       // Also create a record for the inviter in the invitee's family circle
       const inviterMemberRecord: FamilyMember = {
-        id: `inviter_${targetInvite.inviterUid.slice(0, 8)}`,
-        name: targetInvite.inviterName || 'Family Organizer',
+        id: `inviter_${effectiveInvite.inviterUid.slice(0, 8)}`,
+        name: effectiveInvite.inviterName || 'Family Organizer',
         relation: 'Family Organizer',
         age: 35,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        email: targetInvite.inviterEmail,
+        email: effectiveInvite.inviterEmail,
         inviteStatus: 'accepted',
-        linkedUid: targetInvite.inviterUid,
-        inviteId: targetInvite.id,
+        linkedUid: effectiveInvite.inviterUid,
+        inviteId: effectiveInvite.id,
         linkedSince: now,
       };
 
@@ -1247,7 +1432,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             ...m,
             inviteStatus: 'accepted' as const,
             linkedUid: currentUid,
-            inviteId: targetInvite.id,
+            inviteId: effectiveInvite.id,
             linkedSince: now,
           } : m);
         } else {
@@ -1255,25 +1440,32 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         }
 
         // Ensure inviter is in list
-        if (targetInvite.inviterUid && !list.some(m => m.linkedUid === targetInvite.inviterUid || m.name === targetInvite.inviterName)) {
+        if (effectiveInvite.inviterUid && !list.some(m => m.linkedUid === effectiveInvite.inviterUid || m.name === effectiveInvite.inviterName)) {
           list.push(inviterMemberRecord);
         }
         return list;
       });
 
-      if (currentUid) {
-        saveUserDocument(currentUid, 'familyMembers', memberRecord.id, memberRecord);
-        if (targetInvite.inviterUid) {
-          saveUserDocument(currentUid, 'familyMembers', inviterMemberRecord.id, inviterMemberRecord);
+      // Pass targetHouseholdScope explicitly if confirmed member, avoiding permission denied if not yet confirmed
+      if (isConfirmedMember) {
+        const targetHouseholdScope = effectiveInvite.inviterUid;
+        await persistDocument('familyMembers', memberRecord.id, memberRecord, undefined, targetHouseholdScope);
+        if (effectiveInvite.inviterUid) {
+          await persistDocument('familyMembers', inviterMemberRecord.id, inviterMemberRecord, undefined, targetHouseholdScope);
         }
+
+        toast.success(`🎉 You've joined ${effectiveInvite.inviterName}'s family circle!`, {
+          duration: 7000,
+        });
+      } else {
+        toast('Invitation accepted! Household access will activate once confirmed by the circle owner.', {
+          icon: '⏳',
+          duration: 7000,
+        });
       }
 
-      toast.success(`🎉 You've joined ${targetInvite.inviterName}'s family circle!`, {
-        duration: 7000,
-      });
-
       addNotification({
-        message: `Joined ${targetInvite.inviterName}'s family circle as ${targetInvite.memberName || userName} (${targetInvite.relation || 'Member'})`,
+        message: `Joined ${effectiveInvite.inviterName}'s family circle as ${effectiveInvite.memberName || userName} (${effectiveInvite.relation || 'Member'})`,
         type: 'success',
         domain: 'system',
         path: '/family',
@@ -1284,7 +1476,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     } finally {
       isAcceptingInviteRef.current = false;
     }
-  }, [pendingInvite, googleFirebaseUser, user, setFamilyMembers, addNotification]);
+  }, [pendingInvite, googleFirebaseUser, user, setFamilyMembers, addNotification, persistDocument]);
 
   // Automatically link invite when authenticated and pendingInvite exists
   useEffect(() => {
@@ -1293,12 +1485,51 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   }, [googleFirebaseUser?.uid, pendingInvite, acceptPendingInvite]);
 
+  // Household circle switching and leaving with verification
+  const switchHousehold = useCallback(async (targetHouseholdId: string): Promise<boolean> => {
+    const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid;
+    if (!currentUid) return false;
+    try {
+      const success = await switchActiveHousehold(currentUid, targetHouseholdId);
+      if (!success) {
+        toast.error('You are not a verified member of this household circle.');
+        return false;
+      }
+      setActiveHouseholdId(targetHouseholdId);
+      toast.success('Switched active family circle.');
+      return true;
+    } catch (err) {
+      console.error('Failed to switch family circle:', err);
+      toast.error('Failed to switch family circle.');
+      return false;
+    }
+  }, [googleFirebaseUser, user]);
+
+  const leaveHouseholdCircle = useCallback(async (targetHouseholdId: string): Promise<boolean> => {
+    const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid;
+    if (!currentUid) return false;
+    try {
+      await leaveHousehold(targetHouseholdId, currentUid);
+      if (activeHouseholdId === targetHouseholdId) {
+        await switchActiveHousehold(currentUid, currentUid);
+        setActiveHouseholdId(currentUid);
+      }
+      toast.success('Left family circle.');
+      return true;
+    } catch (err) {
+      console.error('Failed to leave family circle:', err);
+      toast.error('Failed to leave family circle.');
+      return false;
+    }
+  }, [googleFirebaseUser, user, activeHouseholdId]);
+
   // -------------------------------------------------------------
   // REAL-TIME LISTENER FOR INVITER'S ACCEPTED FAMILY INVITES
   // -------------------------------------------------------------
   // Listens to family_invites where inviterUid == currentUid.
   // When an invite transitions to 'accepted', the inviter's own client
-  // writes the updated familyMembers entry to their own subcollection.
+  // writes the member to the household doc with owner authority, and persists
+  // the updated familyMembers entry to their own subcollection.
   useEffect(() => {
     if (!googleFirebaseUser?.uid) return;
     const inviterUid = googleFirebaseUser.uid;
@@ -1312,6 +1543,16 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         const updatedList = [...prevMembers];
 
         acceptedInvites.forEach(invite => {
+          // Ensure the owner updates households/{inviterUid}.members with owner authorization
+          if (invite.acceptedByUid) {
+            addUserToHouseholdByOwner(inviterUid, invite.acceptedByUid, {
+              role: 'member',
+              name: invite.acceptedByName || invite.memberName || 'Family Member',
+              email: invite.acceptedByEmail || invite.recipientEmail || '',
+              joinedAt: invite.acceptedAt || new Date().toISOString(),
+            });
+          }
+
           const existingIndex = updatedList.findIndex(m => 
             (invite.memberId && m.id === invite.memberId) ||
             (m.inviteId && m.inviteId === invite.id) ||
@@ -1335,7 +1576,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
               updatedList[existingIndex] = updated;
               hasChanges = true;
 
-              saveUserDocument(inviterUid, 'familyMembers', updated.id, updated);
+              persistDocument('familyMembers', updated.id, updated, undefined, inviterUid);
 
               toast.success(`🎉 ${updated.name} accepted your invite and joined your family circle!`, {
                 duration: 6000,
@@ -1364,7 +1605,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             updatedList.push(newMember);
             hasChanges = true;
 
-            saveUserDocument(inviterUid, 'familyMembers', newMemberId, newMember);
+            persistDocument('familyMembers', newMemberId, newMember, undefined, inviterUid);
 
             toast.success(`🎉 ${newMember.name} joined your family circle!`, {
               duration: 6000,
@@ -1385,7 +1626,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     return () => {
       if (unsub) unsub();
     };
-  }, [googleFirebaseUser?.uid, addNotification]);
+  }, [googleFirebaseUser?.uid, addNotification, persistDocument]);
 
   const sendFamilyInvite = async (
     memberId: string, 
@@ -1406,7 +1647,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       inviterName,
       inviterEmail: user.email,
       relation: member.relation,
-      customMessage: customMessage || undefined,
+      ...(customMessage ? { customMessage } : {}),
       inviteLink,
     });
 
@@ -1445,15 +1686,13 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       const updatedMember: FamilyMember = {
         ...member,
         inviteStatus: 'none',
-        inviteId: undefined,
         inviteHistory: [],
-        inviteSentAt: undefined,
       };
+      delete updatedMember.inviteId;
+      delete updatedMember.inviteSentAt;
 
       setFamilyMembers(prev => prev.map(m => m.id === memberId ? updatedMember : m));
-      if (googleFirebaseUser?.uid) {
-        await saveUserDocument(googleFirebaseUser.uid, 'familyMembers', memberId, updatedMember);
-      }
+      await persistDocument('familyMembers', memberId, updatedMember);
 
       toast.success(`Cancelled invitation for ${member.name}.`);
       addNotification({
@@ -1480,21 +1719,20 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       }
     }
 
+    const memberMeds = medicines.filter(med => med.memberId === id);
+    const memberAppts = appointments.filter(a => a.memberId === id);
+
     setFamilyMembers(prev => prev.filter(m => m.id !== id));
     // Clean up medicines and appointments assigned to this member
     setMedicines(prev => prev.filter(med => med.memberId !== id));
     setAppointments(prev => prev.filter(appt => appt.memberId !== id));
 
-    if (googleFirebaseUser?.uid) {
-      await deleteUserDocument(googleFirebaseUser.uid, 'familyMembers', id);
-      const memberMeds = medicines.filter(med => med.memberId === id);
-      for (const med of memberMeds) {
-        await deleteUserDocument(googleFirebaseUser.uid, 'medicines', med.id);
-      }
-      const memberAppts = appointments.filter(a => a.memberId === id);
-      for (const appt of memberAppts) {
-        await deleteUserDocument(googleFirebaseUser.uid, 'appointments', appt.id);
-      }
+    await removeDocument('familyMembers', id);
+    for (const med of memberMeds) {
+      await removeDocument('medicines', med.id);
+    }
+    for (const appt of memberAppts) {
+      await removeDocument('appointments', appt.id);
     }
 
     toast.success(`${member ? member.name : 'Member'} removed from your family.`);
@@ -1524,82 +1762,136 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   };
 
   const addFamilyMember = (member: Omit<FamilyMember, 'id'>) => {
-    const newMember: FamilyMember = { ...member, id: uuidv4() };
+    const cleaned = stripUndefined(member);
+    const newMember: FamilyMember = { ...cleaned, id: uuidv4() };
     setFamilyMembers(prev => [...prev, newMember]);
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'familyMembers', newMember.id, newMember);
-    }
+    persistDocument(
+      'familyMembers',
+      newMember.id,
+      newMember,
+      () => setFamilyMembers(prev => prev.filter(m => m.id !== newMember.id))
+    );
   };
 
   const updateFamilyMember = (member: FamilyMember) => {
-    setFamilyMembers(prev => prev.map(m => m.id === member.id ? member : m));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'familyMembers', member.id, member);
-    }
+    const cleaned = stripUndefined(member);
+    let prevMember: FamilyMember | undefined;
+    setFamilyMembers(prev => {
+      prevMember = prev.find(m => m.id === cleaned.id);
+      return prev.map(m => m.id === cleaned.id ? cleaned : m);
+    });
+    persistDocument(
+      'familyMembers',
+      cleaned.id,
+      cleaned,
+      () => {
+        if (prevMember) {
+          setFamilyMembers(prev => prev.map(m => m.id === prevMember!.id ? prevMember! : m));
+        }
+      }
+    );
   };
   
   const addTransaction = (transaction: Omit<Transaction, 'id'>): Transaction => {
+    const cleaned = stripUndefined(transaction);
     const newTransaction: Transaction = {
       id: uuidv4(),
-      ...transaction,
-      categoryId: transaction.categoryId || 'cat-other',
+      ...cleaned,
+      categoryId: cleaned.categoryId || 'cat-other',
     };
     setTransactions(prev => [newTransaction, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'transactions', newTransaction.id, newTransaction);
-    }
+    persistDocument(
+      'transactions',
+      newTransaction.id,
+      newTransaction,
+      () => setTransactions(prev => prev.filter(t => t.id !== newTransaction.id))
+    );
     return newTransaction;
   };
   
   const updateTransaction = (updatedTransaction: Transaction) => {
-    setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'transactions', updatedTransaction.id, updatedTransaction);
-    }
+    const cleaned = stripUndefined(updatedTransaction);
+    let prevTx: Transaction | undefined;
+    setTransactions(prev => {
+      prevTx = prev.find(t => t.id === cleaned.id);
+      return prev.map(t => t.id === cleaned.id ? cleaned : t);
+    });
+    persistDocument(
+      'transactions',
+      cleaned.id,
+      cleaned,
+      () => {
+        if (prevTx) {
+          setTransactions(prev => prev.map(t => t.id === prevTx!.id ? prevTx! : t));
+        }
+      }
+    );
   };
   
   const deleteTransaction = (id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'transactions', id);
-    }
+    let deletedTx: Transaction | undefined;
+    setTransactions(prev => {
+      deletedTx = prev.find(t => t.id === id);
+      return prev.filter(t => t.id !== id);
+    });
+    removeDocument(
+      'transactions',
+      id,
+      () => {
+        if (deletedTx) {
+          setTransactions(prev => [deletedTx!, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        }
+      }
+    );
   };
 
   const addTransactionCategory = (category: Omit<TransactionCategory, 'id' | 'isCustom'> & { isCustom?: boolean }): TransactionCategory => {
+    const cleaned = stripUndefined(category);
     const newCat: TransactionCategory = {
       id: `cat-${uuidv4().slice(0, 8)}`,
-      name: category.name.trim(),
-      icon: category.icon || 'HiOutlineTag',
-      color: category.color || '#6366F1',
-      isCustom: category.isCustom !== false,
+      name: cleaned.name.trim(),
+      icon: cleaned.icon || 'HiOutlineTag',
+      color: cleaned.color || '#6366F1',
+      isCustom: cleaned.isCustom !== false,
     };
     setTransactionCategories(prev => [...prev, newCat]);
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'transactionCategories', newCat.id, newCat);
-    }
+    persistDocument(
+      'transactionCategories',
+      newCat.id,
+      newCat,
+      () => setTransactionCategories(prev => prev.filter(c => c.id !== newCat.id))
+    );
     return newCat;
   };
 
   const updateTransactionCategory = (category: TransactionCategory) => {
+    const cleaned = stripUndefined(category);
+    let prevCat: TransactionCategory | undefined;
     setTransactionCategories(prev => {
-      const exists = prev.some(c => c.id === category.id);
+      prevCat = prev.find(c => c.id === cleaned.id);
+      const exists = prev.some(c => c.id === cleaned.id);
       if (exists) {
-        return prev.map(c => c.id === category.id ? category : c);
+        return prev.map(c => c.id === cleaned.id ? cleaned : c);
       }
-      return [...prev, category];
+      return [...prev, cleaned];
     });
 
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'transactionCategories', category.id, category);
-    }
+    persistDocument(
+      'transactionCategories',
+      cleaned.id,
+      cleaned,
+      () => {
+        if (prevCat) {
+          setTransactionCategories(prev => prev.map(c => c.id === prevCat!.id ? prevCat! : c));
+        }
+      }
+    );
 
     // Sync updated category name and details to existing transactions
     setTransactions(prev => prev.map(t => {
-      if (t.categoryId === category.id) {
-        const updated = { ...t, category: category.name };
-        if (googleFirebaseUser?.uid) {
-          saveUserDocument(googleFirebaseUser.uid, 'transactions', t.id, updated);
-        }
+      if (t.categoryId === cleaned.id) {
+        const updated = { ...t, category: cleaned.name };
+        persistDocument('transactions', t.id, updated);
         return updated;
       }
       return t;
@@ -1607,11 +1899,9 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     // Sync updated category name to existing bills
     setBills(prev => prev.map(b => {
-      if (b.categoryId === category.id) {
-        const updated = { ...b, category: category.name };
-        if (googleFirebaseUser?.uid) {
-          saveUserDocument(googleFirebaseUser.uid, 'bills', b.id, updated);
-        }
+      if (b.categoryId === cleaned.id) {
+        const updated = { ...b, category: cleaned.name };
+        persistDocument('bills', b.id, updated);
         return updated;
       }
       return b;
@@ -1627,9 +1917,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setTransactions(prev => prev.map(t => {
       if (t.categoryId === sourceId) {
         const updated = { ...t, categoryId: targetId, category: targetCat.name };
-        if (googleFirebaseUser?.uid) {
-          saveUserDocument(googleFirebaseUser.uid, 'transactions', t.id, updated);
-        }
+        persistDocument('transactions', t.id, updated);
         return updated;
       }
       return t;
@@ -1639,9 +1927,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setBills(prev => prev.map(b => {
       if (b.categoryId === sourceId) {
         const updated = { ...b, categoryId: targetId, category: targetCat.name };
-        if (googleFirebaseUser?.uid) {
-          saveUserDocument(googleFirebaseUser.uid, 'bills', b.id, updated);
-        }
+        persistDocument('bills', b.id, updated);
         return updated;
       }
       return b;
@@ -1649,9 +1935,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     // 3. Delete source category
     setTransactionCategories(prev => prev.filter(c => c.id !== sourceId));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'transactionCategories', sourceId);
-    }
+    removeDocument('transactionCategories', sourceId);
   };
 
   const deleteTransactionCategory = (id: string) => {
@@ -1663,17 +1947,13 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     // Remove category
     setTransactionCategories(prev => prev.filter(c => c.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'transactionCategories', id);
-    }
+    removeDocument('transactionCategories', id);
 
     // Reassign affected transactions
     setTransactions(prev => prev.map(t => {
       if (t.categoryId === id) {
         const updated = { ...t, categoryId: fallbackId };
-        if (googleFirebaseUser?.uid) {
-          saveUserDocument(googleFirebaseUser.uid, 'transactions', t.id, updated);
-        }
+        persistDocument('transactions', t.id, updated);
         return updated;
       }
       return t;
@@ -1683,9 +1963,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setBills(prev => prev.map(b => {
       if (b.categoryId === id) {
         const updated = { ...b, categoryId: fallbackId };
-        if (googleFirebaseUser?.uid) {
-          saveUserDocument(googleFirebaseUser.uid, 'bills', b.id, updated);
-        }
+        persistDocument('bills', b.id, updated);
         return updated;
       }
       return b;
@@ -1693,22 +1971,26 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   };
   
   const addBill = (bill: Omit<Bill, 'id' | 'paid' | 'paidOn'>) => {
+    const cleaned = stripUndefined(bill);
     const newBill: Bill = { 
-      ...bill, 
+      ...cleaned, 
       id: uuidv4(), 
       paid: false,
-      categoryId: bill.categoryId || 'cat-other',
+      categoryId: cleaned.categoryId || 'cat-other',
     };
     setBills(prev => [...prev, newBill]);
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'bills', newBill.id, newBill);
-    }
+    persistDocument(
+      'bills',
+      newBill.id,
+      newBill,
+      () => setBills(prev => prev.filter(b => b.id !== newBill.id))
+    );
   };
   
   const updateBill = (updatedBill: Bill): boolean => {
     const originalBill = bills.find(b => b.id === updatedBill.id);
     let transactionCreated = false;
-    const finalBill = { ...updatedBill };
+    const finalBill = stripUndefined({ ...updatedBill });
 
     if (originalBill && !originalBill.paid && finalBill.paid) {
         const createdTx = addTransaction({
@@ -1716,9 +1998,9 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             amount: finalBill.amount,
             type: TransactionType.EXPENSE,
             categoryId: finalBill.categoryId || 'cat-other',
-            category: typeof finalBill.category === 'string' ? finalBill.category : undefined,
+            ...(typeof finalBill.category === 'string' ? { category: finalBill.category } : {}),
             date: new Date().toISOString(),
-            memberId: finalBill.memberId,
+            ...(finalBill.memberId ? { memberId: finalBill.memberId } : {}),
         });
         transactionCreated = true;
         finalBill.paidOn = new Date().toISOString();
@@ -1742,17 +2024,24 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 amount: finalBill.amount,
                 type: TransactionType.EXPENSE,
                 categoryId: finalBill.categoryId || 'cat-other',
-                category: typeof finalBill.category === 'string' ? finalBill.category : undefined,
+                ...(typeof finalBill.category === 'string' ? { category: finalBill.category } : {}),
                 date: existingTx ? existingTx.date : (finalBill.paidOn || new Date().toISOString()),
-                memberId: finalBill.memberId,
+                ...(finalBill.memberId ? { memberId: finalBill.memberId } : {}),
             });
         }
     }
 
     setBills(prev => prev.map(b => b.id === finalBill.id ? finalBill : b));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'bills', finalBill.id, finalBill);
-    }
+    persistDocument(
+      'bills',
+      finalBill.id,
+      finalBill,
+      () => {
+        if (originalBill) {
+          setBills(prev => prev.map(b => b.id === originalBill.id ? originalBill : b));
+        }
+      }
+    );
     return transactionCreated;
   };
 
@@ -1762,40 +2051,74 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       deleteTransaction(targetBill.paymentTransactionId);
     }
     setBills(prev => prev.filter(b => b.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'bills', id);
-    }
+    removeDocument(
+      'bills',
+      id,
+      () => {
+        if (targetBill) {
+          setBills(prev => [...prev, targetBill]);
+        }
+      }
+    );
   };
   
   const addMedicine = (medicine: Omit<Medicine, 'id' | 'history'>) => {
-    const newMed: Medicine = { ...medicine, id: uuidv4(), history: [] };
+    const cleaned = stripUndefined(medicine);
+    const newMed: Medicine = { ...cleaned, id: uuidv4(), history: [] };
     setMedicines(prev => [...prev, newMed]);
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'medicines', newMed.id, newMed);
-    }
+    persistDocument(
+      'medicines',
+      newMed.id,
+      newMed,
+      () => setMedicines(prev => prev.filter(m => m.id !== newMed.id))
+    );
   };
 
   const updateMedicine = (updatedMedicine: Medicine) => {
-    setMedicines(prev => prev.map(m => m.id === updatedMedicine.id ? updatedMedicine : m));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'medicines', updatedMedicine.id, updatedMedicine);
-    }
+    const cleaned = stripUndefined(updatedMedicine);
+    let prevMed: Medicine | undefined;
+    setMedicines(prev => {
+      prevMed = prev.find(m => m.id === cleaned.id);
+      return prev.map(m => m.id === cleaned.id ? cleaned : m);
+    });
+    persistDocument(
+      'medicines',
+      cleaned.id,
+      cleaned,
+      () => {
+        if (prevMed) {
+          setMedicines(prev => prev.map(m => m.id === prevMed!.id ? prevMed! : m));
+        }
+      }
+    );
   };
   
   const deleteMedicine = (id: string) => {
-    setMedicines(prev => prev.filter(m => m.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'medicines', id);
-    }
+    let deletedMed: Medicine | undefined;
+    setMedicines(prev => {
+      deletedMed = prev.find(m => m.id === id);
+      return prev.filter(m => m.id !== id);
+    });
+    removeDocument(
+      'medicines',
+      id,
+      () => {
+        if (deletedMed) {
+          setMedicines(prev => [...prev, deletedMed!]);
+        }
+      }
+    );
   };
   
   const logDose = (medicineId: string, timestamp: string) => {
       let medName: string | null = null;
       let updatedMed: Medicine | null = null;
+      let prevMed: Medicine | null = null;
 
       setMedicines(prev => prev.map(med => {
           if (med.id === medicineId && med.stock >= med.doseQuantity) {
               medName = med.name;
+              prevMed = med;
               updatedMed = {
                   ...med,
                   stock: med.stock - med.doseQuantity,
@@ -1806,146 +2129,257 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
           return med;
       }));
 
-      if (updatedMed && googleFirebaseUser?.uid) {
-        saveUserDocument(googleFirebaseUser.uid, 'medicines', medicineId, updatedMed);
+      if (updatedMed) {
+        persistDocument(
+          'medicines',
+          medicineId,
+          updatedMed,
+          () => {
+            if (prevMed) {
+              setMedicines(prev => prev.map(m => m.id === medicineId ? prevMed! : m));
+            }
+          }
+        );
       }
 
       return medName;
   };
 
   const addTaskList = (name: string) => {
-    const newTaskList: TaskList = { id: uuidv4(), name };
+    const newTaskList: TaskList = { id: uuidv4(), name: name.trim() };
     setTaskLists(prev => [...prev, newTaskList]);
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'taskLists', newTaskList.id, newTaskList);
-    }
+    persistDocument(
+      'taskLists',
+      newTaskList.id,
+      newTaskList,
+      () => setTaskLists(prev => prev.filter(l => l.id !== newTaskList.id))
+    );
   };
 
   const deleteTaskList = (id: string) => {
-    setTasks(prevTasks => prevTasks.filter(task => task.listId !== id));
-    setTaskLists(prevLists => prevLists.filter(list => list.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'taskLists', id);
-    }
+    let deletedList: TaskList | undefined;
+    let deletedTasks: Task[] = [];
+    setTaskLists(prev => {
+      deletedList = prev.find(l => l.id === id);
+      return prev.filter(list => list.id !== id);
+    });
+    setTasks(prev => {
+      deletedTasks = prev.filter(t => t.listId === id);
+      return prev.filter(task => task.listId !== id);
+    });
+    removeDocument(
+      'taskLists',
+      id,
+      () => {
+        if (deletedList) setTaskLists(prev => [...prev, deletedList!]);
+        if (deletedTasks.length) setTasks(prev => [...prev, ...deletedTasks]);
+      }
+    );
   };
 
   const addTask = (task: Omit<Task, 'id' | 'completed'>) => {
-    const newTask: Task = { ...task, id: uuidv4(), completed: false };
+    const cleaned = stripUndefined(task);
+    const newTask: Task = { ...cleaned, id: uuidv4(), completed: false };
     setTasks(prev => [...prev, newTask]);
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'tasks', newTask.id, newTask);
-    }
+    persistDocument(
+      'tasks',
+      newTask.id,
+      newTask,
+      () => setTasks(prev => prev.filter(t => t.id !== newTask.id))
+    );
   };
 
   const toggleTask = (id: string) => {
+    let target: Task | undefined;
+    let prevTask: Task | undefined;
     setTasks(prev => {
+      prevTask = prev.find(t => t.id === id);
       const updated = prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
-      const target = updated.find(t => t.id === id);
-      if (target && googleFirebaseUser?.uid) {
-        saveUserDocument(googleFirebaseUser.uid, 'tasks', id, target);
-      }
+      target = updated.find(t => t.id === id);
       return updated;
     });
+    if (target) {
+      persistDocument(
+        'tasks',
+        id,
+        target,
+        () => {
+          if (prevTask) setTasks(prev => prev.map(t => t.id === id ? prevTask! : t));
+        }
+      );
+    }
   };
 
   const deleteTask = (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'tasks', id);
-    }
+    let deletedTask: Task | undefined;
+    setTasks(prev => {
+      deletedTask = prev.find(t => t.id === id);
+      return prev.filter(t => t.id !== id);
+    });
+    removeDocument(
+      'tasks',
+      id,
+      () => {
+        if (deletedTask) setTasks(prev => [...prev, deletedTask!]);
+      }
+    );
   };
   
   const addNote = (note: Omit<Note, 'id' | 'createdAt'>) => {
-    const newNote: Note = { ...note, id: uuidv4(), createdAt: new Date().toISOString() };
+    const cleaned = stripUndefined(note);
+    const newNote: Note = { ...cleaned, id: uuidv4(), createdAt: new Date().toISOString() };
     setNotes(prev => [newNote, ...prev]);
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'notes', newNote.id, newNote);
-    }
+    persistDocument(
+      'notes',
+      newNote.id,
+      newNote,
+      () => setNotes(prev => prev.filter(n => n.id !== newNote.id))
+    );
   };
   
   const deleteNote = (id: string) => {
-    setNotes(prev => prev.filter(n => n.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'notes', id);
-    }
+    let deletedNote: Note | undefined;
+    setNotes(prev => {
+      deletedNote = prev.find(n => n.id === id);
+      return prev.filter(n => n.id !== id);
+    });
+    removeDocument(
+      'notes',
+      id,
+      () => {
+        if (deletedNote) setNotes(prev => [deletedNote!, ...prev]);
+      }
+    );
   };
 
   const addMedicalReport = (report: Omit<MedicalReport, 'id'>) => {
-    const newReport: MedicalReport = { ...report, id: uuidv4() };
+    const cleaned = stripUndefined(report);
+    const newReport: MedicalReport = { ...cleaned, id: uuidv4() };
     setMedicalReports(prev => [newReport, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'medicalReports', newReport.id, newReport);
-    }
+    persistDocument(
+      'medicalReports',
+      newReport.id,
+      newReport,
+      () => setMedicalReports(prev => prev.filter(r => r.id !== newReport.id))
+    );
   };
 
   const deleteMedicalReport = (id: string) => {
-    setMedicalReports(prev => prev.filter(r => r.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'medicalReports', id);
-    }
+    let deletedReport: MedicalReport | undefined;
+    setMedicalReports(prev => {
+      deletedReport = prev.find(r => r.id !== id);
+      return prev.filter(r => r.id !== id);
+    });
+    removeDocument(
+      'medicalReports',
+      id,
+      () => {
+        if (deletedReport) setMedicalReports(prev => [deletedReport!, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      }
+    );
   };
 
   // Borrowings & Lendings
   const addBorrowing = (item: Omit<Borrowing, 'id' | 'repayments' | 'status'>) => {
-    const newBorrowing: Borrowing = { ...item, id: uuidv4(), repayments: [], status: 'outstanding' };
+    const cleaned = stripUndefined(item);
+    const newBorrowing: Borrowing = { ...cleaned, id: uuidv4(), repayments: [], status: 'outstanding' };
     setBorrowings(prev => [...prev, newBorrowing]);
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'borrowings', newBorrowing.id, newBorrowing);
-    }
+    persistDocument(
+      'borrowings',
+      newBorrowing.id,
+      newBorrowing,
+      () => setBorrowings(prev => prev.filter(b => b.id !== newBorrowing.id))
+    );
   };
 
   const updateBorrowing = (item: Borrowing) => {
-    const totalRepaid = (item.repayments || []).reduce((sum, r) => sum + r.amount, 0);
+    const cleaned = stripUndefined(item);
+    const totalRepaid = (cleaned.repayments || []).reduce((sum: number, r: Repayment) => sum + r.amount, 0);
     const recalculated: Borrowing = {
-      ...item,
-      repayments: item.repayments || [],
-      status: totalRepaid >= item.amount ? 'settled' : 'outstanding'
+      ...cleaned,
+      repayments: cleaned.repayments || [],
+      status: totalRepaid >= cleaned.amount ? 'settled' : 'outstanding'
     };
-    setBorrowings(prev => prev.map(b => b.id === recalculated.id ? recalculated : b));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'borrowings', recalculated.id, recalculated);
-    }
+    let prevBorrowing: Borrowing | undefined;
+    setBorrowings(prev => {
+      prevBorrowing = prev.find(b => b.id === recalculated.id);
+      return prev.map(b => b.id === recalculated.id ? recalculated : b);
+    });
+    persistDocument(
+      'borrowings',
+      recalculated.id,
+      recalculated,
+      () => {
+        if (prevBorrowing) {
+          setBorrowings(prev => prev.map(b => b.id === prevBorrowing!.id ? prevBorrowing! : b));
+        }
+      }
+    );
   };
 
   const deleteBorrowing = (id: string) => {
-    setBorrowings(prev => prev.filter(b => b.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'borrowings', id);
-    }
+    let deletedBorrowing: Borrowing | undefined;
+    setBorrowings(prev => {
+      deletedBorrowing = prev.find(b => b.id === id);
+      return prev.filter(b => b.id !== id);
+    });
+    removeDocument(
+      'borrowings',
+      id,
+      () => {
+        if (deletedBorrowing) {
+          setBorrowings(prev => [...prev, deletedBorrowing!]);
+        }
+      }
+    );
   };
 
   const addRepayment = (borrowingId: string, repayment: Repayment) => {
     let success = false;
     let updatedBorrowing: Borrowing | null = null;
+    let prevBorrowing: Borrowing | null = null;
+    const cleanedRepayment = stripUndefined(repayment);
 
     setBorrowings(prev => prev.map(b => {
       if (b.id === borrowingId) {
         success = true;
-        const totalRepaid = b.repayments.reduce((sum, r) => sum + r.amount, 0) + repayment.amount;
+        prevBorrowing = b;
+        const totalRepaid = b.repayments.reduce((sum, r) => sum + r.amount, 0) + cleanedRepayment.amount;
         const newStatus = totalRepaid >= b.amount ? 'settled' : 'outstanding';
         addTransaction({
           description: `Repayment to ${b.lenderName}`,
-          amount: repayment.amount,
+          amount: cleanedRepayment.amount,
           type: TransactionType.EXPENSE,
           category: 'Debt Repayment',
-          date: repayment.date
+          date: cleanedRepayment.date
         });
-        updatedBorrowing = { ...b, repayments: [...b.repayments, repayment], status: newStatus };
+        updatedBorrowing = { ...b, repayments: [...b.repayments, cleanedRepayment], status: newStatus };
         return updatedBorrowing;
       }
       return b;
     }));
 
-    if (updatedBorrowing && googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'borrowings', borrowingId, updatedBorrowing);
+    if (updatedBorrowing) {
+      persistDocument(
+        'borrowings',
+        borrowingId,
+        updatedBorrowing,
+        () => {
+          if (prevBorrowing) {
+            setBorrowings(prev => prev.map(b => b.id === borrowingId ? prevBorrowing! : b));
+          }
+        }
+      );
     }
     return success;
   };
 
   const deleteRepayment = (borrowingId: string, repaymentIndex: number) => {
     let updatedBorrowing: Borrowing | null = null;
+    let prevBorrowing: Borrowing | null = null;
     setBorrowings(prev => prev.map(b => {
       if (b.id === borrowingId) {
+        prevBorrowing = b;
         const newRepayments = b.repayments.filter((_, idx) => idx !== repaymentIndex);
         const totalRepaid = newRepayments.reduce((sum, r) => sum + r.amount, 0);
         const newStatus = totalRepaid >= b.amount ? 'settled' : 'outstanding';
@@ -1955,82 +2389,143 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       return b;
     }));
 
-    if (updatedBorrowing && googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'borrowings', borrowingId, updatedBorrowing);
+    if (updatedBorrowing) {
+      persistDocument(
+        'borrowings',
+        borrowingId,
+        updatedBorrowing,
+        () => {
+          if (prevBorrowing) {
+            setBorrowings(prev => prev.map(b => b.id === borrowingId ? prevBorrowing! : b));
+          }
+        }
+      );
     }
   };
 
   const settleBorrowing = (borrowingId: string) => {
+    let prevBorrowing: Borrowing | undefined;
+    let target: Borrowing | undefined;
     setBorrowings(prev => {
+      prevBorrowing = prev.find(b => b.id === borrowingId);
       const updated = prev.map(b => b.id === borrowingId ? { ...b, status: 'settled' as const } : b);
-      const target = updated.find(b => b.id === borrowingId);
-      if (target && googleFirebaseUser?.uid) {
-        saveUserDocument(googleFirebaseUser.uid, 'borrowings', borrowingId, target);
-      }
+      target = updated.find(b => b.id === borrowingId);
       return updated;
     });
+    if (target) {
+      persistDocument(
+        'borrowings',
+        borrowingId,
+        target,
+        () => {
+          if (prevBorrowing) {
+            setBorrowings(prev => prev.map(b => b.id === borrowingId ? prevBorrowing! : b));
+          }
+        }
+      );
+    }
   };
   
   const addLending = (item: Omit<Lending, 'id' | 'returns' | 'status'>) => {
-    const newLending: Lending = { ...item, id: uuidv4(), returns: [], status: 'outstanding' };
+    const cleaned = stripUndefined(item);
+    const newLending: Lending = { ...cleaned, id: uuidv4(), returns: [], status: 'outstanding' };
     setLendings(prev => [...prev, newLending]);
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'lendings', newLending.id, newLending);
-    }
+    persistDocument(
+      'lendings',
+      newLending.id,
+      newLending,
+      () => setLendings(prev => prev.filter(l => l.id !== newLending.id))
+    );
   };
 
   const updateLending = (item: Lending) => {
-    const totalReturned = (item.returns || []).reduce((sum, r) => sum + r.amount, 0);
+    const cleaned = stripUndefined(item);
+    const totalReturned = (cleaned.returns || []).reduce((sum: number, r: Return) => sum + r.amount, 0);
     const recalculated: Lending = {
-      ...item,
-      returns: item.returns || [],
-      status: totalReturned >= item.amount ? 'returned' : 'outstanding'
+      ...cleaned,
+      returns: cleaned.returns || [],
+      status: totalReturned >= cleaned.amount ? 'returned' : 'outstanding'
     };
-    setLendings(prev => prev.map(l => l.id === recalculated.id ? recalculated : l));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'lendings', recalculated.id, recalculated);
-    }
+    let prevLending: Lending | undefined;
+    setLendings(prev => {
+      prevLending = prev.find(l => l.id === recalculated.id);
+      return prev.map(l => l.id === recalculated.id ? recalculated : l);
+    });
+    persistDocument(
+      'lendings',
+      recalculated.id,
+      recalculated,
+      () => {
+        if (prevLending) {
+          setLendings(prev => prev.map(l => l.id === prevLending!.id ? prevLending! : l));
+        }
+      }
+    );
   };
 
   const deleteLending = (id: string) => {
-    setLendings(prev => prev.filter(l => l.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'lendings', id);
-    }
+    let deletedLending: Lending | undefined;
+    setLendings(prev => {
+      deletedLending = prev.find(l => l.id === id);
+      return prev.filter(l => l.id !== id);
+    });
+    removeDocument(
+      'lendings',
+      id,
+      () => {
+        if (deletedLending) {
+          setLendings(prev => [...prev, deletedLending!]);
+        }
+      }
+    );
   };
   
   const addReturn = (lendingId: string, returnItem: Return) => {
     let success = false;
     let updatedLending: Lending | null = null;
+    let prevLending: Lending | null = null;
+    const cleanedReturn = stripUndefined(returnItem);
 
     setLendings(prev => prev.map(l => {
       if (l.id === lendingId) {
         success = true;
-        const totalReturned = l.returns.reduce((sum, r) => sum + r.amount, 0) + returnItem.amount;
+        prevLending = l;
+        const totalReturned = l.returns.reduce((sum, r) => sum + r.amount, 0) + cleanedReturn.amount;
         const newStatus = totalReturned >= l.amount ? 'returned' : 'outstanding';
         addTransaction({
           description: `Return from ${l.borrowerName}`,
-          amount: returnItem.amount,
+          amount: cleanedReturn.amount,
           type: TransactionType.INCOME,
           category: 'Loan Return',
-          date: returnItem.date
+          date: cleanedReturn.date
         });
-        updatedLending = { ...l, returns: [...l.returns, returnItem], status: newStatus };
+        updatedLending = { ...l, returns: [...l.returns, cleanedReturn], status: newStatus };
         return updatedLending;
       }
       return l;
     }));
 
-    if (updatedLending && googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'lendings', lendingId, updatedLending);
+    if (updatedLending) {
+      persistDocument(
+        'lendings',
+        lendingId,
+        updatedLending,
+        () => {
+          if (prevLending) {
+            setLendings(prev => prev.map(l => l.id === lendingId ? prevLending! : l));
+          }
+        }
+      );
     }
     return success;
   };
 
   const deleteReturn = (lendingId: string, returnIndex: number) => {
     let updatedLending: Lending | null = null;
+    let prevLending: Lending | null = null;
     setLendings(prev => prev.map(l => {
       if (l.id === lendingId) {
+        prevLending = l;
         const newReturns = l.returns.filter((_, idx) => idx !== returnIndex);
         const totalReturned = newReturns.reduce((sum, r) => sum + r.amount, 0);
         const newStatus = totalReturned >= l.amount ? 'returned' : 'outstanding';
@@ -2040,46 +2535,73 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       return l;
     }));
 
-    if (updatedLending && googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'lendings', lendingId, updatedLending);
+    if (updatedLending) {
+      persistDocument(
+        'lendings',
+        lendingId,
+        updatedLending,
+        () => {
+          if (prevLending) {
+            setLendings(prev => prev.map(l => l.id === lendingId ? prevLending! : l));
+          }
+        }
+      );
     }
   };
 
   const writeOffLending = (lendingId: string) => {
+    let prevLending: Lending | undefined;
+    let target: Lending | undefined;
     setLendings(prev => {
+      prevLending = prev.find(l => l.id === lendingId);
       const updated = prev.map(l => l.id === lendingId ? { ...l, status: 'written_off' as const } : l);
-      const target = updated.find(l => l.id === lendingId);
-      if (target && googleFirebaseUser?.uid) {
-        saveUserDocument(googleFirebaseUser.uid, 'lendings', lendingId, target);
-      }
+      target = updated.find(l => l.id === lendingId);
       return updated;
     });
+    if (target) {
+      persistDocument(
+        'lendings',
+        lendingId,
+        target,
+        () => {
+          if (prevLending) {
+            setLendings(prev => prev.map(l => l.id === lendingId ? prevLending! : l));
+          }
+        }
+      );
+    }
   };
 
   // Savings Goals
   const addSavingsGoal = (goal: Omit<SavingsGoal, 'id' | 'currentAmount'> & { initialDeposit?: number }) => {
-    const newGoal: SavingsGoal = { id: uuidv4(), ...goal, currentAmount: goal.initialDeposit || 0 };
-    if (goal.initialDeposit && goal.initialDeposit > 0) {
+    const cleaned = stripUndefined(goal);
+    const newGoal: SavingsGoal = { id: uuidv4(), ...cleaned, currentAmount: cleaned.initialDeposit || 0 };
+    if (cleaned.initialDeposit && cleaned.initialDeposit > 0) {
       addTransaction({
-        description: `Initial deposit for ${goal.title}`,
-        amount: goal.initialDeposit,
+        description: `Initial deposit for ${cleaned.title}`,
+        amount: cleaned.initialDeposit,
         type: TransactionType.EXPENSE,
         category: 'Savings',
         date: new Date().toISOString()
       });
     }
     setSavingsGoals(prev => [...prev, newGoal]);
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'savingsGoals', newGoal.id, newGoal);
-    }
+    persistDocument(
+      'savingsGoals',
+      newGoal.id,
+      newGoal,
+      () => setSavingsGoals(prev => prev.filter(g => g.id !== newGoal.id))
+    );
   };
 
   const addSavingsDeposit = (goalId: string, amount: number) => {
     let goalTitle = '';
     let updatedGoal: SavingsGoal | null = null;
+    let prevGoal: SavingsGoal | null = null;
 
     setSavingsGoals(prev => prev.map(g => {
       if (g.id === goalId) {
+        prevGoal = g;
         goalTitle = g.title;
         updatedGoal = { ...g, currentAmount: g.currentAmount + amount };
         return updatedGoal;
@@ -2097,8 +2619,17 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       });
     }
 
-    if (updatedGoal && googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'savingsGoals', goalId, updatedGoal);
+    if (updatedGoal) {
+      persistDocument(
+        'savingsGoals',
+        goalId,
+        updatedGoal,
+        () => {
+          if (prevGoal) {
+            setSavingsGoals(prev => prev.map(g => g.id === goalId ? prevGoal! : g));
+          }
+        }
+      );
     }
   };
 
@@ -2106,9 +2637,11 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     let goalTitle = '';
     let actuallyWithdrawn = 0;
     let updatedGoal: SavingsGoal | null = null;
+    let prevGoal: SavingsGoal | null = null;
 
     setSavingsGoals(prev => prev.map(g => {
       if (g.id === goalId) {
+        prevGoal = g;
         goalTitle = g.title;
         actuallyWithdrawn = Math.min(amount, Math.max(0, g.currentAmount));
         const newAmount = g.currentAmount - actuallyWithdrawn;
@@ -2128,46 +2661,103 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       });
     }
 
-    if (updatedGoal && googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'savingsGoals', goalId, updatedGoal);
+    if (updatedGoal) {
+      persistDocument(
+        'savingsGoals',
+        goalId,
+        updatedGoal,
+        () => {
+          if (prevGoal) {
+            setSavingsGoals(prev => prev.map(g => g.id === goalId ? prevGoal! : g));
+          }
+        }
+      );
     }
   };
 
   const updateSavingsGoal = (goal: SavingsGoal) => {
-    setSavingsGoals(prev => prev.map(g => g.id === goal.id ? goal : g));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'savingsGoals', goal.id, goal);
-    }
+    const cleaned = stripUndefined(goal);
+    let prevGoal: SavingsGoal | undefined;
+    setSavingsGoals(prev => {
+      prevGoal = prev.find(g => g.id === cleaned.id);
+      return prev.map(g => g.id === cleaned.id ? cleaned : g);
+    });
+    persistDocument(
+      'savingsGoals',
+      cleaned.id,
+      cleaned,
+      () => {
+        if (prevGoal) {
+          setSavingsGoals(prev => prev.map(g => g.id === prevGoal!.id ? prevGoal! : g));
+        }
+      }
+    );
   };
 
   const deleteSavingsGoal = (goalId: string) => {
-    setSavingsGoals(prev => prev.filter(g => g.id !== goalId));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'savingsGoals', goalId);
-    }
+    let deletedGoal: SavingsGoal | undefined;
+    setSavingsGoals(prev => {
+      deletedGoal = prev.find(g => g.id === goalId);
+      return prev.filter(g => g.id !== goalId);
+    });
+    removeDocument(
+      'savingsGoals',
+      goalId,
+      () => {
+        if (deletedGoal) {
+          setSavingsGoals(prev => [...prev, deletedGoal!]);
+        }
+      }
+    );
   };
 
   // Appointments
   const addAppointment = (appointment: Omit<Appointment, 'id' | 'status'>) => {
-    const newAppointment: Appointment = { id: uuidv4(), ...appointment, status: 'upcoming' };
+    const cleaned = stripUndefined(appointment);
+    const newAppointment: Appointment = { id: uuidv4(), ...cleaned, status: 'upcoming' };
     setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'appointments', newAppointment.id, newAppointment);
-    }
+    persistDocument(
+      'appointments',
+      newAppointment.id,
+      newAppointment,
+      () => setAppointments(prev => prev.filter(a => a.id !== newAppointment.id))
+    );
   };
 
   const updateAppointment = (updatedAppointment: Appointment) => {
-    setAppointments(prev => prev.map(a => a.id === updatedAppointment.id ? updatedAppointment : a));
-    if (googleFirebaseUser?.uid) {
-      saveUserDocument(googleFirebaseUser.uid, 'appointments', updatedAppointment.id, updatedAppointment);
-    }
+    const cleaned = stripUndefined(updatedAppointment);
+    let prevAppt: Appointment | undefined;
+    setAppointments(prev => {
+      prevAppt = prev.find(a => a.id === cleaned.id);
+      return prev.map(a => a.id === cleaned.id ? cleaned : a);
+    });
+    persistDocument(
+      'appointments',
+      cleaned.id,
+      cleaned,
+      () => {
+        if (prevAppt) {
+          setAppointments(prev => prev.map(a => a.id === prevAppt!.id ? prevAppt! : a));
+        }
+      }
+    );
   };
 
   const deleteAppointment = (id: string) => {
-    setAppointments(prev => prev.filter(a => a.id !== id));
-    if (googleFirebaseUser?.uid) {
-      deleteUserDocument(googleFirebaseUser.uid, 'appointments', id);
-    }
+    let deletedAppt: Appointment | undefined;
+    setAppointments(prev => {
+      deletedAppt = prev.find(a => a.id === id);
+      return prev.filter(a => a.id !== id);
+    });
+    removeDocument(
+      'appointments',
+      id,
+      () => {
+        if (deletedAppt) {
+          setAppointments(prev => [...prev, deletedAppt!].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()));
+        }
+      }
+    );
   };
 
   const getCalendarEvents = useCallback((startDate: Date, endDate: Date): CalendarEvent[] => {
@@ -2306,9 +2896,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                   const piecesPerStrip = med.piecesPerStrip || 1;
                   const totalPiecesAdded = (cartItem.strips * piecesPerStrip) + cartItem.pieces;
                   const updated = { ...med, stock: med.stock + totalPiecesAdded };
-                  if (googleFirebaseUser?.uid) {
-                    saveUserDocument(googleFirebaseUser.uid, 'medicines', med.id, updated);
-                  }
+                  persistDocument('medicines', med.id, updated);
                   return updated;
               }
               return med;
@@ -2417,6 +3005,12 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     savingsGoals, addSavingsGoal, addSavingsDeposit, withdrawSavingsDeposit, updateSavingsGoal, deleteSavingsGoal,
     appointments, addAppointment, updateAppointment, deleteAppointment,
     isDrawerOpen, openDrawer, closeDrawer,
+    // Shared Household System
+    activeHouseholdId,
+    activeHousehold,
+    userMemberships,
+    switchHousehold,
+    leaveHouseholdCircle,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

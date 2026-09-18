@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
-  HiOutlineSparkles, 
   HiOutlineBell, 
   HiArrowLeft, 
   HiOutlineArrowsPointingOut, 
   HiOutlineArrowsPointingIn 
 } from 'react-icons/hi2';
+import BrandMark from '../ui/BrandMark';
 import { useAppContext } from '../../context/AppContext';
 import { motion } from 'motion/react';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -99,21 +99,24 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 h-16 bg-light-surface/80 dark:bg-surface/80 backdrop-blur-sm z-40 border-b border-slate-200 dark:border-zinc-700/50">
+      <header 
+        className="fixed top-0 left-0 right-0 bg-light-surface/80 dark:bg-surface/80 backdrop-blur-sm z-40 border-b border-slate-200 dark:border-zinc-700/50"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         {isHomePage ? (
-          <div className="flex items-center justify-between h-full px-4 md:px-6">
+          <div className="flex items-center justify-between h-16 px-3 sm:px-4 md:px-6">
             <div className="flex items-center gap-2">
-              <HiOutlineSparkles className="h-6 w-6 text-primary" />
-              <span className="text-lg font-bold text-light-text-primary dark:text-text-primary">{t('appName')}</span>
+              <BrandMark className="h-6 w-6 shrink-0" />
+              <span className="text-lg font-bold text-light-text-primary dark:text-text-primary truncate">{t('appName')}</span>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1 sm:gap-2">
               {!isGoogleAuthenticated && (
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setIsAuthModalOpen(true)}
                   disabled={isGoogleLoading}
-                  className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-zinc-700 border border-slate-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 shadow-xs hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors"
+                  className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-zinc-700 border border-slate-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 shadow-sm hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -125,10 +128,10 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
                 </motion.button>
               )}
               <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={toggleFullscreen}
-                className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary transition-colors"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary transition-colors"
                 aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
                 title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
               >
@@ -139,15 +142,15 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
                 )}
               </motion.button>
               <motion.button 
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={onNotificationClick} 
-                className="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-primary dark:text-text-primary transition-colors"
+                className="relative w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-primary dark:text-text-primary transition-colors"
                 aria-label="Open notifications"
               >
                 <HiOutlineBell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                  <span className="absolute top-2.5 right-2.5 flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                   </span>
@@ -157,24 +160,24 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between h-full px-4 md:px-6">
+          <div className="flex items-center justify-between h-16 px-3 sm:px-4 md:px-6">
             <div className="flex items-center gap-2">
               <motion.button 
                 onClick={() => navigate(-1)} 
-                className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-primary dark:text-text-primary transition-colors"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-primary dark:text-text-primary transition-colors"
                 aria-label="Go back"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.92 }}
               >
                 <HiArrowLeft className="h-5 w-5" />
               </motion.button>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1 sm:gap-2">
               <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={toggleFullscreen}
-                className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary transition-colors"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary transition-colors"
                 aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
                 title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
               >
@@ -185,15 +188,15 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick }) => {
                 )}
               </motion.button>
               <motion.button 
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={onNotificationClick} 
-                className="relative p-2 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-primary dark:text-text-primary transition-colors"
+                className="relative w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-primary dark:text-text-primary transition-colors"
                 aria-label="Open notifications"
               >
                 <HiOutlineBell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                  <span className="absolute top-2.5 right-2.5 flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                   </span>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Transaction, TransactionType, FamilyMember } from '../../types';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import Card from '../ui/Card';
+import SectionHeading from '../ui/SectionHeading';
 import { HiOutlineUserGroup } from 'react-icons/hi2';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -96,9 +97,9 @@ export const MemberSpendingChart: React.FC<MemberSpendingProps> = ({
     <Card className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">
+          <SectionHeading>
             {t('finance.memberSpending.title') || 'Spending by Person'}
-          </h2>
+          </SectionHeading>
           <p className="text-xs text-light-text-secondary dark:text-text-secondary">
             {t('finance.memberSpending.subtitle') || 'Monthly expense breakdown per family member'}
           </p>

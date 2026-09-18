@@ -27,7 +27,7 @@ export const FamilyMemberPicker: React.FC<FamilyMemberPickerProps> = ({
           onClick={() => onSelect(undefined)}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all border ${
             !selectedMemberId
-              ? 'bg-primary/10 border-primary text-primary dark:text-primary-light ring-2 ring-primary/20 shadow-xs'
+              ? 'bg-primary/10 border-primary text-primary dark:text-primary-light ring-2 ring-primary/20 shadow-sm'
               : 'bg-light-surface dark:bg-surface border-slate-200 dark:border-zinc-700 text-light-text-secondary dark:text-text-secondary hover:border-slate-300 dark:hover:border-zinc-600'
           }`}
         >
@@ -48,7 +48,7 @@ export const FamilyMemberPicker: React.FC<FamilyMemberPickerProps> = ({
               onClick={() => onSelect(member.id)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all border ${
                 isSelected
-                  ? 'bg-primary/10 border-primary text-primary dark:text-primary-light ring-2 ring-primary/20 shadow-xs'
+                  ? 'bg-primary/10 border-primary text-primary dark:text-primary-light ring-2 ring-primary/20 shadow-sm'
                   : 'bg-light-surface dark:bg-surface border-slate-200 dark:border-zinc-700 text-light-text-secondary dark:text-text-secondary hover:border-slate-300 dark:hover:border-zinc-600'
               }`}
             >

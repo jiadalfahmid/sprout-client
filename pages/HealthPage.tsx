@@ -4,10 +4,10 @@ import { useAppContext } from '../context/AppContext';
 import Skeleton from '../components/ui/Skeleton';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { motion } from 'motion/react';
-import { PiPill, PiDrop } from 'react-icons/pi';
-import { FaCapsules, FaSpoon } from 'react-icons/fa6';
 import toast from 'react-hot-toast';
 import { 
     HiOutlineCheckCircle, 
@@ -15,7 +15,11 @@ import {
     HiOutlineHeart, 
     HiOutlineShoppingCart,
     HiOutlineCog6Tooth,
-    HiPlus
+    HiPlus,
+    HiOutlineBeaker,
+    HiOutlineSquaresPlus,
+    HiOutlineEyeDropper,
+    HiOutlineSparkles
 } from 'react-icons/hi2';
 import { useTranslation } from '../hooks/useTranslation';
 import { findDoseHistoryEntry } from '../services/notificationService';
@@ -49,11 +53,11 @@ const getMedicineVisuals = (doseForm: Dose['doseForm'], medId: string) => {
 
     let icon;
     switch(doseForm) {
-        case 'Tablet': icon = <PiPill className="h-5 w-5" />; break;
-        case 'Capsule': icon = <FaCapsules className="h-5 w-5" />; break;
-        case 'Drops': icon = <PiDrop className="h-5 w-5" />; break;
-        case 'Spoon': icon = <FaSpoon className="h-5 w-5" />; break;
-        default: icon = <PiPill className="h-5 w-5" />;
+        case 'Tablet': icon = <HiOutlineBeaker className="h-5 w-5" />; break;
+        case 'Capsule': icon = <HiOutlineSquaresPlus className="h-5 w-5" />; break;
+        case 'Drops': icon = <HiOutlineEyeDropper className="h-5 w-5" />; break;
+        case 'Spoon': icon = <HiOutlineSparkles className="h-5 w-5" />; break;
+        default: icon = <HiOutlineBeaker className="h-5 w-5" />;
     }
     return { color, icon };
 };
@@ -85,13 +89,14 @@ const MedicineCard: React.FC<{ dose: Dose; onMarkAsTaken: (medId: string, time: 
                 );
             default: // upcoming
                 return (
-                    <button 
+                    <Button 
+                        size="sm"
+                        variant="primary"
+                        icon={<HiOutlineCheckCircle className="h-4 w-4" />}
                         onClick={handleTakeDose}
-                        className="px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-full hover:bg-opacity-90 transition flex items-center gap-1.5 whitespace-nowrap"
                     >
-                       <HiOutlineCheckCircle className="h-4 w-4" />
                        {t('health.status.markAsTaken')}
-                    </button>
+                    </Button>
                 );
         }
     }
@@ -277,15 +282,6 @@ const HealthPage: React.FC = () => {
       return timeA - timeB;
     });
 
-    const TabButton: React.FC<{ tabName: ActiveTab; label: string }> = ({ tabName, label }) => (
-        <button
-            onClick={() => setActiveTab(tabName)}
-            className={`px-6 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${activeTab === tabName ? 'bg-primary text-white shadow-lg' : 'text-light-text-secondary dark:text-text-secondary'}`}
-        >
-            {label}
-        </button>
-    );
-
     const renderSkeleton = () => (
         <div className="space-y-6">
             {[...Array(3)].map((_, i) => (
@@ -304,7 +300,7 @@ const HealthPage: React.FC = () => {
         {
             id: 'add_med',
             label: t('settings.addNewMedicine') || 'Add Medicine',
-            icon: PiPill,
+            icon: HiOutlineBeaker,
             color: 'blue',
             onClick: () => setIsAddMedModalOpen(true),
         },
@@ -344,10 +340,20 @@ const HealthPage: React.FC = () => {
                 }
             />
 
-            <div className="flex justify-center items-center gap-2 mb-8 bg-slate-100 dark:bg-surface p-1 rounded-full">
-                <TabButton tabName="all" label={t('health.tabs.all')} />
-                <TabButton tabName="pending" label={t('health.tabs.pending')} />
-                <TabButton tabName="completed" label={t('health.tabs.completed')} />
+            <div className="flex justify-center mb-8 max-w-md mx-auto">
+                <SegmentedControl
+                    options={[
+                        { value: 'all', label: t('health.tabs.all'), badge: allTodaysDoses.length > 0 ? allTodaysDoses.length : undefined },
+                        { value: 'pending', label: t('health.tabs.pending'), badge: allTodaysDoses.filter(d => d.status === 'upcoming').length > 0 ? allTodaysDoses.filter(d => d.status === 'upcoming').length : undefined },
+                        { value: 'completed', label: t('health.tabs.completed'), badge: allTodaysDoses.filter(d => d.status === 'taken').length > 0 ? allTodaysDoses.filter(d => d.status === 'taken').length : undefined },
+                    ]}
+                    value={activeTab}
+                    onChange={(val) => setActiveTab(val as ActiveTab)}
+                    variant="primary"
+                    size="md"
+                    fullWidth
+                    ariaLabel="Medication status tabs"
+                />
             </div>
             
             {loading ? renderSkeleton() : (
@@ -482,12 +488,21 @@ const HealthPage: React.FC = () => {
                         />
                     </div>
 
-                    <button 
-                        onClick={handleSaveMedicine} 
-                        className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md transition-colors text-sm active:scale-[0.99]"
-                    >
-                        Save Medicine
-                    </button>
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+                        <Button 
+                            variant="secondary"
+                            onClick={() => setIsAddMedModalOpen(false)}
+                            className="w-full sm:w-auto"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleSaveMedicine} 
+                            className="w-full sm:w-auto"
+                        >
+                            Save Medicine
+                        </Button>
+                    </div>
                 </div>
             </Modal>
 
@@ -545,12 +560,22 @@ const HealthPage: React.FC = () => {
                         />
                     </div>
 
-                    <button 
-                        onClick={handleSaveVital} 
-                        className="w-full py-3 bg-rose-600 text-white font-semibold rounded-xl hover:bg-rose-700 shadow-md transition-colors text-sm active:scale-[0.99]"
-                    >
-                        {t('health.saveVital')}
-                    </button>
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+                        <Button 
+                            variant="secondary"
+                            onClick={() => setIsVitalModalOpen(false)}
+                            className="w-full sm:w-auto"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            variant="primary"
+                            onClick={handleSaveVital} 
+                            className="w-full sm:w-auto"
+                        >
+                            {t('health.saveVital')}
+                        </Button>
+                    </div>
                 </div>
             </Modal>
         </div>

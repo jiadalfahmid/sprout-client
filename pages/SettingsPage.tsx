@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
+import Button from '../components/ui/Button';
+import SectionHeading from '../components/ui/SectionHeading';
 import PageHeader from '../components/ui/PageHeader';
 import Skeleton from '../components/ui/Skeleton';
 import AuthModal from '../components/ui/AuthModal';
@@ -177,7 +179,7 @@ const SettingsPage = () => {
           <div className="flex items-center gap-3.5">
             <img src={user.avatar} alt={user.name} className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border border-primary/30" />
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">{user.name}</h2>
+              <SectionHeading>{user.name}</SectionHeading>
               <p className="text-xs text-light-text-secondary dark:text-text-secondary">
                 {user.email || 'Local User Profile'}
               </p>
@@ -200,7 +202,7 @@ const SettingsPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Link 
           to="/family" 
-          className="group block p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-xs hover:border-primary/40 dark:hover:border-primary/40 transition-all"
+          className="group block p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-sm hover:border-primary/40 dark:hover:border-primary/40 transition-all"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -229,7 +231,7 @@ const SettingsPage = () => {
 
         <Link 
           to="/tasks" 
-          className="group block p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-xs hover:border-primary/40 dark:hover:border-primary/40 transition-all"
+          className="group block p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-sm hover:border-primary/40 dark:hover:border-primary/40 transition-all"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -258,7 +260,7 @@ const SettingsPage = () => {
 
         <Link 
           to="/settings/categories" 
-          className="group block p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-xs hover:border-primary/40 dark:hover:border-primary/40 transition-all"
+          className="group block p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 shadow-sm hover:border-primary/40 dark:hover:border-primary/40 transition-all"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -307,12 +309,13 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          <button
+          <Button
             onClick={() => setAuthModalOpen(true)}
-            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary-focus transition-colors shadow-xs"
+            variant="primary"
+            size="sm"
           >
             {isGoogleAuthenticated ? t('settings.manageAccount') : t('settings.signInConnect')}
-          </button>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
@@ -519,30 +522,27 @@ const SettingsPage = () => {
               </label>
           </li>
 
-          <li className="py-2.5 sm:py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1.5 -mx-1.5 transition-colors" onClick={toggleFullscreen}>
+          <li className="py-2.5 sm:py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-xl px-1.5 -mx-1.5 transition-colors" onClick={toggleFullscreen}>
              <SettingItemWrapper icon={isFullscreen ? HiOutlineArrowsPointingIn : HiOutlineArrowsPointingOut}>
                 <div>
                   <span className="font-medium text-xs sm:text-sm text-light-text-primary dark:text-text-primary block">Fullscreen Mode</span>
                   <span className="text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary">Expand view to fill entire display</span>
                 </div>
              </SettingItemWrapper>
-             <button
-               type="button"
+             <Button
+               variant={isFullscreen ? 'primary' : 'secondary'}
+               size="sm"
                onClick={(e) => {
                  e.stopPropagation();
                  toggleFullscreen();
                }}
-               className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-colors ${
-                 isFullscreen
-                   ? 'bg-primary text-white'
-                   : 'bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-text-primary'
-               }`}
+               className="shrink-0"
              >
                {isFullscreen ? 'Active' : 'Enable'}
-             </button>
+             </Button>
           </li>
           
-          <li className="py-2.5 sm:py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1.5 -mx-1.5 transition-colors" onClick={() => setCurrencyModalOpen(true)}>
+          <li className="py-2.5 sm:py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-xl px-1.5 -mx-1.5 transition-colors" onClick={() => setCurrencyModalOpen(true)}>
               <SettingItemWrapper icon={HiOutlineCurrencyDollar}>
                   <span className="font-medium text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{t('settings.currency')}</span>
               </SettingItemWrapper>
@@ -552,7 +552,7 @@ const SettingsPage = () => {
               </div>
           </li>
 
-           <li className="py-2.5 sm:py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg px-1.5 -mx-1.5 transition-colors" onClick={() => setLanguageModalOpen(true)}>
+           <li className="py-2.5 sm:py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-xl px-1.5 -mx-1.5 transition-colors" onClick={() => setLanguageModalOpen(true)}>
               <SettingItemWrapper icon={HiOutlineLanguage}>
                   <span className="font-medium text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{t('settings.language')}</span>
               </SettingItemWrapper>
@@ -563,7 +563,7 @@ const SettingsPage = () => {
           </li>
 
           {settingsItems.map(item => (
-            <Link to={item.to} key={item.label} className="block hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-lg -mx-1.5 transition-colors">
+            <Link to={item.to} key={item.label} className="block hover:bg-slate-100 dark:hover:bg-zinc-700/50 rounded-xl -mx-1.5 transition-colors">
               <li className="py-2.5 sm:py-3 flex justify-between items-center px-1.5">
                 <SettingItemWrapper icon={item.icon}>
                   <span className="font-medium text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{item.label}</span>
@@ -583,7 +583,7 @@ const SettingsPage = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3 pb-3.5 border-b border-slate-200 dark:border-zinc-700/80">
             <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
                 <HiOutlineCloudArrowUp className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -595,7 +595,7 @@ const SettingsPage = () => {
                 </p>
               </div>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs">
+            <span className="shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               <span>{t('settings.syncedBadge')}</span>
             </span>
@@ -678,13 +678,23 @@ const SettingsPage = () => {
                   <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
               </label>
             </div>
-            <button 
-              onClick={handleProfileUpdate} 
-              disabled={isUploading} 
-              className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 disabled:bg-slate-500 shadow-md active:scale-[0.99] transition-colors text-sm"
-            >
-              {isUploading ? t('settings.profile.saving') : t('settings.profile.saveChanges')}
-            </button>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+              <Button 
+                variant="secondary"
+                onClick={() => setProfileModalOpen(false)}
+                className="w-full sm:w-auto"
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button 
+                onClick={handleProfileUpdate} 
+                disabled={isUploading} 
+                variant="primary"
+                className="w-full sm:w-auto"
+              >
+                {isUploading ? t('settings.profile.saving') : t('settings.profile.saveChanges')}
+              </Button>
+            </div>
           </div>
       </Modal>
 

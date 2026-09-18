@@ -11,6 +11,7 @@ import {
   HiOutlineArrowLeft 
 } from 'react-icons/hi2';
 import Card from '../components/ui/Card';
+import SectionHeading from '../components/ui/SectionHeading';
 
 const PrivacyPolicyPage: React.FC = () => {
   const navigate = useNavigate();
@@ -86,10 +87,10 @@ const PrivacyPolicyPage: React.FC = () => {
       <Card className="p-6 sm:p-8 space-y-8 divide-y divide-slate-100 dark:divide-zinc-800 text-light-text-primary dark:text-text-primary">
         {/* 1. Information We Collect */}
         <section className="space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">1</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">1</span>
             Information We Collect
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2.5 leading-relaxed pl-8">
             <p>
               When you use Sprout Unified Home & Family Care, we collect information that you directly provide to organize your household:
@@ -106,10 +107,10 @@ const PrivacyPolicyPage: React.FC = () => {
 
         {/* 2. Google API Services User Data Disclosure */}
         <section className="pt-6 space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">2</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">2</span>
             Google API Services & OAuth Integration
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2.5 leading-relaxed pl-8">
             <p>
               Sprout offers optional integrations with Google Workspace APIs (specifically Google Calendar and Gmail):
@@ -124,10 +125,10 @@ const PrivacyPolicyPage: React.FC = () => {
 
         {/* 3. How We Store & Secure Data */}
         <section className="pt-6 space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">3</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">3</span>
             How We Protect and Store Your Data
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2.5 leading-relaxed pl-8">
             <p>
               We implement industry-standard administrative, physical, and technical safeguards:
@@ -142,10 +143,10 @@ const PrivacyPolicyPage: React.FC = () => {
 
         {/* 4. Data Sharing & Third Parties */}
         <section className="pt-6 space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">4</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">4</span>
             Data Sharing & Third-Party Processors
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2.5 leading-relaxed pl-8">
             <p>
               We do <strong>not</strong> sell, rent, or trade your personal data. We only share information with certified infrastructure providers necessary to operate the application:
@@ -159,10 +160,10 @@ const PrivacyPolicyPage: React.FC = () => {
 
         {/* 5. Your Rights & Data Deletion */}
         <section className="pt-6 space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">5</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">5</span>
             Your Privacy Rights & Data Deletion (GDPR / CCPA)
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2.5 leading-relaxed pl-8">
             <p>
               Regardless of your location, Sprout gives you full control over your family's data:
@@ -177,10 +178,10 @@ const PrivacyPolicyPage: React.FC = () => {
 
         {/* 6. Children's Privacy (COPPA) */}
         <section className="pt-6 space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">6</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">6</span>
             Children's Privacy (COPPA Compliance)
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2.5 leading-relaxed pl-8">
             <p>
               Sprout is designed for family management by adult parents or guardians. Child profiles (including medication schedules and allergy notes) are created and managed strictly under the parental account holder's consent and control. We do not knowingly solicit direct registration from children under 13 without parental supervision.
@@ -190,10 +191,10 @@ const PrivacyPolicyPage: React.FC = () => {
 
         {/* 7. Contact Us */}
         <section className="pt-6 space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">7</span>
+          <SectionHeading className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs flex items-center justify-center font-mono">7</span>
             Contact & Privacy Inquiries
-          </h2>
+          </SectionHeading>
           <div className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary space-y-2.5 leading-relaxed pl-8">
             <p>
               If you have any questions, requests, or privacy concerns regarding this policy, please reach out to our privacy team:

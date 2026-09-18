@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext, availableCurrencies } from '../context/AppContext';
+import Button from '../components/ui/Button';
+import BrandMark from '../components/ui/BrandMark';
+import SectionHeading from '../components/ui/SectionHeading';
 import { 
   HiOutlineSparkles, 
   HiOutlineShieldCheck, 
@@ -24,9 +27,9 @@ import {
   HiOutlineScale,
   HiOutlineBanknotes,
   HiOutlineCheck,
-  HiOutlineShoppingBag
+  HiOutlineShoppingBag,
+  HiOutlineBeaker
 } from 'react-icons/hi2';
-import { PiPill } from 'react-icons/pi';
 import toast from 'react-hot-toast';
 
 interface LandingPageProps {
@@ -102,7 +105,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
           return;
         }
         await loginWithEmail(email, password);
-        toast.success('Welcome back to Sprout!');
+        toast.success('Welcome back to Sprout! Glad to have you caring with us.');
       } else if (authMode === 'signup') {
         if (!password || password.length < 6) {
           toast.error('Password must be at least 6 characters long.');
@@ -110,7 +113,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
           return;
         }
         await signUpWithEmail(email, password, name || undefined);
-        toast.success('Account created successfully! Welcome to Sprout.');
+        toast.success('Welcome to Sprout! Your family space is ready to grow.');
       } else if (authMode === 'forgot') {
         await resetUserPassword(email);
         toast.success('Password reset link sent to your email.');
@@ -126,7 +129,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
 
   const features = [
     {
-      icon: PiPill,
+      icon: HiOutlineBeaker,
       title: 'Smart Medicine & Dose Tracker',
       description: 'Timed daily schedules, low stock restock alerts, and complete taken/missed logs per family member.',
       colorClass: 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30',
@@ -134,7 +137,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
     {
       icon: HiOutlineCurrencyDollar,
       title: 'Unified Household Finances',
-      description: 'Track monthly income, recurring bills, debt repayments, and personal savings goals in one view.',
+      description: 'Track monthly income, recurring bills, debt repayments, and watch your family savings grow in one view.',
       colorClass: 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30',
     },
     {
@@ -157,8 +160,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
       <header className="sticky top-0 z-30 backdrop-blur-md bg-light-surface/80 dark:bg-surface/80 border-b border-slate-200 dark:border-zinc-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 dark:bg-primary/20 border border-primary/30 flex items-center justify-center text-primary shadow-xs">
-              <HiOutlineSparkles className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 dark:bg-primary/20 border border-primary/30 flex items-center justify-center text-primary shadow-sm">
+              <BrandMark className="w-6 h-6" />
             </div>
             <div>
               <span className="font-bold text-lg tracking-tight flex items-center gap-1.5 text-light-text-primary dark:text-text-primary">
@@ -189,16 +192,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
               </button>
             )}
 
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => {
                 setAuthMode('signup');
                 const el = document.getElementById('auth-card');
                 el?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="px-4 py-2 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               Get Started
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -221,11 +225,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
               </h1>
 
               <p className="text-sm sm:text-base text-light-text-secondary dark:text-text-secondary max-w-2xl leading-relaxed">
-                Take the guesswork out of household management. Track daily medications, doctor visits, household budgets, savings, and shared chores with seamless Google Calendar sync and real-time cloud backup.
+                Nurture your household with clarity and ease. Track daily medications, doctor visits, growing savings goals, and shared chores with seamless Google Calendar sync and real-time cloud backup.
               </p>
 
               {/* Interactive Dashboard UI Preview (matching user's screenshot styles) */}
-              <div className="p-5 sm:p-6 rounded-3xl bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 shadow-lg space-y-5">
+              <div className="p-5 sm:p-6 rounded-2xl bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 shadow-lg space-y-5">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-700/50 pb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -301,14 +305,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
                 <div className="p-3.5 rounded-2xl bg-primary/5 dark:bg-primary/10 border border-primary/15 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 flex items-center justify-center">
-                      <PiPill className="w-5 h-5" />
+                      <HiOutlineBeaker className="w-5 h-5" />
                     </div>
                     <div>
                       <span className="font-bold text-light-text-primary dark:text-text-primary block">Amoxicillin 500mg</span>
                       <span className="text-[11px] text-light-text-secondary dark:text-text-secondary">Next dose: 2:00 PM • After Meal</span>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-300 dark:border-emerald-800">
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] border border-emerald-300 dark:border-emerald-800">
                     On Schedule
                   </span>
                 </div>
@@ -321,24 +325,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 rounded-3xl p-6 sm:p-8 shadow-xl relative"
+                className="bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 rounded-2xl p-6 sm:p-8 shadow-xl relative"
               >
                 {/* Header of Auth Box */}
                 <div className="text-center mb-6">
-                  <div className="inline-flex p-3 rounded-2xl bg-primary/10 dark:bg-primary/20 border border-primary/25 text-primary mb-3 shadow-xs">
-                    <HiOutlineLockClosed className="w-6 h-6" />
+                  <div className="inline-flex p-3 rounded-2xl bg-primary/10 dark:bg-primary/20 border border-primary/25 text-primary mb-3 shadow-sm">
+                    <BrandMark className="w-7 h-7" />
                   </div>
-                  <h2 className="text-xl font-bold text-light-text-primary dark:text-text-primary">
+                  <SectionHeading className="text-xl">
                     {pendingInvite ? `Join ${pendingInvite.inviterName}'s Family` : (
                       authMode === 'login' ? 'Sign in to Sprout' :
                       authMode === 'signup' ? 'Create Your Living Hub' :
                       'Reset Your Password'
                     )}
-                  </h2>
+                  </SectionHeading>
                   <p className="text-xs text-light-text-secondary dark:text-text-secondary mt-1">
                     {pendingInvite ? `Collaborate securely as ${pendingInvite.memberName} (${pendingInvite.relation})` : (
                       authMode === 'login' ? 'Access your synced family records, medicines & money' :
-                      authMode === 'signup' ? 'Get started with real-time cloud synchronization' :
+                      authMode === 'signup' ? 'Plant your family roots with real-time cloud synchronization' :
                       'Enter your email to receive a secure recovery link'
                     )}
                   </p>
@@ -348,7 +352,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
                 {pendingInvite && (
                   <div className="mb-5 p-3.5 rounded-2xl bg-primary/10 dark:bg-primary/15 border border-primary/25 text-xs space-y-1.5">
                     <div className="flex items-center gap-2 font-bold text-primary">
-                      <HiOutlineSparkles className="w-4 h-4 shrink-0" />
+                      <BrandMark className="w-4 h-4 shrink-0" />
                       <span>Family Invite Ready to Connect</span>
                     </div>
                     <p className="text-light-text-secondary dark:text-text-secondary text-[11px] leading-relaxed">
@@ -365,7 +369,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
                       onClick={() => setAuthMode('login')}
                       className={`py-2 text-xs font-bold rounded-xl transition-all ${
                         authMode === 'login'
-                          ? 'bg-light-surface dark:bg-zinc-700 text-primary shadow-xs'
+                          ? 'bg-light-surface dark:bg-zinc-700 text-primary shadow-sm'
                           : 'text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary'
                       }`}
                     >
@@ -376,7 +380,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
                       onClick={() => setAuthMode('signup')}
                       className={`py-2 text-xs font-bold rounded-xl transition-all ${
                         authMode === 'signup'
-                          ? 'bg-light-surface dark:bg-zinc-700 text-primary shadow-xs'
+                          ? 'bg-light-surface dark:bg-zinc-700 text-primary shadow-sm'
                           : 'text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary'
                       }`}
                     >
@@ -392,7 +396,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
                       type="button"
                       onClick={handleGoogleSignIn}
                       disabled={submitting || isGoogleLoading}
-                      className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-2xl bg-white dark:bg-zinc-800/90 text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 font-semibold text-xs transition shadow-xs disabled:opacity-60"
+                      className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl bg-white dark:bg-zinc-800/90 text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 font-semibold text-xs transition shadow-sm disabled:opacity-60"
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -482,27 +486,29 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
                     </div>
                   )}
 
-                  <button
+                  <Button
                     type="submit"
+                    variant="primary"
+                    size="md"
                     disabled={submitting}
-                    className="w-full py-2.5 sm:py-3 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-md shadow-primary/20 transition flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="w-full"
                   >
                     {submitting ? (
-                      <>
+                      <span className="flex items-center justify-center gap-2">
                         <HiOutlineArrowPath className="w-4 h-4 animate-spin" />
                         <span>Processing...</span>
-                      </>
+                      </span>
                     ) : (
-                      <>
+                      <span className="flex items-center justify-center gap-2">
                         <span>
                           {authMode === 'login' && 'Sign In to Dashboard'}
                           {authMode === 'signup' && 'Create Account & Enter'}
                           {authMode === 'forgot' && 'Send Reset Email'}
                         </span>
                         <HiOutlineArrowRight className="w-4 h-4" />
-                      </>
+                      </span>
                     )}
-                  </button>
+                  </Button>
                 </form>
 
                 {/* Back to sign in from forgot password */}
@@ -544,9 +550,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
       <section className="py-14 bg-light-surface dark:bg-surface/50 border-t border-slate-200 dark:border-zinc-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-10">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-light-text-primary dark:text-text-primary">
+            <SectionHeading className="text-2xl sm:text-3xl font-extrabold justify-center">
               Built for Real Everyday Family Life
-            </h2>
+            </SectionHeading>
             <p className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary mt-1.5">
               Everything your household needs across health, schedules, appointments, and money in unified sync.
             </p>
@@ -556,9 +562,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
             {features.map((f, i) => (
               <div
                 key={i}
-                className="p-5 rounded-3xl bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 space-y-3.5 hover:border-primary/40 transition-colors shadow-xs"
+                className="p-5 rounded-2xl bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 space-y-3.5 hover:border-primary/40 transition-colors shadow-sm"
               >
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs ${f.colorClass}`}>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${f.colorClass}`}>
                   <f.icon className="w-6 h-6" />
                 </div>
                 <h3 className="font-bold text-sm text-light-text-primary dark:text-text-primary">

@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { HiXMark } from 'react-icons/hi2';
+import SectionHeading from './SectionHeading';
 
 interface ModalProps {
   isOpen: boolean;
@@ -21,9 +22,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-3 sm:mb-4 shrink-0">
-          <h2 className="text-lg sm:text-xl font-bold text-light-text-primary dark:text-text-primary truncate pr-2">
+          <SectionHeading className="truncate pr-2">
             {title}
-          </h2>
+          </SectionHeading>
           <button 
             onClick={onClose} 
             className="p-1.5 rounded-xl text-light-text-secondary dark:text-text-secondary hover:text-light-text-primary dark:hover:text-text-primary hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"

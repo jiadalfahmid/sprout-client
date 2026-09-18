@@ -14,18 +14,22 @@ const PageHeader: React.FC<PageHeaderProps> = ({
     subtitle, 
     action, 
     children, 
-    className = 'mb-6' 
+    className = 'mb-4 sm:mb-6' 
 }) => {
     return (
-        <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-left ${className}`}>
-            <div className="text-left">
-                <h1 className="text-2xl sm:text-3xl font-bold text-light-text-primary dark:text-text-primary">{title}</h1>
+        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 text-left ${className}`}>
+            <div className="min-w-0 flex-1 text-left">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-light-text-primary dark:text-text-primary tracking-tight">
+                    {title}
+                </h1>
                 {subtitle && (
-                    <p className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary mt-1">{subtitle}</p>
+                    <p className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary mt-0.5 sm:mt-1">
+                        {subtitle}
+                    </p>
                 )}
             </div>
             {(action || children) && (
-                <div className="flex items-center gap-3 self-start sm:self-auto shrink-0">
+                <div className="flex items-center gap-2 sm:gap-3 self-start sm:self-center shrink-0 flex-wrap sm:flex-nowrap">
                     {action}
                     {children}
                 </div>

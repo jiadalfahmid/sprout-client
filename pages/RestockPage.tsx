@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
 import { HiArrowLeft, HiArrowDownTray, HiCheckCircle } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import { useTranslation } from '../hooks/useTranslation';
@@ -112,9 +113,11 @@ const RestockPage: React.FC = () => {
                         <p className="font-semibold">{t('restock.totalPrice')}</p>
                         <p className="text-2xl font-bold text-primary">{currencySymbol}{grandTotal.toFixed(2)}</p>
                     </Card>
-                    <button onClick={() => setStep('list')} className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 shadow-md active:scale-[0.99] transition-colors text-sm">
-                        {t('restock.generateList')}
-                    </button>
+                    <div className="flex justify-end mt-4">
+                        <Button onClick={() => setStep('list')} className="w-full sm:w-auto">
+                            {t('restock.generateList')}
+                        </Button>
+                    </div>
                 </div>
              ) : (
                 <div className="space-y-4">
@@ -140,13 +143,13 @@ const RestockPage: React.FC = () => {
                             </li>
                         </ul>
                     </Card>
-                    <div className="grid grid-cols-2 gap-4">
-                         <button onClick={handleDownloadCsv} className="w-full py-3 bg-blue-500 text-white font-semibold rounded-lg flex items-center justify-center gap-2">
-                           <HiArrowDownTray className="h-5 w-5"/> {t('restock.download')}
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                         <button onClick={handleDownloadCsv} className="w-full sm:w-auto px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors">
+                           <HiArrowDownTray className="h-4 w-4"/> {t('restock.download')}
                          </button>
-                         <button onClick={handleDone} className="w-full py-3 bg-primary text-white font-semibold rounded-lg flex items-center justify-center gap-2">
-                           <HiCheckCircle className="h-5 w-5"/> {t('restock.finishRestock')}
-                         </button>
+                         <Button onClick={handleDone} className="w-full sm:w-auto" icon={<HiCheckCircle className="h-4 w-4"/>}>
+                           {t('restock.finishRestock')}
+                         </Button>
                     </div>
                 </div>
              )}

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { AVATAR_PRESETS, AvatarPreset } from '../../data/avatarPresets';
 import { HiOutlineCloudArrowUp, HiCheck, HiOutlineSparkles, HiOutlinePhoto } from 'react-icons/hi2';
+import SegmentedControl from './SegmentedControl';
+import FilterChip from './FilterChip';
 
 interface AvatarPickerProps {
   selectedAvatarUrl: string;
@@ -56,49 +58,29 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
           <HiOutlineSparkles className="w-3.5 h-3.5 text-primary" />
           <span>Choose Vector Avatar</span>
         </label>
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-0.5 rounded-lg text-xs">
-          <button
-            type="button"
-            onClick={() => setActiveTab('preset')}
-            className={`px-2.5 py-1 rounded-md font-semibold transition ${
-              activeTab === 'preset'
-                ? 'bg-white dark:bg-zinc-700 text-primary shadow-xs'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            Vector Art
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('upload')}
-            className={`px-2.5 py-1 rounded-md font-semibold transition ${
-              activeTab === 'upload'
-                ? 'bg-white dark:bg-zinc-700 text-primary shadow-xs'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            Custom Photo
-          </button>
-        </div>
+        <SegmentedControl
+          options={[
+            { value: 'preset', label: 'Vector Art' },
+            { value: 'upload', label: 'Custom Photo' },
+          ]}
+          value={activeTab}
+          onChange={(val) => setActiveTab(val as 'preset' | 'upload')}
+          size="sm"
+          ariaLabel="Avatar source type"
+        />
       </div>
 
       {activeTab === 'preset' ? (
         <div className="space-y-2.5">
           {/* Category Chips */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
             {categories.map((cat) => (
-              <button
+              <FilterChip
                 key={cat.id}
-                type="button"
+                selected={categoryFilter === cat.id}
                 onClick={() => setCategoryFilter(cat.id)}
-                className={`text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap font-medium transition ${
-                  categoryFilter === cat.id
-                    ? 'bg-primary text-white shadow-xs font-semibold'
-                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700'
-                }`}
-              >
-                {cat.label}
-              </button>
+                label={cat.label}
+              />
             ))}
           </div>
 
@@ -121,7 +103,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
                   }`}
                   title={preset.label}
                 >
-                  <div className="relative w-12 h-12 rounded-full overflow-hidden shadow-xs border border-white dark:border-zinc-700">
+                  <div className="relative w-12 h-12 rounded-full overflow-hidden shadow-sm border border-white dark:border-zinc-700">
                     <img
                       src={preset.svgUrl}
                       alt={preset.label}
@@ -129,7 +111,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
                     />
                     {isSelected && (
                       <div className="absolute inset-0 bg-primary/25 flex items-center justify-center">
-                        <div className="bg-primary text-white rounded-full p-0.5 shadow-xs">
+                        <div className="bg-primary text-white rounded-full p-0.5 shadow-sm">
                           <HiCheck className="w-3.5 h-3.5" />
                         </div>
                       </div>
@@ -168,7 +150,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
         <img
           src={selectedAvatarUrl || AVATAR_PRESETS[0].svgUrl}
           alt="Selected Avatar Preview"
-          className="w-10 h-10 rounded-full object-cover border-2 border-primary shadow-xs"
+          className="w-10 h-10 rounded-full object-cover border-2 border-primary shadow-sm"
         />
         <div className="text-xs">
           <p className="font-semibold text-light-text-primary dark:text-text-primary">

@@ -67,7 +67,7 @@ export const translations = {
             title: { en: "Quick Notes", es: "Notas Rápidas", fr: "Notes Rapides", bn: "দ্রুত নোট" },
             placeholder: { en: "Jot down a quick note...", es: "Escribe una nota rápida...", fr: "Prenez une note rapide...", bn: "একটি দ্রুত নোট লিখুন..." },
             add: { en: "Add", es: "Añadir", fr: "Ajouter", bn: "যোগ করুন" },
-            noNotes: { en: "No notes yet.", es: "Aún no hay notas.", fr: "Aucune note pour l'instant.", bn: "এখনও কোন নোট নেই।" },
+            noNotes: { en: "Nothing planted here yet — jot down your first family note.", es: "Aún no hay nada plantado aquí — escribe tu primera nota.", fr: "Rien n'est encore planté ici — prenez votre première note.", bn: "এখানে এখনও কিছু রোপণ করা হয়নি — আপনার প্রথম নোট লিখুন।" },
         }
     },
     // Finance Page
@@ -101,7 +101,7 @@ export const translations = {
         },
         savingsSummary: {
             title: { en: "Savings Goals", es: "Metas de Ahorro", fr: "Objectifs d'Épargne", bn: "সঞ্চয়ের লক্ষ্য" },
-            noGoals: { en: "No savings goals yet. Create one!", es: "No hay metas de ahorro. ¡Crea una!", fr: "Aucun objectif d'épargne. Créez-en un!", bn: "এখনও কোন সঞ্চয় লক্ষ্য নেই। একটি তৈরি করুন!" },
+            noGoals: { en: "Nothing planted here yet — set your first savings goal to start growing!", es: "Nada plantado aquí todavía — ¡crea tu primera meta de ahorro!", fr: "Rien n'est encore planté ici — créez votre premier objectif d'épargne !", bn: "এখানে এখনও কিছু রোপণ করা হয়নি — আপনার সঞ্চয় লক্ষ্য তৈরি করুন!" },
         },
         borrowLend: {
             youOwe: { en: "You Owe", es: "Debes", fr: "Vous Devez", bn: "আপনি ঋণী" },
@@ -123,15 +123,16 @@ export const translations = {
             overdue: { en: "Overdue", es: "Vencido", fr: "En retard", bn: "মেয়াদোত্তীর্ণ" },
             dueDate: { en: "Due:", es: "Vence:", fr: "Échéance:", bn: "নির্ধারিত:" },
             total: { en: "Total", es: "Total", fr: "Total", bn: "মোট" },
+            paid: { en: "paid", es: "pagado", fr: "payé", bn: "পরিশোধিত" },
         },
         savingsPage: {
             add: { en: "New Goal", es: "Nueva Meta", fr: "Nouvel Objectif", bn: "নতুন লক্ষ্য" },
             achieved: { en: "Achieved", es: "Logrado", fr: "Atteint", bn: "অর্জিত" },
             of: { en: "of", es: "de", fr: "de", bn: "এর" },
             addDeposit: { en: "Add Deposit", es: "Añadir Depósito", fr: "Ajouter Dépôt", bn: "ডিপোজিট যোগ করুন" },
-            noGoals: { en: "Create your first savings goal to get started!", es: "¡Crea tu primera meta de ahorro para empezar!", fr: "Créez votre premier objectif d'épargne pour commencer !", bn: "শুরু করার জন্য আপনার প্রথম সঞ্চয় লক্ষ্য তৈরি করুন!" },
+            noGoals: { en: "Nothing planted here yet — plant your first savings goal and watch it grow!", es: "¡Nada plantado aquí todavía — crea tu primera meta de ahorro y mírala crecer!", fr: "Rien n'est encore planté ici — plantez votre premier objectif d'épargne et regardez-le grandir !", bn: "এখানে এখনও কিছু রোপণ করা হয়নি — আপনার প্রথম সঞ্চয় লক্ষ্য রোপণ করুন!" },
             createGoal: { en: "New Goal", es: "Nueva Meta", fr: "Nouvel Objectif", bn: "নতুন লক্ষ্য" },
-            goalDescription: { en: "Start saving for your next big thing.", es: "Empieza a ahorrar para tu próximo gran proyecto.", fr: "Commencez à épargner pour votre prochain grand projet.", bn: "আপনার পরবর্তী বড় কিছুর জন্য সঞ্চয় শুরু করুন।" },
+            goalDescription: { en: "Nurture your family's future — start saving for your next milestone.", es: "Nutre el futuro de tu familia — empieza a ahorrar para tu próximo hito.", fr: "Nourrissez l'avenir de votre famille — commencez à épargner pour votre prochain projet.", bn: "আপনার পরিবারের ভবিষ্যৎ গড়ে তুলুন — সঞ্চয় শুরু করুন।" },
             saved: { en: "Saved", es: "Ahorrado", fr: "Économisé", bn: "সংরক্ষিত" },
             remaining: { en: "Remaining", es: "Restante", fr: "Restant", bn: "বাকি" },
         },
@@ -146,7 +147,7 @@ export const translations = {
             paidOn: { en: "Paid on {date}", es: "Pagado el {date}", fr: "Payé le {date}", bn: "{date} তারিখে পরিশোধিত" },
         },
         noRecords: { en: "No records yet.", es: "No hay registros todavía.", fr: "Aucun enregistrement pour le moment.", bn: "এখনও কোন রেকর্ড নেই।" },
-        noTransactions: { en: "No transactions for this month.", es: "No hay transacciones para este mes.", fr: "Aucune transaction pour ce mois.", bn: "এই মাসের জন্য কোন লেনদেন নেই।" },
+        noTransactions: { en: "Nothing planted here yet — log your first transaction to start tracking.", es: "Nada plantado aquí todavía — registra tu primera transacción.", fr: "Rien n'est encore planté ici — enregistrez votre première transaction.", bn: "এখানে এখনও কিছু রোপণ করা হয়নি — আপনার প্রথম লেনদেন যোগ করুন।" },
         noBills: { en: "No upcoming bills. You're all set!", es: "No hay facturas recurrentes. ¡Todo listo!", fr: "Aucune facture à venir. Tout est en ordre!", bn: "কোন আসন্ন বিল নেই। আপনি প্রস্তুত!" },
         noPaidBills: { en: "No bills paid this month.", es: "No se han pagado facturas este mes.", fr: "Aucune facture payée ce mois-ci.", bn: "এই মাসে কোনো বিল পরিশোধ করা হয়নি।" },
         due: { en: "Due", es: "Vence", fr: "Échéance", bn: "নির্ধারিত" },

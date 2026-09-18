@@ -5,3 +5,14 @@ html, body {
   min-height: 100%;
 }
 
+/* Hide scrollbar utility with iOS momentum scrolling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+

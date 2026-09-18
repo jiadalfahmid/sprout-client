@@ -30,8 +30,14 @@ const BottomNav: React.FC = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-light-surface dark:bg-surface border-t border-slate-200 dark:border-zinc-700/50 shadow-t-lg z-50">
-      <div className="flex justify-around items-center h-full px-2 gap-1">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 bg-light-surface dark:bg-surface border-t border-slate-200 dark:border-zinc-700/50 shadow-t-lg z-50"
+      style={{ 
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        height: 'calc(4rem + env(safe-area-inset-bottom, 0px))' 
+      }}
+    >
+      <div className="flex justify-around items-center h-16 px-2 gap-1">
         {navItems.map(({ path, label, icon: Icon, isCentral, color }) => {
           if (isCentral) {
             return (

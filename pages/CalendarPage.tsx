@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/ui/Card';
 import PageHeader from '../components/ui/PageHeader';
+import SectionHeading from '../components/ui/SectionHeading';
 import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { 
     HiChevronLeft, HiChevronRight, HiOutlineBeaker, HiOutlineCurrencyDollar, 
     HiOutlineCheckCircle, HiMagnifyingGlass, HiOutlineXMark, HiOutlineArrowPath,
-    HiOutlineCalendarDays
+    HiOutlineCalendarDays, HiOutlineUserCircle
 } from 'react-icons/hi2';
-import { FaUserDoctor } from 'react-icons/fa6';
 import { CalendarEvent } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
@@ -40,7 +40,7 @@ const getEventVisuals = (event: CalendarEvent) => {
             if (event.status === 'completed') color = 'green';
             break;
         case 'appointment':
-            icon = FaUserDoctor;
+            icon = HiOutlineUserCircle;
             color = 'teal';
             if (event.status === 'cancelled') color = 'slate';
             break;
@@ -117,7 +117,7 @@ const TimelineEventCard: React.FC<{ event: CalendarEvent; onSyncToGoogle?: (id: 
                 <button
                     onClick={() => onSyncToGoogle(event.details?.id, 'appointment')}
                     title="Sync to Google Calendar"
-                    className="p-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition shrink-0"
+                    className="p-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition shrink-0"
                 >
                     Sync GCal
                 </button>
@@ -171,14 +171,14 @@ const DayDetailsModal: React.FC<{
             >
                 <div className="flex justify-between items-center p-3.5 sm:p-4 border-b border-slate-200 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/30">
                     <div>
-                        <h2 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">
+                        <SectionHeading>
                             {date ? date.toLocaleDateString(language, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
-                        </h2>
+                        </SectionHeading>
                         <p className="text-xs text-light-text-secondary dark:text-text-secondary">
                             {events?.length || 0} event{(events?.length || 0) === 1 ? '' : 's'} scheduled
                         </p>
                     </div>
-                    <button onClick={onClose} aria-label="Close timeline modal" className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
+                    <button onClick={onClose} aria-label="Close timeline modal" className="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
                         <HiOutlineXMark className="h-5 w-5" />
                     </button>
                 </div>
@@ -317,7 +317,7 @@ const CalendarPage: React.FC = () => {
         {
             id: 'book_appointment',
             label: 'Book Appointment',
-            icon: FaUserDoctor,
+            icon: HiOutlineUserCircle,
             color: 'indigo',
             onClick: () => navigate('/settings/appointments'),
         },
@@ -347,16 +347,16 @@ const CalendarPage: React.FC = () => {
                 <div className="flex flex-col md:flex-row justify-between items-center p-3.5 sm:p-4 border-b border-slate-200 dark:border-zinc-700 gap-3 sm:gap-4">
                     <div className="flex items-center gap-1.5 sm:gap-2 self-start md:self-center">
                         <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary"><HiChevronLeft className="h-5 w-5" /></button>
-                        <h2 className="text-base sm:text-lg font-bold w-40 text-center text-light-text-primary dark:text-text-primary">{currentDate.toLocaleString(language, { month: 'long', year: 'numeric' })}</h2>
+                        <SectionHeading className="w-40 text-center">{currentDate.toLocaleString(language, { month: 'long', year: 'numeric' })}</SectionHeading>
                         <button onClick={() => changeMonth(1)} aria-label="Next month" className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary"><HiChevronRight className="h-5 w-5" /></button>
                     </div>
                     
                     <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
                         <div className="relative w-full sm:w-auto flex-grow">
                             <HiMagnifyingGlass className="absolute top-1/2 left-3 -translate-y-1/2 h-4 w-4 text-light-text-secondary dark:text-text-secondary" />
-                            <input type="text" placeholder={t('calendar.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full p-2 pl-9 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-base sm:text-sm"/>
+                            <input type="text" placeholder={t('calendar.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full p-2 pl-9 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-base sm:text-sm"/>
                         </div>
-                        <select aria-label="Filter events by category" value={filterType} onChange={e => setFilterType(e.target.value as any)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-base sm:text-sm">
+                        <select aria-label="Filter events by category" value={filterType} onChange={e => setFilterType(e.target.value as any)} className="w-full sm:w-auto p-2 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-base sm:text-sm">
                             <option value="all">{t('calendar.filter.allTypes')}</option>
                             <option value="medicine">{t('calendar.filter.medicine')}</option>
                             <option value="bill">{t('calendar.filter.bills')}</option>
@@ -364,7 +364,7 @@ const CalendarPage: React.FC = () => {
                             <option value="appointment">{t('appointments.title')}</option>
                             <option value="google_event">Google Calendar</option>
                         </select>
-                        <select value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)} className="w-full sm:w-auto p-2 border rounded-lg bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-base sm:text-sm">
+                        <select value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)} className="w-full sm:w-auto p-2 border rounded-xl bg-light-background dark:bg-background border-slate-200 dark:border-zinc-600 focus:ring-1 focus:ring-primary text-base sm:text-sm">
                             <option value="all">{t('health.allMembers')}</option>
                             {familyMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                         </select>
@@ -383,7 +383,7 @@ const CalendarPage: React.FC = () => {
                             const eventsForDay = calendarEvents.filter(e => e.date.toDateString() === day.toDateString());
                             
                             const dayNumberClasses = `w-7 h-7 flex items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-                                isToday ? 'bg-primary text-white shadow' : 'text-light-text-primary dark:text-text-primary'
+                                isToday ? 'bg-primary text-white shadow-sm' : 'text-light-text-primary dark:text-text-primary'
                             }`;
                             
                             return (

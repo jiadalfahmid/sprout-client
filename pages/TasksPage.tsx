@@ -2,6 +2,8 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
+import SectionHeading from '../components/ui/SectionHeading';
 import SpeedDialFAB, { SpeedDialAction } from '../components/ui/SpeedDialFAB';
 import { Task, TaskList as ITaskList } from '../types';
 import { HiOutlineTrash, HiPlus, HiOutlineCalendarDays, HiOutlineQueueList, HiOutlineCheckBadge } from 'react-icons/hi2';
@@ -44,7 +46,7 @@ const TaskListCard: React.FC<{
 
   return (
     <div className="bg-light-surface dark:bg-surface rounded-2xl shadow-lg p-4 border border-slate-200 dark:border-zinc-700/50 break-inside-avoid mb-6 flex flex-col h-full">
-      <h2 className="text-xl font-semibold text-light-text-primary dark:text-text-primary mb-3 px-2">{list.name}</h2>
+      <SectionHeading className="mb-3 px-2">{list.name}</SectionHeading>
 
       <div className="flex-grow overflow-y-auto pr-1">
         {sortedTasks.length > 0 ? (
@@ -58,7 +60,7 @@ const TaskListCard: React.FC<{
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
-                  className="flex justify-between items-center p-2 hover:bg-light-background dark:hover:bg-background rounded-lg group"
+                  className="flex justify-between items-center p-2 hover:bg-light-background dark:hover:bg-background rounded-xl group"
                 >
                   <label className="flex items-center gap-3 cursor-pointer w-full">
                     <input
@@ -110,7 +112,7 @@ const TaskListCard: React.FC<{
                 type="date"
                 value={newDueDate}
                 onChange={(e) => setNewDueDate(e.target.value)}
-                className="w-full mt-1 p-2 border rounded-lg bg-light-background dark:bg-background border-slate-300 dark:border-slate-600"
+                className="w-full mt-1 p-2 border rounded-xl bg-light-background dark:bg-background border-slate-300 dark:border-slate-600"
               />
            </motion.div>
         )}
@@ -189,18 +191,37 @@ const TasksPage: React.FC = () => {
       <PageHeader
         title={t('tasks.title')}
         action={
-          <button
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<HiPlus className="h-4 w-4" />}
             onClick={() => setCreateModalOpen(true)}
-            className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-primary text-white font-semibold rounded-xl flex items-center gap-1.5 shadow-sm hover:opacity-90 transition-opacity text-xs sm:text-sm whitespace-nowrap"
           >
-            <HiPlus className="h-4 w-4" />
-            <span>{t('tasks.createList')}</span>
-          </button>
+            {t('tasks.createList')}
+          </Button>
         }
       />
       
       {loading ? (
         renderSkeleton()
+      ) : taskLists.length === 0 ? (
+        <div className="text-center py-16 px-4 bg-light-surface dark:bg-surface rounded-2xl border border-slate-200/80 dark:border-zinc-700/80 max-w-lg mx-auto">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 dark:bg-primary/20 text-primary flex items-center justify-center mx-auto mb-3">
+            <HiOutlineQueueList className="w-6 h-6" />
+          </div>
+          <h3 className="font-bold text-base text-light-text-primary dark:text-text-primary">
+            Nothing planted here yet
+          </h3>
+          <p className="text-xs sm:text-sm text-light-text-secondary dark:text-text-secondary mt-1 max-w-sm mx-auto">
+            Create your first shared list to nurture family chores and teamwork.
+          </p>
+          <div className="mt-5">
+            <Button size="sm" onClick={() => setCreateModalOpen(true)}>
+              <HiPlus className="w-4 h-4 mr-1.5" />
+              Create First List
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-6">
             <AnimatePresence>
@@ -211,7 +232,7 @@ const TasksPage: React.FC = () => {
                             <TaskListCard
                                 list={list}
                                 tasks={listTasks}
-                                onAddTask={(listId, content, dueDate) => addTask({ content, listId, dueDate })}
+                                onAddTask={(listId, content, dueDate) => addTask({ content, listId, ...(dueDate ? { dueDate } : {}) })}
                                 onToggleTask={toggleTask}
                                 onDeleteTask={deleteTask}
                                 onDeleteList={openDeleteModal}
@@ -246,12 +267,22 @@ const TasksPage: React.FC = () => {
                     autoFocus
                 />
             </div>
-            <button
-                onClick={handleCreateList}
-                className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-opacity-90 transition-colors text-sm shadow-md active:scale-[0.99]"
-            >
-                {t('tasks.modal.createBtn')}
-            </button>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+                <Button
+                    onClick={() => setCreateModalOpen(false)}
+                    variant="secondary"
+                    className="w-full sm:w-auto"
+                >
+                    {t('common.cancel')}
+                </Button>
+                <Button
+                    onClick={handleCreateList}
+                    variant="primary"
+                    className="w-full sm:w-auto"
+                >
+                    {t('tasks.modal.createBtn')}
+                </Button>
+            </div>
         </div>
       </Modal>
 
@@ -261,19 +292,21 @@ const TasksPage: React.FC = () => {
           <p className="text-light-text-secondary dark:text-text-secondary">
               {t('tasks.deleteModal.message', { listName: listToDelete?.name || '' })}
           </p>
-          <div className="flex justify-end gap-4">
-              <button
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <Button
                   onClick={() => setDeleteModalOpen(false)}
-                  className="px-4 py-2 bg-slate-200 dark:bg-zinc-700 text-light-text-primary dark:text-text-primary font-semibold rounded-xl hover:bg-slate-300 dark:hover:bg-zinc-600 text-sm"
+                  variant="secondary"
+                  className="w-full sm:w-auto"
               >
                   {t('tasks.deleteModal.cancel')}
-              </button>
-              <button
+              </Button>
+              <Button
                   onClick={confirmDeleteList}
-                  className="px-4 py-2 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 text-sm"
+                  variant="danger"
+                  className="w-full sm:w-auto"
               >
                   {t('tasks.deleteModal.confirm')}
-              </button>
+              </Button>
           </div>
         </div>
       </Modal>
