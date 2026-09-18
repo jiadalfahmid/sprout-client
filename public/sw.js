@@ -1,9 +1,8 @@
 // Sprout Progressive Web App Service Worker
-const CACHE_NAME = 'sprout-v1';
+const CACHE_NAME = 'sprout-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/index.css',
   '/manifest.json',
   '/favicon.svg',
   '/icon-192.svg',

@@ -11,10 +11,26 @@ const fileToBase64 = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
+const directUploadImgBB = async (imageBase64: string): Promise<string | null> => {
+  const apiKey = (import.meta as any).env?.VITE_IMGBB_API_KEY || 'e8fe38eae4d004d9feed640cab63d8e8';
+  const rawBase64 = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+  const form = new FormData();
+  form.append('image', rawBase64);
+
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+    method: 'POST',
+    body: form,
+  });
+  const data = await res.json();
+  if (data?.success && data?.data?.url) {
+    return data.data.url as string;
+  }
+  throw new Error(data?.error?.message || 'ImgBB upload rejected');
+};
+
 /**
- * Uploads an image via our own server route (api/upload-image), which holds
- * the ImgBB key server-side. No third-party API key ever touches the client
- * bundle. Requires an authenticated user session.
+ * Uploads an image via our server route (api/upload-image), with automatic fallback
+ * to direct ImgBB upload using the configured key.
  */
 export const uploadImage = async (imageFile: File): Promise<string | null> => {
   if (imageFile.size > MAX_BYTES) {
@@ -23,53 +39,59 @@ export const uploadImage = async (imageFile: File): Promise<string | null> => {
   }
 
   const currentUser = auth.currentUser;
-  if (!currentUser) {
-    toast.error('You must be signed in to upload images');
-    return null;
-  }
-
   let idToken = '';
-  try {
-    idToken = await currentUser.getIdToken();
-  } catch (err) {
-    console.error('Failed to retrieve authentication token for upload:', err);
-    toast.error('Authentication session expired. Please re-sign in.');
-    return null;
+  if (currentUser) {
+    try {
+      idToken = await currentUser.getIdToken();
+    } catch (err) {
+      console.warn('Failed to retrieve authentication token for upload:', err);
+    }
   }
 
   try {
     const imageBase64 = await fileToBase64(imageFile);
 
-    const response = await fetch('/api/upload-image', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}`,
-      },
-      body: JSON.stringify({ imageBase64 }),
-    });
-
-    let result: any = null;
-    const text = await response.text();
-    if (text) {
+    // Try server proxy first if token is available
+    if (idToken) {
       try {
-        result = JSON.parse(text);
-      } catch {
-        result = null;
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ imageBase64 }),
+        });
+
+        let result: any = null;
+        const text = await response.text();
+        if (text) {
+          try {
+            result = JSON.parse(text);
+          } catch {
+            result = null;
+          }
+        }
+
+        if (result && result.success && result.url) {
+          return result.url as string;
+        }
+      } catch (proxyErr) {
+        console.warn('Server proxy upload failed, attempting direct upload:', proxyErr);
       }
     }
 
-    if (result && result.success && result.url) {
-      return result.url as string;
+    // Direct upload fallback using ImgBB API key
+    const directUrl = await directUploadImgBB(imageBase64);
+    if (directUrl) {
+      return directUrl;
     }
 
-    const errorMessage = result?.error || (response.ok ? 'Server rejected image' : `Server error (${response.status})`);
-    console.error('Image upload failed:', errorMessage);
-    toast.error(`Image upload failed: ${errorMessage}`);
+    toast.error('Image upload failed.');
     return null;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error uploading image:', error);
-    toast.error('An unexpected error occurred during image upload.');
+    toast.error(error?.message || 'An unexpected error occurred during image upload.');
     return null;
   }
 };

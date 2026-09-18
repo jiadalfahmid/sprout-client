@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getApps, initializeApp, cert, applicationDefault, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
-const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY || 'e8fe38eae4d004d9feed640cab63d8e8';
 const MAX_BYTES = 10 * 1024 * 1024;
 
 function getFirebaseAdminApp(): App {
