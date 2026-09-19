@@ -99,7 +99,7 @@ const TaskListCard: React.FC<{
             onChange={(e) => setNewItem(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAddTask()}
             placeholder={t('tasks.addTaskPlaceholder')}
-            className="w-full bg-transparent p-2 focus:outline-none"
+            className="w-full bg-transparent p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           />
            <button onClick={handleAddTask} aria-label="Add task" className="p-2 text-primary rounded-full hover:bg-primary/10 transition-colors disabled:text-slate-400 disabled:hover:bg-transparent" disabled={!newItem.trim()}>
               <HiPlus className="h-5 w-5" />

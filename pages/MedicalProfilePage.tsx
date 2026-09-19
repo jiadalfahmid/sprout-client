@@ -8,15 +8,46 @@ import PageHeader from '../components/ui/PageHeader';
 import Button from '../components/ui/Button';
 import SectionHeading from '../components/ui/SectionHeading';
 import { Medicine, MedicalReportCategory, MedicalReport } from '../types';
-import { uploadImage } from '../utils/imageUploader';
+import { uploadImageWithDetails, deleteHostedImage } from '../utils/imageUploader';
+import { downloadFile } from '../utils/downloadHelper';
+import { EditFamilyMemberModal } from '../components/family/EditFamilyMemberModal';
 import toast from 'react-hot-toast';
-import { HiOutlineDocumentText, HiOutlineCalendar, HiOutlineTag, HiPlus, HiOutlineCloudArrowUp, HiOutlineClock, HiOutlineUserCircle } from 'react-icons/hi2';
+import { 
+  HiOutlineDocumentText, 
+  HiOutlineCalendar, 
+  HiOutlineTag, 
+  HiPlus, 
+  HiOutlineCloudArrowUp, 
+  HiOutlineClock, 
+  HiOutlineUserCircle,
+  HiOutlinePencilSquare,
+  HiOutlineArrowDownTray,
+  HiOutlineTrash,
+  HiOutlineArrowTopRightOnSquare,
+  HiOutlineHeart,
+  HiOutlineExclamationTriangle,
+  HiOutlinePhone,
+  HiOutlineEnvelope
+} from 'react-icons/hi2';
 
 const MedicalProfilePage: React.FC = () => {
     const { memberId } = useParams<{ memberId: string }>();
-    const { familyMembers, medicines, medicalReports, appointments, loading, addMedicalReport } = useAppContext();
+    const { 
+        familyMembers, 
+        medicines, 
+        medicalReports, 
+        appointments, 
+        loading, 
+        addMedicalReport,
+        deleteMedicalReport,
+        updateFamilyMember 
+    } = useAppContext();
     const { t } = useTranslation();
     const [isUploadModalOpen, setUploadModalOpen] = useState(false);
+    const [isEditModalOpen, setEditModalOpen] = useState(false);
+    const [reportToDelete, setReportToDelete] = useState<MedicalReport | null>(null);
+    const [isDeletingReport, setIsDeletingReport] = useState(false);
+    const [downloadingReportId, setDownloadingReportId] = useState<string | null>(null);
 
     const member = useMemo(() => familyMembers.find(m => m.id === memberId), [familyMembers, memberId]);
     const memberMedicines = useMemo(() => medicines.filter(m => m.memberId === memberId), [medicines, memberId]);
@@ -26,17 +57,69 @@ const MedicalProfilePage: React.FC = () => {
     if (loading) return <div>{t('common.loading')}</div>;
     if (!member) return <Navigate to="/family" replace />;
     
-    // Member Header Component
+    // Member Header Component with Edit Button & Details
     const MemberHeader = () => (
-        <Card className="flex items-center gap-4 mb-6">
-            <img src={member.avatar} alt={member.name} className="w-20 h-20 rounded-full object-cover border-4 border-primary" />
-            <div className="flex-1">
-                <PageHeader 
-                    title={member.name}
-                    subtitle={`${member.relation} - ${member.age} ${t('family.yearsOld')}`}
-                    className="!mb-0"
+        <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 p-4 sm:p-6">
+            <div className="flex items-center gap-4 min-w-0">
+                <img 
+                    src={member.avatar} 
+                    alt={member.name} 
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-4 border-primary shadow-sm bg-white shrink-0" 
                 />
+                <div className="min-w-0">
+                    <h1 className="text-xl sm:text-2xl font-bold text-light-text-primary dark:text-text-primary truncate">
+                        {member.name}
+                    </h1>
+                    <p className="text-sm font-semibold text-primary mt-0.5">
+                        {member.relation} · {member.age} {t('family.yearsOld')}
+                    </p>
+
+                    {/* Additional badges: Blood, Allergies, Phone, Email */}
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                        {member.bloodGroup && (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40">
+                                <HiOutlineHeart className="w-3.5 h-3.5 text-rose-500" />
+                                Blood: {member.bloodGroup}
+                            </span>
+                        )}
+                        {member.allergies && (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40">
+                                <HiOutlineExclamationTriangle className="w-3.5 h-3.5 text-amber-500" />
+                                Allergies: {member.allergies}
+                            </span>
+                        )}
+                        {member.phone && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-light-text-secondary dark:text-text-secondary">
+                                <HiOutlinePhone className="w-3.5 h-3.5" />
+                                {member.phone}
+                            </span>
+                        )}
+                        {member.email && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-light-text-secondary dark:text-text-secondary">
+                                <HiOutlineEnvelope className="w-3.5 h-3.5" />
+                                {member.email}
+                            </span>
+                        )}
+                    </div>
+
+                    {member.notes && (
+                        <p className="text-xs text-light-text-secondary dark:text-text-secondary mt-2 p-2 bg-light-background dark:bg-background rounded-xl border border-slate-100 dark:border-zinc-800 italic">
+                            "{member.notes}"
+                        </p>
+                    )}
+                </div>
             </div>
+
+            <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setEditModalOpen(true)}
+                icon={<HiOutlinePencilSquare className="w-4 h-4" />}
+                className="w-full sm:w-auto shrink-0 shadow-sm"
+            >
+                Edit Profile
+            </Button>
         </Card>
     );
 
@@ -175,11 +258,59 @@ const MedicalProfilePage: React.FC = () => {
         );
     };
     
+    // Document Actions
+    const handleDownloadDocument = async (report: MedicalReport, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDownloadingReportId(report.id);
+        const toastId = toast.loading(`Preparing download: ${report.name}...`);
+        const ok = await downloadFile(report.fileUrl, report.name);
+        setDownloadingReportId(null);
+        toast.dismiss(toastId);
+        if (ok) {
+            toast.success(`Downloaded ${report.name}`);
+        } else {
+            toast.error('Direct download failed. Opening file in a new tab...');
+            window.open(report.fileUrl, '_blank', 'noopener,noreferrer');
+        }
+    };
+
+    const handleConfirmDeleteReport = async () => {
+        if (!reportToDelete) return;
+        setIsDeletingReport(true);
+        const toastId = toast.loading('Deleting document...');
+        try {
+            // Delete record from database/state
+            deleteMedicalReport(reportToDelete.id);
+
+            // Trigger cloud deletion
+            if (reportToDelete.deleteUrl || reportToDelete.imageId || reportToDelete.fileUrl?.includes('ibb.co')) {
+                await deleteHostedImage(reportToDelete.deleteUrl, reportToDelete.imageId);
+            }
+
+            toast.dismiss(toastId);
+            toast.success(`"${reportToDelete.name}" deleted from records`);
+            setReportToDelete(null);
+        } catch (err: any) {
+            toast.dismiss(toastId);
+            console.error('Error deleting document:', err);
+            toast.error('Document removed from records.');
+            setReportToDelete(null);
+        } finally {
+            setIsDeletingReport(false);
+        }
+    };
+
     // Health Documents Component
     const HealthDocuments = () => (
         <Card>
-             <div className="flex justify-between items-center mb-4">
-                <SectionHeading>{t('medicalProfile.documents.title')}</SectionHeading>
+            <div className="flex justify-between items-center mb-4">
+                <div>
+                    <SectionHeading>{t('medicalProfile.documents.title')}</SectionHeading>
+                    <p className="text-xs text-light-text-secondary dark:text-text-secondary mt-0.5">
+                        Medical reports, lab tests, prescriptions, and personal health documents.
+                    </p>
+                </div>
                 <Button onClick={() => setUploadModalOpen(true)} icon={<HiPlus className="w-4 h-4"/>} size="sm">
                     {t('medicalProfile.documents.upload')}
                 </Button>
@@ -187,20 +318,71 @@ const MedicalProfilePage: React.FC = () => {
             {memberReports.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {memberReports.map(report => (
-                        <a key={report.id} href={report.fileUrl} target="_blank" rel="noopener noreferrer" aria-label={`View document ${report.name}`} className="block p-3 bg-light-background dark:bg-background rounded-xl hover:shadow-lg transition-shadow">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 text-primary flex-shrink-0">
-                                    <HiOutlineDocumentText className="h-7 w-7" />
-                                </div>
-                                <div className="truncate">
-                                    <p className="font-semibold truncate text-light-text-primary dark:text-text-primary">{report.name}</p>
-                                    <div className="flex items-center gap-3 text-xs text-light-text-secondary dark:text-text-secondary">
-                                        <div className="flex items-center gap-1"><HiOutlineTag/> {report.category}</div>
-                                        <div className="flex items-center gap-1"><HiOutlineCalendar/> {new Date(report.date).toLocaleDateString()}</div>
+                        <div key={report.id} className="p-4 bg-light-background dark:bg-background rounded-2xl border border-slate-200/80 dark:border-zinc-800 hover:border-primary/40 transition flex flex-col justify-between group">
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-primary/10 text-primary flex-shrink-0">
+                                        <HiOutlineDocumentText className="h-6 w-6" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-sm text-light-text-primary dark:text-text-primary truncate" title={report.name}>
+                                            {report.name}
+                                        </p>
+                                        <div className="flex items-center gap-2 text-xs text-light-text-secondary dark:text-text-secondary mt-0.5 flex-wrap">
+                                            <span className="inline-flex items-center gap-1 font-medium text-primary">
+                                                <HiOutlineTag className="w-3 h-3" /> {report.category}
+                                            </span>
+                                            <span>•</span>
+                                            <span className="inline-flex items-center gap-1">
+                                                <HiOutlineCalendar className="w-3 h-3" /> {new Date(report.date).toLocaleDateString()}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </a>
+
+                            {/* Action Buttons: View, Download, Delete */}
+                            <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-zinc-800/80 mt-1">
+                                <a
+                                    href={report.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-text-secondary hover:text-primary hover:bg-primary/10 transition"
+                                    title="View document in new tab"
+                                >
+                                    <HiOutlineArrowTopRightOnSquare className="w-3.5 h-3.5" />
+                                    <span>View</span>
+                                </a>
+
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => handleDownloadDocument(report, e)}
+                                        disabled={downloadingReportId === report.id}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 transition active:scale-95 disabled:opacity-50"
+                                        title="Download document to device"
+                                    >
+                                        <HiOutlineArrowDownTray className="w-3.5 h-3.5" />
+                                        <span>{downloadingReportId === report.id ? 'Downloading...' : 'Download'}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setReportToDelete(report);
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition active:scale-95"
+                                        title="Delete document"
+                                        aria-label={`Delete ${report.name}`}
+                                    >
+                                        <HiOutlineTrash className="w-3.5 h-3.5" />
+                                        <span>Delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     ))}
                 </div>
             ) : <p className="text-light-text-secondary dark:text-text-secondary">{t('medicalProfile.documents.noDocuments')}</p>}
@@ -221,13 +403,21 @@ const MedicalProfilePage: React.FC = () => {
                 return;
             }
             setIsUploading(true);
-            toast.loading(t('family.modal.uploadingImage'));
-            const fileUrl = await uploadImage(file);
-            toast.dismiss();
+            const uploadToast = toast.loading('Uploading document...');
+            const uploadResult = await uploadImageWithDetails(file);
+            toast.dismiss(uploadToast);
             setIsUploading(false);
 
-            if (fileUrl) {
-                addMedicalReport({ memberId: member.id, name, category, date, fileUrl });
+            if (uploadResult?.url) {
+                addMedicalReport({ 
+                    memberId: member.id, 
+                    name: name.trim(), 
+                    category, 
+                    date, 
+                    fileUrl: uploadResult.url,
+                    deleteUrl: uploadResult.deleteUrl,
+                    imageId: uploadResult.imageId
+                });
                 toast.success(t('medicalProfile.documents.modal.uploadSuccess'));
                 setUploadModalOpen(false);
             }
@@ -324,6 +514,61 @@ const MedicalProfilePage: React.FC = () => {
             <IntakeHistory />
             <HealthDocuments />
             <UploadReportModal />
+
+            {/* Delete Document Confirmation Modal */}
+            <Modal
+                isOpen={!!reportToDelete}
+                onClose={() => !isDeletingReport && setReportToDelete(null)}
+                title="Delete Health Document"
+            >
+                {reportToDelete && (
+                    <div className="space-y-4 py-1">
+                        <div className="p-3.5 bg-rose-50 dark:bg-rose-950/30 rounded-xl border border-rose-200 dark:border-rose-900/40 flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 shrink-0">
+                                <HiOutlineTrash className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-rose-800 dark:text-rose-200">
+                                    Delete "{reportToDelete.name}"?
+                                </h4>
+                                <p className="text-xs text-rose-700 dark:text-rose-300 mt-1 leading-relaxed">
+                                    This document ({reportToDelete.category}) will be permanently removed from this member's health records.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-2 justify-end">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setReportToDelete(null)}
+                                disabled={isDeletingReport}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={handleConfirmDeleteReport}
+                                disabled={isDeletingReport}
+                                icon={<HiOutlineTrash className="w-4 h-4" />}
+                            >
+                                {isDeletingReport ? 'Deleting...' : 'Delete Document'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Edit Family Member Profile Modal */}
+            <EditFamilyMemberModal
+                isOpen={isEditModalOpen}
+                onClose={() => setEditModalOpen(false)}
+                member={member}
+                onSave={async (updated) => {
+                    await updateFamilyMember(updated);
+                }}
+            />
         </div>
     );
 };

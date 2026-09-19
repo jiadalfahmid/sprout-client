@@ -29,7 +29,8 @@ import {
   deleteDoc,
   updateDoc,
   deleteField,
-  serverTimestamp
+  serverTimestamp,
+  runTransaction
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 import { FamilyInvite, Household, HouseholdMemberInfo, UserHouseholdMembership } from '../types';
@@ -308,6 +309,24 @@ export const saveUserDocument = async (userId: string, subcollection: string, do
 };
 
 /**
+ * Firestore Helper: Get a Document from a user's subcollection
+ */
+export const getUserDocument = async <T = any>(subcollection: string, docId: string, userId: string): Promise<T | null> => {
+  const path = `users/${userId}/${subcollection}/${docId}`;
+  try {
+    const docRef = doc(db, 'users', userId, subcollection, docId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as T;
+    }
+    return null;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, path);
+    return null;
+  }
+};
+
+/**
  * Firestore Helper: Save or Update a Family Invite document
  */
 export const saveInviteDocument = async (inviteId: string, data: any) => {
@@ -485,7 +504,8 @@ export const cancelPendingInvitesForMember = async (
   inviterUid: string, 
   memberId?: string, 
   inviteIdsToCancel: string[] = [],
-  statusToSet: 'superseded' | 'cancelled' = 'cancelled'
+  statusToSet: 'superseded' | 'cancelled' = 'cancelled',
+  excludeInviteId?: string
 ): Promise<boolean> => {
   try {
     const targetIds = new Set<string>(inviteIdsToCancel.filter(Boolean));
@@ -497,7 +517,14 @@ export const cancelPendingInvitesForMember = async (
       }
       const q = query(colRef, ...constraints);
       const snap = await getDocs(q);
-      snap.forEach(d => targetIds.add(d.id));
+      snap.forEach(d => {
+        if (!excludeInviteId || d.id !== excludeInviteId) {
+          targetIds.add(d.id);
+        }
+      });
+    }
+    if (excludeInviteId) {
+      targetIds.delete(excludeInviteId);
     }
     const updatePromises = Array.from(targetIds).map(id => updateInviteDocument(id, { status: statusToSet }));
     await Promise.all(updatePromises);
@@ -643,26 +670,31 @@ export const ensureUserHouseholdMembership = async (
   const path = `user_household_memberships/${userId}`;
   try {
     const memRef = doc(db, 'user_household_memberships', userId);
-    const snap = await getDoc(memRef);
-    if (snap.exists()) {
-      const data = snap.data() as UserHouseholdMembership;
-      const rawIds = Array.isArray(data.householdIds) ? data.householdIds : [userId];
-      const householdIds = Array.from(new Set(rawIds.length > 0 ? rawIds : [userId]));
-      const activeHouseholdId = data.activeHouseholdId || userId;
-      return {
-        householdIds,
-        activeHouseholdId,
-        updatedAt: data.updatedAt,
-      };
-    }
+    return await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(memRef);
+      if (snap.exists()) {
+        const data = snap.data() as UserHouseholdMembership;
+        const rawIds = Array.isArray(data.householdIds) ? data.householdIds : [userId];
+        const householdIds = Array.from(new Set(rawIds.length > 0 ? rawIds : [userId]));
+        if (!householdIds.includes(userId)) {
+          householdIds.unshift(userId);
+        }
+        const activeHouseholdId = data.activeHouseholdId || userId;
+        return {
+          householdIds,
+          activeHouseholdId,
+          updatedAt: data.updatedAt,
+        };
+      }
 
-    const initial: UserHouseholdMembership = {
-      householdIds: [userId],
-      activeHouseholdId: userId,
-      updatedAt: new Date().toISOString(),
-    };
-    await setDoc(memRef, stripUndefined(initial));
-    return initial;
+      const initial: UserHouseholdMembership = {
+        householdIds: [userId],
+        activeHouseholdId: userId,
+        updatedAt: new Date().toISOString(),
+      };
+      transaction.set(memRef, stripUndefined(initial), { merge: true });
+      return initial;
+    });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
     return {
@@ -763,34 +795,81 @@ export const addUserToHouseholdByOwner = async (
 };
 
 /**
- * Register a joined household in the user's personal membership document
+ * Register a joined household in the user's personal membership document atomically
  */
 export const registerJoinedHousehold = async (
   userId: string,
   householdId: string,
   setActiveIfConfirmed: boolean = true
 ): Promise<boolean> => {
-  const currentMembership = await getUserHouseholdMembership(userId);
-  const existingIds = currentMembership?.householdIds || [userId];
-  const newHouseholdIds = Array.from(new Set([...existingIds, householdId]));
-
-  let newActiveId = currentMembership?.activeHouseholdId || userId;
-  if (setActiveIfConfirmed) {
-    if (householdId === userId) {
-      newActiveId = userId;
-    } else {
-      const targetHousehold = await getHousehold(householdId);
-      if (targetHousehold?.members && userId in targetHousehold.members) {
-        newActiveId = householdId;
+  const path = `user_household_memberships/${userId}`;
+  try {
+    const memRef = doc(db, 'user_household_memberships', userId);
+    return await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(memRef);
+      let existingIds: string[] = [userId];
+      let activeHouseholdId = userId;
+      if (snap.exists()) {
+        const data = snap.data() as UserHouseholdMembership;
+        existingIds = Array.isArray(data.householdIds) ? data.householdIds : [userId];
+        activeHouseholdId = data.activeHouseholdId || userId;
       }
-    }
+      const newHouseholdIds = Array.from(new Set([...existingIds, householdId]));
+      if (setActiveIfConfirmed) {
+        activeHouseholdId = householdId;
+      }
+      const updatedData: UserHouseholdMembership = {
+        householdIds: newHouseholdIds,
+        activeHouseholdId,
+        updatedAt: new Date().toISOString(),
+      };
+      transaction.set(memRef, stripUndefined(updatedData), { merge: true });
+      return true;
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+    return false;
   }
+};
 
-  return saveUserHouseholdMembership(userId, {
-    householdIds: newHouseholdIds,
-    activeHouseholdId: newActiveId,
-    updatedAt: new Date().toISOString(),
-  });
+/**
+ * Remove a user from a household document by the household owner
+ */
+export const removeUserFromHouseholdByOwner = async (
+  ownerUid: string,
+  memberUid: string
+): Promise<boolean> => {
+  if (ownerUid === memberUid) {
+    return false;
+  }
+  const path = `households/${ownerUid}`;
+  try {
+    const householdRef = doc(db, 'households', ownerUid);
+    await updateDoc(householdRef, {
+      [`members.${memberUid}`]: deleteField(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Invalidate active invites for this member
+    try {
+      const invitesCol = collection(db, 'family_invites');
+      const q = query(
+        invitesCol,
+        where('inviterUid', '==', ownerUid),
+        where('acceptedByUid', '==', memberUid)
+      );
+      const snap = await getDocs(q);
+      const updates = snap.docs.map(d => updateDoc(doc(db, 'family_invites', d.id), { status: 'cancelled' }));
+      await Promise.all(updates);
+    } catch (inviteErr) {
+      console.warn('Could not cancel invites upon member removal:', inviteErr);
+    }
+
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, path);
+    return false;
+  }
 };
 
 /**
@@ -827,6 +906,22 @@ export const leaveHousehold = async (
       [`members.${memberUid}`]: deleteField(),
       updatedAt: new Date().toISOString(),
     });
+
+    // Invalidate/mark invite as 'left' so the owner's client does not re-add them 
+    try {
+      const invitesCol = collection(db, 'family_invites');
+      const q = query(
+        invitesCol, 
+        where('inviterUid', '==', householdId), 
+        where('acceptedByUid', '==', memberUid), 
+        where('status', '==', 'accepted')
+      );
+      const snap = await getDocs(q);
+      const updates = snap.docs.map(d => updateDoc(doc(db, 'family_invites', d.id), { status: 'left' }));
+      await Promise.all(updates);
+    } catch (inviteErr) {
+      console.warn('Could not update invite status on leave:', inviteErr);
+    }
 
     const currentMembership = await getUserHouseholdMembership(memberUid);
     const existingIds = currentMembership?.householdIds || [memberUid];

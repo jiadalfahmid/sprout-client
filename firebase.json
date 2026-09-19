@@ -1,6 +1,23 @@
 {
-  "firestore": {
-    "rules": "firestore.rules"
+  "firestore": [
+    {
+      "database": "ai-studio-sproutunifiedhom-62e1094f-c5f7-49d7-91a6-67df5fa45e76",
+      "rules": "firestore.rules"
+    }
+  ],
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   },
   "emulators": {
     "firestore": {

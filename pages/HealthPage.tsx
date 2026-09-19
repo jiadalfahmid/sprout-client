@@ -62,7 +62,7 @@ const getMedicineVisuals = (doseForm: Dose['doseForm'], medId: string) => {
     return { color, icon };
 };
 
-const MedicineCard: React.FC<{ dose: Dose; onMarkAsTaken: (medId: string, time: Date) => void }> = ({ dose, onMarkAsTaken }) => {
+const MedicineCard: React.FC<{ dose: Dose; onMarkAsTaken: (medId: string, time: Date) => void; isSubmitting?: boolean }> = ({ dose, onMarkAsTaken, isSubmitting }) => {
     const { color, icon } = getMedicineVisuals(dose.doseForm, dose.medId);
     const { t } = useTranslation();
     
@@ -94,6 +94,7 @@ const MedicineCard: React.FC<{ dose: Dose; onMarkAsTaken: (medId: string, time: 
                         variant="primary"
                         icon={<HiOutlineCheckCircle className="h-4 w-4" />}
                         onClick={handleTakeDose}
+                        disabled={isSubmitting}
                     >
                        {t('health.status.markAsTaken')}
                     </Button>
@@ -135,6 +136,7 @@ const HealthPage: React.FC = () => {
     // Quick Action Modals
     const [isAddMedModalOpen, setIsAddMedModalOpen] = useState(false);
     const [isVitalModalOpen, setIsVitalModalOpen] = useState(false);
+    const [submittingDoseKeys, setSubmittingDoseKeys] = useState<Set<string>>(new Set());
 
     // Quick Medicine Form
     const [medForm, setMedForm] = useState({
@@ -208,11 +210,23 @@ const HealthPage: React.FC = () => {
     };
 
     const handleMarkAsTaken = (medId: string, time: Date) => {
-        const medName = logDose(medId, time.toISOString());
-        if (medName) {
-            toast.success(t('health.doseTakenSuccess', { medName }));
-        } else {
-            toast.error(t('health.doseTakenError'));
+        const doseKey = `${medId}_${time.toISOString()}`;
+        if (submittingDoseKeys.has(doseKey)) return;
+
+        setSubmittingDoseKeys(prev => new Set(prev).add(doseKey));
+        try {
+            const medName = logDose(medId, time.toISOString());
+            if (medName) {
+                toast.success(t('health.doseTakenSuccess', { medName }));
+            } else {
+                toast.error(t('health.doseTakenError'));
+            }
+        } finally {
+            setSubmittingDoseKeys(prev => {
+                const next = new Set(prev);
+                next.delete(doseKey);
+                return next;
+            });
         }
     };
 
@@ -377,7 +391,12 @@ const HealthPage: React.FC = () => {
 
                             <div className="space-y-3">
                                 {groupedDoses[time].map((dose) => (
-                                    <MedicineCard key={dose.medId + dose.time.toISOString()} dose={dose} onMarkAsTaken={handleMarkAsTaken} />
+                                    <MedicineCard 
+                                        key={dose.medId + dose.time.toISOString()} 
+                                        dose={dose} 
+                                        onMarkAsTaken={handleMarkAsTaken} 
+                                        isSubmitting={submittingDoseKeys.has(`${dose.medId}_${dose.time.toISOString()}`)}
+                                    />
                                 ))}
                             </div>
                         </div>

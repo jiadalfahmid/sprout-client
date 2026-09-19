@@ -31,7 +31,7 @@ const BottomNav: React.FC = () => {
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 bg-light-surface dark:bg-surface border-t border-slate-200 dark:border-zinc-700/50 shadow-t-lg z-50"
+      className="fixed bottom-0 left-0 right-0 bg-light-surface dark:bg-surface border-t border-slate-200 dark:border-zinc-700/50 shadow-t-lg z-30"
       style={{ 
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         height: 'calc(4rem + env(safe-area-inset-bottom, 0px))' 

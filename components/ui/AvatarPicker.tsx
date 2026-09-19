@@ -10,6 +10,7 @@ interface AvatarPickerProps {
   onSelectAvatarUrl: (url: string) => void;
   avatarFile: File | null;
   onSelectAvatarFile: (file: File | null) => void;
+  showPreview?: boolean;
 }
 
 type FilterCategory = 'all' | 'adult' | 'kid' | 'senior' | 'pet' | 'other';
@@ -19,6 +20,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
   onSelectAvatarUrl,
   avatarFile,
   onSelectAvatarFile,
+  showPreview = true,
 }) => {
   const [activeTab, setActiveTab] = useState<'preset' | 'upload'>('preset');
   const [categoryFilter, setCategoryFilter] = useState<FilterCategory>('all');
@@ -60,8 +62,8 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
         </label>
         <SegmentedControl
           options={[
-            { value: 'preset', label: 'Vector Art' },
-            { value: 'upload', label: 'Custom Photo' },
+            { value: 'preset', label: 'Preset' },
+            { value: 'upload', label: 'Custom' },
           ]}
           value={activeTab}
           onChange={(val) => setActiveTab(val as 'preset' | 'upload')}
@@ -73,7 +75,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
       {activeTab === 'preset' ? (
         <div className="space-y-2.5">
           {/* Category Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
             {categories.map((cat) => (
               <FilterChip
                 key={cat.id}
@@ -85,7 +87,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
           </div>
 
           {/* Vector Art Grid (TP-Link Tether style) */}
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5 max-h-48 overflow-y-auto p-1 border border-slate-100 dark:border-zinc-800/80 rounded-xl bg-slate-50/50 dark:bg-zinc-900/40">
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5 max-h-48 overflow-y-auto no-scrollbar p-1 border border-slate-100 dark:border-zinc-800/80 rounded-xl bg-slate-50/50 dark:bg-zinc-900/40">
             {filteredPresets.map((preset) => {
               const isSelected = selectedAvatarUrl === preset.svgUrl && !avatarFile;
               return (
@@ -146,21 +148,23 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
       )}
 
       {/* Selected Avatar Preview & Confirmation */}
-      <div className="flex items-center gap-3 p-2 bg-slate-100/70 dark:bg-zinc-800/40 rounded-xl border border-slate-200/60 dark:border-zinc-700/50">
-        <img
-          src={selectedAvatarUrl || AVATAR_PRESETS[0].svgUrl}
-          alt="Selected Avatar Preview"
-          className="w-10 h-10 rounded-full object-cover border-2 border-primary shadow-sm"
-        />
-        <div className="text-xs">
-          <p className="font-semibold text-light-text-primary dark:text-text-primary">
-            Selected Avatar
-          </p>
-          <p className="text-[11px] text-light-text-secondary dark:text-text-secondary">
-            {avatarFile ? 'Custom uploaded image' : 'Vector illustration'}
-          </p>
+      {showPreview && (
+        <div className="flex items-center gap-3 p-2 bg-slate-100/70 dark:bg-zinc-800/40 rounded-xl border border-slate-200/60 dark:border-zinc-700/50">
+          <img
+            src={selectedAvatarUrl || AVATAR_PRESETS[0].svgUrl}
+            alt="Selected Avatar Preview"
+            className="w-10 h-10 rounded-full object-cover border-2 border-primary shadow-sm"
+          />
+          <div className="text-xs">
+            <p className="font-semibold text-light-text-primary dark:text-text-primary">
+              Selected Avatar
+            </p>
+            <p className="text-[11px] text-light-text-secondary dark:text-text-secondary">
+              {avatarFile ? 'Custom uploaded image' : 'Vector illustration'}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

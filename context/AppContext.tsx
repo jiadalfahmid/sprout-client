@@ -40,10 +40,12 @@ import {
   subscribeToHousehold,
   addUserToHousehold,
   addUserToHouseholdByOwner,
+  removeUserFromHouseholdByOwner,
   registerJoinedHousehold,
   acceptInviteViaApi,
   leaveHousehold,
-  switchActiveHousehold
+  switchActiveHousehold,
+  getUserDocument
 } from '../services/firebaseService';
 import { 
   defaultNotificationSettings, 
@@ -145,11 +147,11 @@ interface AppContextType {
   // Gmail Family Invite & Linking
   pendingInvite: FamilyInvite | null;
   sendFamilyInvite: (memberId: string, email: string, customMessage?: string) => Promise<{ success: boolean; inviteLink?: string; error?: string; mailtoFallback?: string }>;
-  generateFamilyInviteLink: (memberId?: string, email?: string, customMessage?: string) => Promise<{ inviteId: string; inviteLink: string }>;
+  generateFamilyInviteLink: (memberId?: string, email?: string, customMessage?: string, markInvited?: boolean) => Promise<{ inviteId: string; inviteLink: string }>;
   copyFamilyInviteLink: (memberId?: string, email?: string) => Promise<string>;
   getInviteDetails: (inviteId: string) => Promise<FamilyInvite | null>;
   cancelFamilyInvite: (memberId: string) => Promise<boolean>;
-  acceptPendingInvite: (invite?: FamilyInvite) => Promise<void>;
+  acceptPendingInvite: (invite?: FamilyInvite, callerUid?: string, callerEmail?: string) => Promise<boolean>;
   // Notification System
   notifications: Notification[];
   notificationSettings: NotificationSettings;
@@ -400,17 +402,32 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     if (typeof window === 'undefined') return;
     try {
       const params = new URLSearchParams(window.location.search);
-      const inviteId = params.get('inviteId');
+      let inviteId = params.get('inviteId');
+
+      // Also support route paths: /join/:inviteId and /invite/:inviteId
+      if (!inviteId) {
+        const match = window.location.pathname.match(/^\/(?:join|invite)\/([^/?#]+)/i);
+        if (match && match[1]) {
+          inviteId = match[1];
+        }
+      }
+
       if (inviteId) {
+        // Safe param helper: params.get() is already decoded; do not double-decode blindly
+        const safeParam = (val: string | null, fallback = ''): string => {
+          if (!val) return fallback;
+          return val;
+        };
+
         const invitePayload: FamilyInvite = {
           id: inviteId,
-          inviterUid: params.get('inviterUid') || '',
-          inviterName: decodeURIComponent(params.get('inviterName') || 'Family Admin'),
-          ...(params.get('inviterEmail') ? { inviterEmail: params.get('inviterEmail')! } : {}),
-          ...(params.get('memberId') ? { memberId: params.get('memberId')! } : {}),
-          memberName: decodeURIComponent(params.get('memberName') || 'Family Member'),
-          recipientEmail: decodeURIComponent(params.get('recipientEmail') || ''),
-          relation: decodeURIComponent(params.get('relation') || 'Family Member'),
+          inviterUid: safeParam(params.get('inviterUid')),
+          inviterName: safeParam(params.get('inviterName'), 'Family Admin'),
+          ...(params.get('inviterEmail') ? { inviterEmail: safeParam(params.get('inviterEmail')) } : {}),
+          ...(params.get('memberId') ? { memberId: safeParam(params.get('memberId')) } : {}),
+          memberName: safeParam(params.get('memberName'), 'Family Member'),
+          recipientEmail: safeParam(params.get('recipientEmail')),
+          relation: safeParam(params.get('relation'), 'Family Member'),
           status: 'pending',
           createdAt: new Date().toISOString(),
         };
@@ -1215,9 +1232,15 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const generateFamilyInviteLink = useCallback(async (
     memberId?: string, 
     email?: string, 
-    customMessage?: string
+    customMessage?: string,
+    markInvited: boolean = true
   ): Promise<{ inviteId: string; inviteLink: string }> => {
-    const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid || 'family_admin';
+    const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid;
+    if (!currentUid || !googleFirebaseUser) {
+      toast.error('Please sign in to invite family members.');
+      return { inviteId: '', inviteLink: '' };
+    }
+
     const inviterName = user.name || googleFirebaseUser?.displayName || 'Family Organizer';
     const randomEntropy = generateSecureRandomHex(16);
     const inviteId = `inv_${randomEntropy}`;
@@ -1246,24 +1269,33 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       ...(customMessage ? { customMessage } : {}),
     };
 
+    let saved = false;
     try {
-      await saveInviteDocument(inviteId, inviteRecord);
+      saved = await saveInviteDocument(inviteId, inviteRecord);
     } catch (e) {
-      console.warn('Could not save invite record to Firestore immediately:', e);
+      console.warn('Could not save invite record to Firestore:', e);
+      saved = false;
     }
 
-    // Invalidate any previously pending invite(s) for this member so old links cannot be reused
+    if (!saved) {
+      toast.error('Failed to create invitation in the cloud. Please check your connection and try again.');
+      return { inviteId: '', inviteLink: '' };
+    }
+
+    // Invalidate any previously pending invite(s) for this member so old links cannot be reused,
+    // explicitly excluding the new invite ID so it is not self-superseded
     if (memberId && currentUid) {
       const prevInvites = [
         ...(member?.inviteId ? [member.inviteId] : []),
         ...(member?.inviteHistory || [])
-      ];
-      cancelPendingInvitesForMember(currentUid, memberId, prevInvites, 'superseded').catch(e => {
+      ].filter(id => id !== inviteId);
+      cancelPendingInvitesForMember(currentUid, memberId, prevInvites, 'superseded', inviteId).catch(e => {
         console.warn('Failed to mark previous invites superseded:', e);
       });
     }
 
-    if (memberId && member) {
+    // Only update member invite status if explicitly requested (not on pre-generate modal open)
+    if (memberId && member && markInvited) {
       const updatedHistory = Array.from(new Set([...(member.inviteHistory || []), ...(member.inviteId ? [member.inviteId] : []), inviteId]));
       const updatedMember: FamilyMember = {
         ...member,
@@ -1282,7 +1314,9 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const copyFamilyInviteLink = useCallback(async (memberId?: string, email?: string): Promise<string> => {
     try {
-      const { inviteLink } = await generateFamilyInviteLink(memberId, email);
+      const { inviteLink } = await generateFamilyInviteLink(memberId, email, undefined, true);
+      if (!inviteLink) return '';
+
       if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(inviteLink);
       } else {
@@ -1323,44 +1357,61 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const isAcceptingInviteRef = useRef(false);
 
-  const acceptPendingInvite = useCallback(async (inviteToAccept?: FamilyInvite) => {
+  const acceptPendingInvite = useCallback(async (inviteToAccept?: FamilyInvite, callerUid?: string, callerEmail?: string): Promise<boolean> => {
     const targetInvite = inviteToAccept || pendingInvite;
-    if (!targetInvite) return;
-    const currentUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid;
-    if (!currentUid) return;
+    if (!targetInvite) return false;
+    const currentUid = callerUid || googleFirebaseUser?.uid || auth.currentUser?.uid || user.googleId || user.firebaseUid;
+    if (!currentUid) {
+      toast.error('Please sign in to accept this invitation.');
+      return false;
+    }
 
-    if (isAcceptingInviteRef.current) return;
+    if (isAcceptingInviteRef.current) return false;
     isAcceptingInviteRef.current = true;
 
     try {
-      // Validate invite is still pending and not cancelled or superseded (BUG-5)
+      // Validate invite is still pending and not cancelled or superseded
       const freshInvite = await getInviteDocument(targetInvite.id);
       if (!freshInvite) {
         toast.error('This invitation link is invalid or no longer exists.');
         setPendingInvite(null);
         localStorage.removeItem('sprout_pending_invite');
-        return;
+        return false;
       }
       if (freshInvite.status !== 'pending') {
         toast.error('This invitation link is no longer active or has been superseded.');
         setPendingInvite(null);
         localStorage.removeItem('sprout_pending_invite');
-        return;
+        return false;
       }
       const effectiveInvite = freshInvite;
 
       const now = new Date().toISOString();
-      const userEmail = googleFirebaseUser?.email || user.email || effectiveInvite.recipientEmail || 'member@sprout.family';
-      const userName = user.name || googleFirebaseUser?.displayName || effectiveInvite.memberName || 'Family Member';
+      const userEmail = callerEmail || googleFirebaseUser?.email || auth.currentUser?.email || user.email || effectiveInvite.recipientEmail || '';
+      const userName = user.name || googleFirebaseUser?.displayName || auth.currentUser?.displayName || effectiveInvite.memberName || 'Family Member';
+
+      // Verify email matches recipient if specified
+      if (effectiveInvite.recipientEmail && effectiveInvite.recipientEmail.trim()) {
+        if (!userEmail || effectiveInvite.recipientEmail.trim().toLowerCase() !== userEmail.trim().toLowerCase()) {
+          toast.error(`This invitation was created specifically for ${effectiveInvite.recipientEmail}. You are signed in as ${userEmail || 'another user'}.`);
+          return false;
+        }
+      }
 
       // 1. Attempt trusted serverless verification via /api/accept-invite first
       let joinedViaApi = false;
       try {
-        const idToken = await googleFirebaseUser?.getIdToken();
+        const idToken = await (googleFirebaseUser || auth.currentUser)?.getIdToken();
         if (idToken) {
           const apiRes = await acceptInviteViaApi(effectiveInvite.id, idToken, userName);
           if (apiRes.success) {
             joinedViaApi = true;
+          } else if (apiRes.error) {
+            console.warn('API returned error accepting invite:', apiRes.error);
+            if (apiRes.error.includes('issued for') || apiRes.error.includes('verify') || apiRes.error.includes('expired') || apiRes.error.includes('Invalid') || apiRes.error.includes('already')) {
+              toast.error(apiRes.error);
+              return false;
+            }
           }
         }
       } catch (apiErr) {
@@ -1382,7 +1433,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       setPendingInvite(null);
       localStorage.removeItem('sprout_pending_invite');
 
-      // 2. Register membership in user's personal membership doc (BUG-4)
+      // 2. Register membership in user's personal membership doc
       // Only switch activeHouseholdId if the caller is verified in the household's members map
       let isConfirmedMember = joinedViaApi;
       if (!isConfirmedMember) {
@@ -1395,64 +1446,50 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         setActiveHouseholdId(effectiveInvite.inviterUid);
       }
 
-      // 3. Create or link this member in the joined user's local and Firestore state
-      const memberRecord: FamilyMember = {
-        id: effectiveInvite.memberId || uuidv4(),
-        name: userName,
-        relation: effectiveInvite.relation || 'Family Member',
-        age: 28,
-        avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        email: userEmail,
-        inviteStatus: 'accepted',
-        inviteId: effectiveInvite.id,
-        linkedUid: currentUid,
-        linkedSince: now,
-      };
-
-      // Also create a record for the inviter in the invitee's family circle
-      const inviterMemberRecord: FamilyMember = {
-        id: `inviter_${effectiveInvite.inviterUid.slice(0, 8)}`,
-        name: effectiveInvite.inviterName || 'Family Organizer',
-        relation: 'Family Organizer',
-        age: 35,
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        email: effectiveInvite.inviterEmail,
-        inviteStatus: 'accepted',
-        linkedUid: effectiveInvite.inviterUid,
-        inviteId: effectiveInvite.id,
-        linkedSince: now,
-      };
-
+      // 3. Update or link this member in the joined user's local state
       setFamilyMembers(prev => {
-        let list = [...prev];
-        // Ensure self is in list
-        const selfExists = list.some(m => m.id === memberRecord.id || (m.email && m.email.toLowerCase() === userEmail.toLowerCase()));
-        if (selfExists) {
-          list = list.map(m => (m.id === memberRecord.id || (m.email && m.email.toLowerCase() === userEmail.toLowerCase())) ? {
-            ...m,
-            inviteStatus: 'accepted' as const,
-            linkedUid: currentUid,
-            inviteId: effectiveInvite.id,
-            linkedSince: now,
-          } : m);
-        } else {
-          list.push(memberRecord);
-        }
-
-        // Ensure inviter is in list
-        if (effectiveInvite.inviterUid && !list.some(m => m.linkedUid === effectiveInvite.inviterUid || m.name === effectiveInvite.inviterName)) {
-          list.push(inviterMemberRecord);
-        }
-        return list;
+        return prev.map(m => {
+          if (
+            (effectiveInvite.memberId && m.id === effectiveInvite.memberId) ||
+            (m.email && userEmail && m.email.toLowerCase() === userEmail.toLowerCase())
+          ) {
+            return {
+              ...m,
+              inviteStatus: 'accepted' as const,
+              linkedUid: currentUid,
+              inviteId: effectiveInvite.id,
+              linkedSince: now,
+            };
+          }
+          return m;
+        });
       });
 
       // Pass targetHouseholdScope explicitly if confirmed member, avoiding permission denied if not yet confirmed
-      if (isConfirmedMember) {
+      if (isConfirmedMember && effectiveInvite.memberId) {
         const targetHouseholdScope = effectiveInvite.inviterUid;
-        await persistDocument('familyMembers', memberRecord.id, memberRecord, undefined, targetHouseholdScope);
-        if (effectiveInvite.inviterUid) {
-          await persistDocument('familyMembers', inviterMemberRecord.id, inviterMemberRecord, undefined, targetHouseholdScope);
-        }
+        const existingDoc = await getUserDocument<FamilyMember>('familyMembers', effectiveInvite.memberId, targetHouseholdScope);
+        const updatedMemberDoc: FamilyMember = existingDoc ? {
+          ...existingDoc,
+          inviteStatus: 'accepted',
+          linkedUid: currentUid,
+          inviteId: effectiveInvite.id,
+          linkedSince: now,
+          ...(user.avatar ? { avatar: user.avatar } : {}),
+        } : {
+          id: effectiveInvite.memberId,
+          name: effectiveInvite.memberName || userName,
+          relation: effectiveInvite.relation || 'Family Member',
+          age: 28,
+          avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+          email: userEmail,
+          inviteStatus: 'accepted',
+          linkedUid: currentUid,
+          inviteId: effectiveInvite.id,
+          linkedSince: now,
+        };
+
+        await persistDocument('familyMembers', updatedMemberDoc.id, updatedMemberDoc, undefined, targetHouseholdScope);
 
         toast.success(`🎉 You've joined ${effectiveInvite.inviterName}'s family circle!`, {
           duration: 7000,
@@ -1470,9 +1507,11 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         domain: 'system',
         path: '/family',
       });
+      return true;
     } catch (err: any) {
       console.error('Error accepting family invite:', err);
       toast.error('Failed to link family account');
+      return false;
     } finally {
       isAcceptingInviteRef.current = false;
     }
@@ -1526,26 +1565,28 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   // -------------------------------------------------------------
   // REAL-TIME LISTENER FOR INVITER'S ACCEPTED FAMILY INVITES
   // -------------------------------------------------------------
-  // Listens to family_invites where inviterUid == currentUid.
-  // When an invite transitions to 'accepted', the inviter's own client
-  // writes the member to the household doc with owner authority, and persists
-  // the updated familyMembers entry to their own subcollection.
+  const processedInviteIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     if (!googleFirebaseUser?.uid) return;
     const inviterUid = googleFirebaseUser.uid;
 
-    const unsub = subscribeToInviterInvites(inviterUid, (invites) => {
+    const unsub = subscribeToInviterInvites(inviterUid, async (invites) => {
       const acceptedInvites = invites.filter(i => i.status === 'accepted' && i.acceptedByUid);
       if (acceptedInvites.length === 0) return;
 
-      setFamilyMembers(prevMembers => {
-        let hasChanges = false;
-        const updatedList = [...prevMembers];
+      for (const invite of acceptedInvites) {
+        if (!invite.acceptedByUid) continue;
+        if (processedInviteIdsRef.current.has(invite.id)) continue;
+        processedInviteIdsRef.current.add(invite.id);
 
-        acceptedInvites.forEach(invite => {
-          // Ensure the owner updates households/{inviterUid}.members with owner authorization
-          if (invite.acceptedByUid) {
-            addUserToHouseholdByOwner(inviterUid, invite.acceptedByUid, {
+        try {
+          // Check if already in household document to avoid duplicate writes
+          const household = await getHousehold(inviterUid);
+          const isAlreadyInHousehold = Boolean(household?.members && invite.acceptedByUid in household.members);
+
+          if (!isAlreadyInHousehold) {
+            await addUserToHouseholdByOwner(inviterUid, invite.acceptedByUid, {
               role: 'member',
               name: invite.acceptedByName || invite.memberName || 'Family Member',
               email: invite.acceptedByEmail || invite.recipientEmail || '',
@@ -1553,17 +1594,21 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             });
           }
 
-          const existingIndex = updatedList.findIndex(m => 
-            (invite.memberId && m.id === invite.memberId) ||
-            (m.inviteId && m.inviteId === invite.id) ||
-            (m.linkedUid && m.linkedUid === invite.acceptedByUid) ||
-            (invite.acceptedByEmail && m.email && m.email.toLowerCase() === invite.acceptedByEmail.toLowerCase()) ||
-            (invite.recipientEmail && m.email && m.email.toLowerCase() === invite.recipientEmail.toLowerCase())
-          );
+          // Link member in familyMembers state if present
+          setFamilyMembers(prevMembers => {
+            const existingIndex = prevMembers.findIndex(m => 
+              (invite.memberId && m.id === invite.memberId) ||
+              (m.inviteId && m.inviteId === invite.id) ||
+              (m.linkedUid && m.linkedUid === invite.acceptedByUid) ||
+              (invite.acceptedByEmail && m.email && m.email.toLowerCase() === invite.acceptedByEmail.toLowerCase()) ||
+              (invite.recipientEmail && m.email && m.email.toLowerCase() === invite.recipientEmail.toLowerCase())
+            );
 
-          if (existingIndex >= 0) {
-            const existing = updatedList[existingIndex];
-            if (existing.inviteStatus !== 'accepted' || existing.linkedUid !== invite.acceptedByUid) {
+            if (existingIndex >= 0) {
+              const existing = prevMembers[existingIndex];
+              if (existing.inviteStatus === 'accepted' && existing.linkedUid === invite.acceptedByUid) {
+                return prevMembers;
+              }
               const updated: FamilyMember = {
                 ...existing,
                 name: invite.acceptedByName || existing.name,
@@ -1573,8 +1618,8 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 inviteId: invite.id,
                 linkedSince: invite.acceptedAt || new Date().toISOString(),
               };
+              const updatedList = [...prevMembers];
               updatedList[existingIndex] = updated;
-              hasChanges = true;
 
               persistDocument('familyMembers', updated.id, updated, undefined, inviterUid);
 
@@ -1587,40 +1632,14 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 domain: 'system',
                 path: '/family',
               });
+              return updatedList;
             }
-          } else {
-            const newMemberId = invite.memberId || uuidv4();
-            const newMember: FamilyMember = {
-              id: newMemberId,
-              name: invite.acceptedByName || invite.memberName || 'Family Member',
-              relation: invite.relation || 'Family Member',
-              age: 28,
-              avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-              email: invite.acceptedByEmail || invite.recipientEmail,
-              inviteStatus: 'accepted',
-              linkedUid: invite.acceptedByUid,
-              inviteId: invite.id,
-              linkedSince: invite.acceptedAt || new Date().toISOString(),
-            };
-            updatedList.push(newMember);
-            hasChanges = true;
-
-            persistDocument('familyMembers', newMemberId, newMember, undefined, inviterUid);
-
-            toast.success(`🎉 ${newMember.name} joined your family circle!`, {
-              duration: 6000,
-            });
-            addNotification({
-              message: `${newMember.name} joined your family circle!`,
-              type: 'success',
-              domain: 'system',
-              path: '/family',
-            });
-          }
-        });
-
-        return hasChanges ? updatedList : prevMembers;
-      });
+            return prevMembers;
+          });
+        } catch (err) {
+          console.warn('Error processing accepted invite in listener:', err);
+        }
+      }
     });
 
     return () => {
@@ -1711,9 +1730,29 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const deleteFamilyMember = async (id: string) => {
     const member = familyMembers.find(m => m.id === id);
-    if (member?.inviteId) {
+    const ownerUid = googleFirebaseUser?.uid || user.googleId || user.firebaseUid;
+
+    // Clean up member from household if they had linked their Firebase account
+    if (member?.linkedUid && ownerUid) {
       try {
-        await updateInviteDocument(member.inviteId, { status: 'cancelled' });
+        await removeUserFromHouseholdByOwner(ownerUid, member.linkedUid);
+      } catch (err) {
+        console.warn('Could not remove member from household document:', err);
+      }
+    }
+
+    // Cancel any active invites for this member
+    if (member?.inviteId || (ownerUid && member)) {
+      try {
+        if (ownerUid) {
+          const invitesToCancel = [
+            ...(member?.inviteId ? [member.inviteId] : []),
+            ...(member?.inviteHistory || [])
+          ];
+          await cancelPendingInvitesForMember(ownerUid, id, invitesToCancel, 'cancelled');
+        } else if (member?.inviteId) {
+          await updateInviteDocument(member.inviteId, { status: 'cancelled' });
+        }
       } catch (err) {
         console.warn('Could not cancel invite record:', err);
       }
@@ -1952,7 +1991,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     // Reassign affected transactions
     setTransactions(prev => prev.map(t => {
       if (t.categoryId === id) {
-        const updated = { ...t, categoryId: fallbackId };
+        const updated = { ...t, categoryId: fallbackId, category: fallbackCategory.name };
         persistDocument('transactions', t.id, updated);
         return updated;
       }
@@ -1962,7 +2001,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     // Reassign affected bills
     setBills(prev => prev.map(b => {
       if (b.categoryId === id) {
-        const updated = { ...b, categoryId: fallbackId };
+        const updated = { ...b, categoryId: fallbackId, category: fallbackCategory.name };
         persistDocument('bills', b.id, updated);
         return updated;
       }
@@ -2111,12 +2150,35 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   };
   
   const logDose = (medicineId: string, timestamp: string) => {
+      const targetMed = medicines.find(m => m.id === medicineId);
+      if (!targetMed) return null;
+
+      const dateObj = new Date(timestamp);
+      const existingEntry = findDoseHistoryEntry(
+        targetMed.history,
+        dateObj,
+        dateObj.getHours(),
+        dateObj.getMinutes()
+      );
+      if (existingEntry && existingEntry.status === 'taken') {
+        return null;
+      }
+
       let medName: string | null = null;
       let updatedMed: Medicine | null = null;
       let prevMed: Medicine | null = null;
 
       setMedicines(prev => prev.map(med => {
           if (med.id === medicineId && med.stock >= med.doseQuantity) {
+              const currentExisting = findDoseHistoryEntry(
+                med.history,
+                dateObj,
+                dateObj.getHours(),
+                dateObj.getMinutes()
+              );
+              if (currentExisting && currentExisting.status === 'taken') {
+                return med;
+              }
               medName = med.name;
               prevMed = med;
               updatedMed = {
@@ -2267,7 +2329,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const deleteMedicalReport = (id: string) => {
     let deletedReport: MedicalReport | undefined;
     setMedicalReports(prev => {
-      deletedReport = prev.find(r => r.id !== id);
+      deletedReport = prev.find(r => r.id === id);
       return prev.filter(r => r.id !== id);
     });
     removeDocument(

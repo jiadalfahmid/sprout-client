@@ -160,16 +160,18 @@ const DayDetailsModal: React.FC<{
     }) : [], [groupedEvents]);
 
     return (
-        <div className="fixed inset-0 bg-black/70 z-50 flex justify-center items-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-[100] flex justify-center items-center p-4 overflow-y-auto no-scrollbar" onClick={onClose}>
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 onClick={e => e.stopPropagation()}
-                className="bg-light-surface dark:bg-surface rounded-2xl shadow-xl w-full max-w-lg border border-slate-200 dark:border-zinc-700 flex flex-col overflow-hidden"
+                role="dialog"
+                aria-modal="true"
+                className="bg-light-surface dark:bg-surface rounded-2xl shadow-xl w-full max-w-lg border border-slate-200 dark:border-zinc-700 flex flex-col overflow-hidden no-scrollbar"
             >
-                <div className="flex justify-between items-center p-3.5 sm:p-4 border-b border-slate-200 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/30">
+                <div className="flex justify-between items-center p-3.5 sm:p-4 border-b border-slate-200 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/30 shrink-0">
                     <div>
                         <SectionHeading>
                             {date ? date.toLocaleDateString(language, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
@@ -183,7 +185,7 @@ const DayDetailsModal: React.FC<{
                     </button>
                 </div>
 
-                <div className="max-h-[60vh] overflow-y-auto p-5">
+                <div className="max-h-[60vh] overflow-y-auto no-scrollbar modal-scroll-area p-5">
                     {events && sortedTimeKeys.length > 0 && groupedEvents ? (
                         <div className="relative pl-8">
                             <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-primary/20 rounded-full"></div>

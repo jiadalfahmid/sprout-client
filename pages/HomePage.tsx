@@ -8,7 +8,7 @@ import SectionHeading from '../components/ui/SectionHeading';
 import { TransactionType } from '../types';
 import { ResponsiveContainer, RadialBarChart, RadialBar, Legend, Tooltip, Cell, PolarAngleAxis } from 'recharts';
 import { useTranslation } from '../hooks/useTranslation';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   HiOutlineTrash, HiOutlineCalendarDays,
   HiOutlineClipboardDocumentList, HiOutlineReceiptPercent,
@@ -113,12 +113,12 @@ const HomePage: React.FC = () => {
     { label: t('home.actions.calendar'), icon: HiOutlineCalendarDays, path: '/calendar', color: 'cyan' },
     { label: t('home.actions.settings'), icon: HiOutlineCog6Tooth, path: '/settings', color: 'gray' },
     
-    { label: t('home.actions.health'), icon: HiOutlineHeart, path: '/health', color: 'red' },
+    { label: t('home.actions.transactions'), icon: HiOutlineArrowsUpDown, path: '/finance?view=transactions', color: 'emerald' },    
     { label: t('home.actions.medicine'), icon: HiOutlineBeaker, path: '/settings/medicines', color: 'blue' },
     { label: t('home.actions.appointment'), icon: HiOutlineCalendar, path: '/settings/appointments', color: 'indigo' },
     { label: t('home.actions.buyMedicine'), icon: HiOutlineShoppingCart, path: '/restock', color: 'orange' },
     
-    { label: t('home.actions.transactions'), icon: HiOutlineArrowsUpDown, path: '/finance?view=transactions', color: 'emerald' },
+    { label: t('home.actions.health'), icon: HiOutlineHeart, path: '/health', color: 'red' },
     { label: t('home.actions.bills'), icon: HiOutlineReceiptRefund, path: '/finance?view=bills', color: 'yellow' },
     { label: t('home.actions.borrowLend'), icon: HiOutlineArrowsRightLeft, path: '/finance?view=borrow_lend', color: 'lime' },
     { label: t('home.actions.savings'), icon: HiOutlineFlag, path: '/finance?view=savings', color: 'green' },
@@ -129,18 +129,31 @@ const HomePage: React.FC = () => {
     { label: t('home.actions.notifications'), icon: HiOutlineBell, onClick: openDrawer, color: 'amber' },
   ];
 
-  const actionsToDisplay = isActionsExpanded ? allQuickActions : allQuickActions.slice(0, 8);
-
-  const ActionButton = ({ label, icon: Icon, path, onClick, color }: {label: string, icon: React.ElementType, path?: string, onClick?: () => void, color: string}) => {
+  const ActionButton = ({ 
+    label, 
+    icon: Icon, 
+    path, 
+    onClick, 
+    color,
+    disabled = false
+  }: {
+    label: string, 
+    icon: React.ElementType, 
+    path?: string, 
+    onClick?: () => void, 
+    color: string,
+    disabled?: boolean
+  }) => {
     
     const handleClick = () => {
-        if (path) {
-            navigate(path);
-        } else if (onClick) {
-            onClick();
-        }
+      if (disabled) return;
+      if (path) {
+        navigate(path);
+      } else if (onClick) {
+        onClick();
+      }
     };
-
+    
     const colorClasses: Record<string, string> = {
       red: 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-300',
       green: 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-300',
@@ -161,11 +174,19 @@ const HomePage: React.FC = () => {
     };
     
     return (
-      <button onClick={handleClick} className="bg-transparent p-0 rounded-2xl flex flex-col items-center justify-start space-y-1 sm:space-y-1.5 text-center group h-18 sm:h-22 w-full max-w-[72px] sm:max-w-[84px]">
+      <button 
+        onClick={handleClick} 
+        disabled={disabled}
+        tabIndex={disabled ? -1 : 0}
+        aria-hidden={disabled}
+        className={`bg-transparent p-0 rounded-2xl flex flex-col items-center justify-start space-y-1 sm:space-y-1.5 text-center group min-h-[64px] sm:min-h-[74px] w-full max-w-[72px] sm:max-w-[84px] ${
+          disabled ? 'pointer-events-none cursor-default select-none' : 'cursor-pointer'
+        }`}
+      >
         <div className={`w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 ${colorClasses[color] || colorClasses.gray}`}>
           <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
         </div>
-        <span className="text-[11px] sm:text-xs font-semibold text-light-text-primary dark:text-text-primary leading-tight px-0.5 whitespace-nowrap truncate w-full" title={label}>
+        <span className="text-[9.5px] sm:text-[11px] font-medium text-light-text-primary dark:text-text-primary leading-tight px-0.5 tracking-tight break-words line-clamp-2 w-full text-center" title={label}>
           {label}
         </span>
       </button>
@@ -181,28 +202,84 @@ const HomePage: React.FC = () => {
         subtitle={t('home.greetingSubtitle')}
       />
 
-      <Card>
-        <motion.div layout>
-            <SectionHeading className="mb-3 sm:mb-4">{t('home.actions.title')}</SectionHeading>
-            <div className="grid grid-cols-4 gap-x-2 sm:gap-x-3 gap-y-4 sm:gap-y-5 justify-items-center">
-                {actionsToDisplay.map((action, index) => (
-                  <motion.div key={action.label} initial={{opacity: 0, scale: 0.8}} animate={{opacity: 1, scale: 1}} transition={{delay: index < 8 ? 0 : (index-8) * 0.05}}>
-                    <ActionButton {...action} />
-                  </motion.div>
-                ))}
+      <Card className="relative overflow-hidden">
+        <SectionHeading className="mb-3 sm:mb-4">{t('home.actions.title')}</SectionHeading>
+        
+        <div className="relative">
+          <div
+            className={`overflow-hidden transition-[max-height] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isActionsExpanded ? 'max-h-[380px] sm:max-h-[420px]' : 'max-h-[228px] sm:max-h-[260px]'
+            }`}
+          >
+            <div className="grid grid-cols-4 gap-x-2 sm:gap-x-3 gap-y-3.5 sm:gap-y-4 justify-items-center pb-2">
+              {allQuickActions.map((action, index) => (
+                <ActionButton 
+                  key={action.label} 
+                  {...action} 
+                  disabled={!isActionsExpanded && index >= 8}
+                />
+              ))}
             </div>
-            <div className="flex justify-center mt-3 sm:mt-4">
+          </div>
+
+          {/* Deep progressive blur overlay starting right from 3rd row with feathered left and right edges */}
+          <AnimatePresence>
+            {!isActionsExpanded && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                onClick={() => setActionsExpanded(true)}
+                className="absolute -bottom-6 -left-6 -right-6 h-[104px] sm:h-[116px] flex items-center justify-center pb-4 cursor-pointer z-10 select-none overflow-hidden"
+              >
+                {/* User-specified progressive blur overlay with custom radial-gradient mask */}
+                <div 
+                  className="absolute inset-0 bg-gradient-to-b from-transparent via-light-surface/85 to-light-surface dark:via-surface/90 dark:to-surface backdrop-blur-[54px] backdrop-saturate-150 pointer-events-auto"
+                  style={{
+                    WebkitMaskImage: 'radial-gradient(250% 100% at 50% 100%, black 45%, rgba(0, 0, 0, .9) 68%, rgba(0, 0, 0, 0.4) 86%, transparent 100%)',
+                    maskImage: 'radial-gradient(250% 100% at 50% 100%, black 45%, rgba(0, 0, 0, .9) 68%, rgba(0, 0, 0, 0.4) 86%, transparent 100%)',
+                  }}
+                />
+
+                {/* Show More Smooth Square Blur Box Button */}
                 <button
-                    onClick={() => setActionsExpanded(prev => !prev)}
-                    className="bg-light-surface dark:bg-surface px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-primary border border-slate-200 dark:border-zinc-700 hover:bg-primary/10 transition-all duration-200 shadow-sm flex items-center gap-1.5 sm:gap-2"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActionsExpanded(true);
+                  }}
+                  className="relative z-20 pointer-events-auto bg-light-surface/85 dark:bg-surface/85 backdrop-blur-2xl px-5 sm:px-6 py-2 sm:py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-primary border border-slate-200/80 dark:border-zinc-700/80 hover:border-primary/50 dark:hover:border-primary/50 hover:bg-primary/10 transition-all duration-300 shadow-xl shadow-black/15 hover:shadow-2xl flex items-center gap-2 active:scale-95 group"
                 >
-                    {isActionsExpanded ? t('home.actions.showLess') : t('home.actions.showMore')}
-                    <motion.div animate={{ rotate: isActionsExpanded ? 180 : 0 }}>
-                        <HiOutlineChevronDown className="h-4 w-4" />
-                    </motion.div>
+                  <span className="tracking-tight">{t('home.actions.showMore')}</span>
+                  <HiOutlineChevronDown className="h-4 w-4 transition-transform duration-300 group-hover:translate-y-0.5" />
                 </button>
-            </div>
-        </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* "Show Less" button when expanded */}
+        <AnimatePresence>
+          {isActionsExpanded && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25 }}
+              className="flex justify-center mt-3 sm:mt-4"
+            >
+              <button
+                type="button"
+                onClick={() => setActionsExpanded(false)}
+                className="bg-light-surface/90 dark:bg-surface/90 backdrop-blur-xl px-5 sm:px-6 py-2 sm:py-2.5 rounded-2xl text-xs sm:text-sm font-semibold text-primary border border-slate-200 dark:border-zinc-700 hover:border-primary/50 dark:hover:border-primary/50 hover:bg-primary/10 transition-all duration-300 shadow-sm hover:shadow-md flex items-center gap-2 active:scale-95 group"
+              >
+                <span className="tracking-tight">{t('home.actions.showLess')}</span>
+                <HiOutlineChevronDown className="h-4 w-4 rotate-180 transition-transform duration-300 group-hover:-translate-y-0.5" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Card>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -360,7 +437,7 @@ const HomePage: React.FC = () => {
               {notes.map(note => (
                 <li key={note.id} className="flex justify-between items-center p-2 sm:p-2.5 bg-light-surface dark:bg-surface rounded-xl group border border-slate-100 dark:border-zinc-800">
                   <p className="text-xs sm:text-sm text-light-text-primary dark:text-text-primary">{note.content}</p>
-                  <button onClick={() => deleteNote(note.id)} className="text-red-400 p-1.5 rounded-xl hover:bg-red-500/10 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"><HiOutlineTrash className="h-4 w-4" /></button>
+                  <button onClick={() => deleteNote(note.id)} aria-label="Delete note" className="text-red-400 p-1.5 rounded-xl hover:bg-red-500/10 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"><HiOutlineTrash className="h-4 w-4" /></button>
                 </li>
               ))}
             </ul>

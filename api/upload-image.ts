@@ -2,7 +2,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getApps, initializeApp, cert, applicationDefault, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
-const IMGBB_API_KEY = process.env.IMGBB_API_KEY || 'e8fe38eae4d004d9feed640cab63d8e8';
 const MAX_BYTES = 10 * 1024 * 1024;
 
 function getFirebaseAdminApp(): App {
@@ -65,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ success: false, error: 'Invalid or expired authentication token' });
   }
 
-  const apiKey = process.env.IMGBB_API_KEY || IMGBB_API_KEY;
+  const apiKey = process.env.IMGBB_API_KEY;
   if (!apiKey) {
     console.error('IMGBB_API_KEY is not configured on the server');
     return res.status(500).json({ success: false, error: 'Image upload is not configured' });
@@ -94,11 +93,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = await imgbbRes.json();
 
     if (result?.success && result?.data?.url) {
-      return res.status(200).json({ success: true, url: result.data.url as string });
+      return res.status(200).json({ 
+        success: true, 
+        url: result.data.url as string,
+        deleteUrl: result.data.delete_url as string | undefined,
+        imageId: result.data.id as string | undefined,
+      });
     }
 
     const providerError = result?.error?.message || 'Upload provider rejected the image';
-    console.error('ImgBB rejected upload:', providerError, result);
+    console.error('Image provider rejected upload:', providerError, result);
     return res.status(502).json({ success: false, error: providerError });
   } catch (err) {
     console.error('Error proxying image upload:', err);

@@ -112,6 +112,10 @@ export interface FamilyMember {
   age: number;
   avatar: string;
   email?: string;
+  phone?: string;
+  bloodGroup?: string;
+  allergies?: string;
+  notes?: string;
   inviteStatus?: 'none' | 'invited' | 'accepted';
   inviteId?: string;
   inviteHistory?: string[];
@@ -167,6 +171,8 @@ export interface MedicalReport {
     category: MedicalReportCategory;
     date: string; // ISO string
     fileUrl: string; // URL to the image/pdf
+    deleteUrl?: string; // Cloud storage delete URL
+    imageId?: string; // Cloud storage image ID
 }
 
 export interface Appointment {

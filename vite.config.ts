@@ -53,6 +53,11 @@ function apiMiddlewarePlugin(env: Record<string, string>): Plugin {
         const mod = await server.ssrLoadModule('/api/accept-invite.ts');
         return await mod.default(req, vRes);
       }
+
+      if (urlPath === '/api/delete-image') {
+        const mod = await server.ssrLoadModule('/api/delete-image.ts');
+        return await mod.default(req, vRes);
+      }
     } catch (err: any) {
       console.error(`Error executing API route ${urlPath}:`, err);
       if (!res.writableEnded) {

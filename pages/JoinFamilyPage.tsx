@@ -101,10 +101,16 @@ const JoinFamilyPage: React.FC = () => {
 
   const handleAcceptInvite = async () => {
     if (!invite) return;
+    if (invite.status !== 'pending') {
+      toast.error('This invitation is no longer active.');
+      return;
+    }
     setIsProcessing(true);
     try {
-      await acceptPendingInvite(invite);
-      navigate('/family');
+      const success = await acceptPendingInvite(invite);
+      if (success) {
+        navigate('/family');
+      }
     } catch (err) {
       console.error('Accept invite error:', err);
       toast.error('Failed to accept invitation. Please try again.');
@@ -114,12 +120,18 @@ const JoinFamilyPage: React.FC = () => {
   };
 
   const handleGoogleJoin = async () => {
+    if (!invite || invite.status !== 'pending') {
+      toast.error('This invitation is no longer active.');
+      return;
+    }
     setIsProcessing(true);
     try {
       const success = await loginWithGoogle();
       if (success && invite) {
-        await acceptPendingInvite(invite);
-        navigate('/family');
+        const acceptSuccess = await acceptPendingInvite(invite);
+        if (acceptSuccess) {
+          navigate('/family');
+        }
       }
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
@@ -134,6 +146,10 @@ const JoinFamilyPage: React.FC = () => {
 
   const handleEmailAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!invite || invite.status !== 'pending') {
+      toast.error('This invitation is no longer active.');
+      return;
+    }
     if (!email) {
       toast.error('Please enter your email address.');
       return;
@@ -148,14 +164,18 @@ const JoinFamilyPage: React.FC = () => {
       if (authMode === 'signup') {
         const success = await signUpWithEmail(email, password, name || invite?.memberName || undefined);
         if (success && invite) {
-          await acceptPendingInvite(invite);
-          navigate('/family');
+          const acceptSuccess = await acceptPendingInvite(invite);
+          if (acceptSuccess) {
+            navigate('/family');
+          }
         }
       } else {
         const success = await loginWithEmail(email, password);
         if (success && invite) {
-          await acceptPendingInvite(invite);
-          navigate('/family');
+          const acceptSuccess = await acceptPendingInvite(invite);
+          if (acceptSuccess) {
+            navigate('/family');
+          }
         }
       }
     } catch (err: any) {
@@ -165,6 +185,13 @@ const JoinFamilyPage: React.FC = () => {
       setIsProcessing(false);
     }
   };
+
+  const isEmailMismatch = Boolean(
+    isAuthenticated && 
+    invite?.recipientEmail && 
+    (user.email || googleFirebaseUser?.email) && 
+    invite.recipientEmail.trim().toLowerCase() !== (user.email || googleFirebaseUser?.email || '').trim().toLowerCase()
+  );
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-6 px-3 sm:px-6">
@@ -201,6 +228,63 @@ const JoinFamilyPage: React.FC = () => {
                 Go to Sprout Home
               </Button>
             </Link>
+          </motion.div>
+        ) : invite.status !== 'pending' ? (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-light-surface dark:bg-surface border border-slate-200 dark:border-zinc-700/60 rounded-2xl p-8 text-center space-y-5 shadow-xl"
+          >
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto ${
+              invite.status === 'accepted' 
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+            }`}>
+              {invite.status === 'accepted' ? (
+                <HiOutlineCheckCircle className="w-7 h-7" />
+              ) : (
+                <HiOutlineExclamationTriangle className="w-7 h-7" />
+              )}
+            </div>
+            <div>
+              <SectionHeading className="text-xl font-bold">
+                {invite.status === 'accepted'
+                  ? 'This invitation has already been accepted'
+                  : invite.status === 'superseded'
+                  ? 'This invitation has been superseded'
+                  : invite.status === 'cancelled'
+                  ? 'This invitation was cancelled'
+                  : 'This invitation is no longer active'}
+              </SectionHeading>
+              <p className="text-xs text-light-text-secondary dark:text-text-secondary mt-1.5 max-w-sm mx-auto leading-relaxed">
+                {invite.status === 'accepted'
+                  ? invite.acceptedByName || invite.acceptedByEmail
+                    ? `Accepted by ${invite.acceptedByName || invite.acceptedByEmail}. You can view the family circle if you are a member.`
+                    : 'This invitation has already been accepted and cannot be reused.'
+                  : invite.status === 'superseded'
+                  ? 'A newer invitation link was generated for this family member. Please ask the organizer for their latest link.'
+                  : 'This invitation link is no longer valid. Please contact your family organizer for assistance.'}
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <Link to="/family">
+                <Button
+                  variant="primary"
+                  size="md"
+                  icon={<HiOutlineArrowRight className="w-4 h-4" />}
+                >
+                  View Family Circle
+                </Button>
+              </Link>
+              <Link to="/home">
+                <Button
+                  variant="secondary"
+                  size="md"
+                >
+                  Home
+                </Button>
+              </Link>
+            </div>
           </motion.div>
         ) : (
           <motion.div
@@ -280,6 +364,20 @@ const JoinFamilyPage: React.FC = () => {
             {/* Action State: Already Authenticated vs Unauthenticated */}
             {isAuthenticated ? (
               <div className="space-y-4">
+                {isEmailMismatch && (
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/25 flex items-start gap-3">
+                    <HiOutlineExclamationTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <p className="font-bold text-amber-800 dark:text-amber-300">
+                        Account mismatch
+                      </p>
+                      <p className="text-amber-700/90 dark:text-amber-400/90 text-[11px] mt-0.5">
+                        This invitation was created for <strong>{invite.recipientEmail}</strong>. You are currently signed in as <strong>{user.email || googleFirebaseUser?.email}</strong>. Please switch accounts to accept this invitation.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 flex items-start gap-3">
                   <HiOutlineCheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div className="text-xs">
@@ -295,7 +393,7 @@ const JoinFamilyPage: React.FC = () => {
                 <Button
                   type="button"
                   onClick={handleAcceptInvite}
-                  disabled={isProcessing}
+                  disabled={isProcessing || isEmailMismatch}
                   variant="primary"
                   size="md"
                   className="w-full"
@@ -422,6 +520,7 @@ const JoinFamilyPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                         className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
                       >
                         {showPassword ? <HiOutlineEyeSlash className="w-4 h-4" /> : <HiOutlineEye className="w-4 h-4" />}

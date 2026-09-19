@@ -118,79 +118,106 @@ export default async function handler(req: any, res: any) {
     const callerEmail = decodedToken.email || '';
     const callerName = name || decodedToken.name || 'Family Member';
 
-    // 2. Fetch the target invite document from Firestore
-    const inviteRef = db.collection('family_invites').doc(inviteId);
-    const inviteSnap = await inviteRef.get();
+    // 2. Perform atomic verification and acceptance in a single Firestore transaction
+    const result = await db.runTransaction(async (transaction) => {
+      const inviteRef = db.collection('family_invites').doc(inviteId);
+      const inviteSnap = await transaction.get(inviteRef);
 
-    if (!inviteSnap.exists) {
-      res.statusCode = 404;
-      res.setHeader('Content-Type', 'application/json');
-      return res.end(JSON.stringify({ error: 'Invitation not found' }));
-    }
-
-    const inviteData = inviteSnap.data() || {};
-
-    // 3. Verify status is pending
-    if (inviteData.status !== 'pending') {
-      res.statusCode = 400;
-      res.setHeader('Content-Type', 'application/json');
-      return res.end(JSON.stringify({ error: 'This invitation is no longer pending or has expired' }));
-    }
-
-    // 4. Verify targeted email if specified
-    const targetEmail = inviteData.recipientEmail || inviteData.targetEmail;
-    if (targetEmail) {
-      if (!callerEmail || targetEmail.trim().toLowerCase() !== callerEmail.trim().toLowerCase()) {
-        res.statusCode = 403;
-        res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify({ 
-          error: `This invitation was issued for ${targetEmail}, but you are signed in as ${callerEmail || 'an account without an email'}` 
-        }));
+      if (!inviteSnap.exists) {
+        return { error: 'Invitation not found', status: 404 };
       }
-    }
 
-    const inviterUid = inviteData.inviterUid;
-    if (!inviterUid) {
-      res.statusCode = 400;
+      const inviteData = inviteSnap.data() || {};
+
+      // Verify status is pending
+      if (inviteData.status !== 'pending') {
+        return { error: 'This invitation is no longer pending or has expired', status: 400 };
+      }
+
+      // Verify targeted email and require email verification if targeted
+      const targetEmail = inviteData.recipientEmail || inviteData.targetEmail;
+      if (targetEmail) {
+        if (!callerEmail || targetEmail.trim().toLowerCase() !== callerEmail.trim().toLowerCase()) {
+          return { 
+            error: `This invitation was issued for ${targetEmail}, but you are signed in as ${callerEmail || 'an account without an email'}`,
+            status: 403 
+          };
+        }
+        const isEmailVerified = Boolean(decodedToken.email_verified || decodedToken.firebase?.sign_in_provider === 'google.com');
+        if (!isEmailVerified) {
+          return {
+            error: 'Please verify your email address or sign in with Google before accepting this invitation.',
+            status: 403
+          };
+        }
+      }
+
+      const inviterUid = inviteData.inviterUid;
+      if (!inviterUid) {
+        return { error: 'Invalid invite record: missing inviterUid', status: 400 };
+      }
+
+      const now = new Date().toISOString();
+      const householdRef = db.collection('households').doc(inviterUid);
+      const householdSnap = await transaction.get(householdRef);
+
+      if (householdSnap.exists) {
+        transaction.update(householdRef, {
+          [`members.${callerUid}`]: {
+            role: 'member',
+            name: callerName,
+            email: callerEmail,
+            joinedAt: now,
+          },
+          updatedAt: now,
+        });
+      } else {
+        transaction.set(householdRef, {
+          id: inviterUid,
+          ownerUid: inviterUid,
+          members: {
+            [callerUid]: {
+              role: 'member',
+              name: callerName,
+              email: callerEmail,
+              joinedAt: now,
+            },
+          },
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      transaction.update(inviteRef, {
+        status: 'accepted',
+        acceptedAt: now,
+        acceptedByUid: callerUid,
+        acceptedByEmail: callerEmail,
+        acceptedByName: callerName,
+      });
+
+      return {
+        success: true,
+        status: 200,
+        householdId: inviterUid,
+        member: {
+          uid: callerUid,
+          name: callerName,
+          email: callerEmail,
+          joinedAt: now,
+        },
+      };
+    });
+
+    if (result.error) {
+      res.statusCode = result.status || 400;
       res.setHeader('Content-Type', 'application/json');
-      return res.end(JSON.stringify({ error: 'Invalid invite record: missing inviterUid' }));
+      return res.end(JSON.stringify({ error: result.error }));
     }
-
-    const now = new Date().toISOString();
-
-    // 5. Update household document with the verified member
-    const householdRef = db.collection('households').doc(inviterUid);
-    await householdRef.update({
-      [`members.${callerUid}`]: {
-        role: 'member',
-        name: callerName,
-        email: callerEmail,
-        joinedAt: now,
-      },
-      updatedAt: now,
-    });
-
-    // 6. Mark invite document as accepted
-    await inviteRef.update({
-      status: 'accepted',
-      acceptedAt: now,
-      acceptedByUid: callerUid,
-      acceptedByEmail: callerEmail,
-      acceptedByName: callerName,
-    });
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
-    return res.end(JSON.stringify({
-      success: true,
-      householdId: inviterUid,
-      member: {
-        uid: callerUid,
-        name: callerName,
-        email: callerEmail,
-        joinedAt: now,
-      }
-    }));
+    return res.end(JSON.stringify(result));
   } catch (error: any) {
     console.error('Error accepting invitation on server:', error);
     res.statusCode = 500;

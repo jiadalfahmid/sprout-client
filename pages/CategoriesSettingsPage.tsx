@@ -299,7 +299,7 @@ export const CategoriesSettingsPage: React.FC = () => {
           />
         </div>
 
-        <div className="overflow-x-auto pb-1 sm:pb-0">
+        <div className="overflow-x-auto no-scrollbar pb-1 sm:pb-0">
           <SegmentedControl
             options={[
               { value: 'all', label: `All (${transactionCategories.length})` },
@@ -496,6 +496,7 @@ export const CategoriesSettingsPage: React.FC = () => {
                     key={c}
                     type="button"
                     onClick={() => setFormColor(c)}
+                    aria-label={`Select color ${c}`}
                     className={`w-7 h-7 rounded-full transition-transform flex items-center justify-center ${
                       isSelected ? 'scale-110 ring-2 ring-offset-2 ring-primary' : 'hover:scale-105'
                     }`}
@@ -513,7 +514,7 @@ export const CategoriesSettingsPage: React.FC = () => {
             <label className="block text-xs font-semibold text-light-text-secondary dark:text-text-secondary uppercase tracking-wider">
               Icon
             </label>
-            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 max-h-48 overflow-y-auto p-1.5 border border-slate-200 dark:border-zinc-700 rounded-xl bg-slate-50/50 dark:bg-zinc-900/30">
+            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 max-h-48 overflow-y-auto no-scrollbar p-1.5 border border-slate-200 dark:border-zinc-700 rounded-xl bg-slate-50/50 dark:bg-zinc-900/30">
               {AVAILABLE_CATEGORY_ICONS.map(item => {
                 const IconComponent = item.icon;
                 const isSelected = formIcon === item.name;
@@ -523,6 +524,7 @@ export const CategoriesSettingsPage: React.FC = () => {
                     type="button"
                     onClick={() => setFormIcon(item.name)}
                     title={item.label}
+                    aria-label={item.label}
                     className={`p-2 rounded-xl flex items-center justify-center transition-all ${
                       isSelected
                         ? 'bg-primary text-white shadow-sm scale-105'

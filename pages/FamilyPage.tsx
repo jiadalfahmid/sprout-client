@@ -17,6 +17,7 @@ import {
   HiOutlinePaperAirplane, 
   HiCheckCircle,
   HiOutlineTrash,
+  HiOutlinePencilSquare,
   HiOutlineXMark,
   HiOutlineExclamationTriangle,
   HiOutlineUserMinus,
@@ -31,12 +32,14 @@ import toast from 'react-hot-toast';
 import { motion } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
 import { FamilyMember } from '../types';
+import { EditFamilyMemberModal } from '../components/family/EditFamilyMemberModal';
 
 const FamilyPage: React.FC = () => {
   const { 
     loading, 
     familyMembers, 
     addFamilyMember, 
+    updateFamilyMember,
     deleteFamilyMember,
     sendFamilyInvite, 
     cancelFamilyInvite,
@@ -81,6 +84,7 @@ const FamilyPage: React.FC = () => {
 
   // Confirmation Modal States
   const [memberToDelete, setMemberToDelete] = useState<FamilyMember | null>(null);
+  const [memberToEdit, setMemberToEdit] = useState<FamilyMember | null>(null);
   const [memberToCancelInvite, setMemberToCancelInvite] = useState<FamilyMember | null>(null);
   const [isCancellingInvite, setIsCancellingInvite] = useState(false);
 
@@ -556,16 +560,31 @@ const FamilyPage: React.FC = () => {
                       <Link to={`/family/${member.id}`} className="block h-full">
                         <Card className="text-center h-full p-3.5 sm:p-4 hover:shadow-md transition-all flex flex-col justify-between relative group/card border border-slate-200/80 dark:border-zinc-800 rounded-2xl">
                           
-                          {/* Remove Member Top Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => promptDeleteMember(member, e)}
-                            className="absolute top-2.5 right-2.5 p-1 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-0 group-hover/card:opacity-100"
-                            title="Remove Member"
-                            aria-label="Remove Member"
-                          >
-                            <HiOutlineTrash className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Card Top Quick Action Buttons (Edit & Remove) */}
+                          <div className="absolute top-2 right-2 flex items-center gap-0.5 z-10 sm:opacity-0 group-hover/card:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setMemberToEdit(member);
+                              }}
+                              className="p-1.5 rounded-full text-slate-400 hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/20 transition"
+                              title={`Edit ${member.name}'s details`}
+                              aria-label={`Edit ${member.name}'s details`}
+                            >
+                              <HiOutlinePencilSquare className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => promptDeleteMember(member, e)}
+                              className="p-1.5 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                              title="Remove Member"
+                              aria-label="Remove Member"
+                            >
+                              <HiOutlineTrash className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
 
                           <div>
                             <div className="relative inline-block mb-2.5">
@@ -668,6 +687,7 @@ const FamilyPage: React.FC = () => {
                                   onClick={(e) => handleCopyMemberLink(member, e)}
                                   className="py-1 px-2 rounded-xl text-[11px] font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary transition"
                                   title="Copy Invite Link"
+                                  aria-label="Copy Invite Link"
                                 >
                                   <HiOutlineLink className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                 </button>
@@ -850,6 +870,7 @@ const FamilyPage: React.FC = () => {
                     onClick={() => handleShareLink(generatedLink, `Join Sprout Family Circle for ${selectedMemberForInvite.name}`)}
                     className="p-2 bg-emerald-100 dark:bg-emerald-900/50 hover:bg-emerald-200 dark:hover:bg-emerald-800 text-emerald-800 dark:text-emerald-200 rounded-xl text-xs font-bold transition shrink-0"
                     title="Share via app"
+                    aria-label="Share via app"
                   >
                     <HiOutlineShare className="w-4 h-4" />
                   </button>
@@ -1079,6 +1100,16 @@ const FamilyPage: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Edit Family Member Modal */}
+      <EditFamilyMemberModal
+        isOpen={!!memberToEdit}
+        onClose={() => setMemberToEdit(null)}
+        member={memberToEdit}
+        onSave={(updatedMember) => {
+          updateFamilyMember(updatedMember);
+        }}
+      />
     </div>
   );
 };

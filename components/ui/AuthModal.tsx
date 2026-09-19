@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -48,12 +48,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState(pendingInvite?.memberName || '');
   const [loading, setLoading] = useState(false);
+  const prevPendingInviteRef = useRef<typeof pendingInvite>(pendingInvite);
 
   useEffect(() => {
+    const wasNull = !prevPendingInviteRef.current;
+    const isNowNonNull = !!pendingInvite;
+    prevPendingInviteRef.current = pendingInvite;
+
     if (pendingInvite) {
       if (pendingInvite.recipientEmail && !email) setEmail(pendingInvite.recipientEmail);
       if (pendingInvite.memberName && !displayName) setDisplayName(pendingInvite.memberName);
-      if (!isGoogleAuthenticated) setActiveTab('signup');
+      if (wasNull && isNowNonNull && !isGoogleAuthenticated) {
+        setActiveTab('signup');
+      }
     }
   }, [pendingInvite, isGoogleAuthenticated]);
 

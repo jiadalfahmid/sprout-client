@@ -478,6 +478,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterGuest }) => {
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
                           className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300"
                         >
                           {showPassword ? <HiOutlineEyeSlash className="w-4 h-4" /> : <HiOutlineEye className="w-4 h-4" />}

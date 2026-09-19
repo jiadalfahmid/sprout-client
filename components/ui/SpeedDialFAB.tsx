@@ -135,6 +135,7 @@ const SpeedDialFAB: React.FC<SpeedDialFABProps> = ({
 
       <div
         ref={containerRef}
+        data-speed-dial="true"
         className={`fixed right-4 sm:right-6 md:right-8 z-40 flex flex-col items-end pointer-events-auto ${className}`}
         style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
       >

@@ -104,7 +104,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50"
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[90]"
           />
 
           <motion.div
@@ -112,7 +112,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-light-surface dark:bg-surface shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-zinc-700"
+            className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-light-surface dark:bg-surface shadow-2xl z-[90] flex flex-col border-l border-slate-200 dark:border-zinc-700"
           >
             {/* Header */}
             <div className="p-4 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center bg-light-background/50 dark:bg-background/50">
@@ -207,6 +207,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose
                       onClick={(e) => handleDismiss(e, notif.id)}
                       className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary"
                       title="Dismiss notification"
+                      aria-label="Dismiss notification"
                     >
                       <HiXMark className="h-4 w-4" />
                     </button>

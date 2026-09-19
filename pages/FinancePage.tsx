@@ -203,7 +203,7 @@ const FinancePage: React.FC = () => {
             />
 
             {/* Navigation Tabs */}
-            <div className="w-full flex justify-center overflow-x-auto py-1">
+            <div className="w-full flex justify-center overflow-x-auto no-scrollbar py-1">
                 <SegmentedControl
                     options={navItems.map(item => ({
                         value: item.view,
@@ -485,12 +485,17 @@ const TransactionsView: React.FC<{
 
     const handleSaveTransaction = () => {
         if (description && amount && categoryId && date) {
+            const parsedAmount = parseFloat(amount);
+            if (isNaN(parsedAmount) || parsedAmount <= 0) {
+                toast.error(t('finance.modal.fillFieldsError'));
+                return;
+            }
             const selectedCatObj = transactionCategories.find(c => c.id === categoryId);
             const categoryName = selectedCatObj?.name || 'Other';
 
             const transactionData = {
                 description,
-                amount: parseFloat(amount),
+                amount: parsedAmount,
                 type: transactionType,
                 category: categoryName,
                 categoryId: categoryId,
@@ -608,6 +613,7 @@ const TransactionsView: React.FC<{
                             {searchQuery && (
                                 <button 
                                     onClick={() => setSearchQuery('')}
+                                    aria-label="Clear search"
                                     className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 rounded-full"
                                 >
                                     <HiOutlineXMark className="h-3.5 w-3.5" />
@@ -643,7 +649,7 @@ const TransactionsView: React.FC<{
                                             initial={{ opacity: 0, scale: 0.95, y: 4 }}
                                             animate={{ opacity: 1, scale: 1, y: 0 }}
                                             exit={{ opacity: 0, scale: 0.95, y: 4 }}
-                                            className="absolute z-30 top-full mt-2 right-[-116px] w-[calc(100vw-3.5rem)] max-w-xs sm:w-80 bg-light-surface dark:bg-zinc-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-700 p-3.5 sm:p-4 text-xs space-y-4 max-h-[75vh] overflow-y-auto"
+                                            className="absolute z-30 top-full mt-2 right-[-116px] w-[calc(100vw-3.5rem)] max-w-xs sm:w-80 bg-light-surface dark:bg-zinc-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-700 p-3.5 sm:p-4 text-xs space-y-4 max-h-[75vh] overflow-y-auto no-scrollbar"
                                         >
                                             <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-zinc-700">
                                                 <div className="flex items-center gap-2 font-bold text-sm text-light-text-primary dark:text-text-primary">
@@ -688,7 +694,7 @@ const TransactionsView: React.FC<{
                                                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
                                                     Category
                                                 </label>
-                                                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                                                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto no-scrollbar pr-1">
                                                     <button
                                                         onClick={() => setSelectedCategoryFilter('all')}
                                                         className={`py-1.5 px-2 rounded-xl text-left text-xs font-medium border transition-all flex items-center justify-between ${
@@ -731,7 +737,7 @@ const TransactionsView: React.FC<{
                                                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
                                                     For Whom / Family Member
                                                 </label>
-                                                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                                                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto no-scrollbar pr-1">
                                                     <button
                                                         onClick={() => setSelectedMemberFilter('all')}
                                                         className={`py-1.5 px-2 rounded-xl text-left text-xs font-medium border transition-all flex items-center justify-between ${
@@ -848,7 +854,7 @@ const TransactionsView: React.FC<{
                         {typeFilter !== 'all' && (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-light-text-primary dark:text-text-primary border border-slate-200 dark:border-zinc-700 text-xs">
                                 <span className="capitalize">{typeFilter}</span>
-                                <button onClick={() => setTypeFilter('all')} className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200">
+                                <button onClick={() => setTypeFilter('all')} aria-label="Clear type filter" className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200">
                                     <HiOutlineXMark className="w-3 h-3" />
                                 </button>
                             </span>
@@ -856,7 +862,7 @@ const TransactionsView: React.FC<{
                         {selectedCategoryFilter !== 'all' && (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-light-text-primary dark:text-text-primary border border-slate-200 dark:border-zinc-700 text-xs">
                                 <span>{transactionCategories.find(c => c.id === selectedCategoryFilter)?.name || selectedCategoryFilter}</span>
-                                <button onClick={() => setSelectedCategoryFilter('all')} className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200">
+                                <button onClick={() => setSelectedCategoryFilter('all')} aria-label="Clear category filter" className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200">
                                     <HiOutlineXMark className="w-3 h-3" />
                                 </button>
                             </span>
@@ -864,7 +870,7 @@ const TransactionsView: React.FC<{
                         {selectedMemberFilter !== 'all' && (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-light-text-primary dark:text-text-primary border border-slate-200 dark:border-zinc-700 text-xs">
                                 <span>{selectedMemberFilter === 'household' ? 'Shared / Household' : familyMembers.find(m => m.id === selectedMemberFilter)?.name || 'Member'}</span>
-                                <button onClick={() => setSelectedMemberFilter('all')} className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200">
+                                <button onClick={() => setSelectedMemberFilter('all')} aria-label="Clear member filter" className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200">
                                     <HiOutlineXMark className="w-3 h-3" />
                                 </button>
                             </span>
@@ -1270,6 +1276,11 @@ const BillsView: React.FC<{
 
     const handleSaveBill = () => {
         if(billForm.name && billForm.amount && billForm.dueDate && billForm.categoryId) {
+            const parsedAmount = parseFloat(billForm.amount);
+            if (isNaN(parsedAmount) || parsedAmount <= 0) {
+                toast.error(t('finance.modal.fillFieldsError'));
+                return;
+            }
             const catObj = transactionCategories.find(c => c.id === billForm.categoryId);
             const categoryName = catObj?.name || 'Utilities';
 
@@ -1277,7 +1288,7 @@ const BillsView: React.FC<{
                 const billToUpdate: Bill = {
                     ...editingBill,
                     name: billForm.name,
-                    amount: parseFloat(billForm.amount),
+                    amount: parsedAmount,
                     category: categoryName,
                     categoryId: billForm.categoryId,
                     dueDate: new Date(billForm.dueDate).toISOString(),
@@ -1297,7 +1308,7 @@ const BillsView: React.FC<{
             } else {
                 addBill({
                     name: billForm.name,
-                    amount: parseFloat(billForm.amount),
+                    amount: parsedAmount,
                     category: categoryName,
                     categoryId: billForm.categoryId,
                     dueDate: new Date(billForm.dueDate).toISOString(),
@@ -1396,7 +1407,7 @@ const BillsView: React.FC<{
                         </Button>
                         
                         <div className="relative" ref={menuRef}>
-                            <button onClick={() => setMenuOpen(p => !p)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
+                            <button onClick={() => setMenuOpen(p => !p)} aria-label="Bill actions" className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
                                 <HiEllipsisVertical className="h-5 w-5" />
                             </button>
                             <AnimatePresence>
@@ -1445,7 +1456,7 @@ const BillsView: React.FC<{
             </div>
 
             {/* Category Chips */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs">
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
                 <FilterChip
                     selected={selectedCategory === 'all'}
                     onClick={() => setSelectedCategory('all')}
@@ -1654,7 +1665,7 @@ const BorrowLendItemCard: React.FC<{
                     <p className="text-[11px] sm:text-xs text-light-text-secondary dark:text-text-secondary">{t(isBorrowing ? 'finance.borrowLend.lender' : 'finance.borrowLend.borrower')}</p>
                 </div>
                 <div className="relative" ref={menuRef}>
-                    <button onClick={() => setMenuOpen(p => !p)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
+                    <button onClick={() => setMenuOpen(p => !p)} aria-label="Record actions" className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
                         <HiEllipsisVertical className="h-5 w-5" />
                     </button>
                     <AnimatePresence>
@@ -1740,6 +1751,7 @@ const BorrowLendItemCard: React.FC<{
                                                 onClick={() => onDeletePayment(item.id, idx, isBorrowing)} 
                                                 className="text-red-400 hover:text-red-500 p-1.5 rounded hover:bg-red-500/10 transition-colors"
                                                 title="Delete this payment record"
+                                                aria-label="Delete this payment record"
                                             >
                                                 <HiTrash className="h-4 w-4" />
                                             </button>
@@ -1799,13 +1811,18 @@ const BorrowLendView: React.FC<{
                 toast.error(t('finance.modal.fillFieldsError'));
                 return;
             }
+            const parsedAmount = parseFloat(form.amount);
+            if (isNaN(parsedAmount) || parsedAmount <= 0) {
+                toast.error(t('finance.modal.fillFieldsError'));
+                return;
+            }
     
             if (selectedItem) {
                 if (modal === 'repayment') {
-                    addRepayment(selectedItem.id, { amount: parseFloat(form.amount), date: new Date(form.date).toISOString() });
+                    addRepayment(selectedItem.id, { amount: parsedAmount, date: new Date(form.date).toISOString() });
                     toast.success(t('finance.modal.repaymentLogged'));
                 } else { // modal === 'return'
-                    addReturn(selectedItem.id, { amount: parseFloat(form.amount), date: new Date(form.date).toISOString() });
+                    addReturn(selectedItem.id, { amount: parsedAmount, date: new Date(form.date).toISOString() });
                     toast.success(t('finance.modal.returnLogged'));
                 }
             }
@@ -1818,9 +1835,14 @@ const BorrowLendView: React.FC<{
             toast.error(t('finance.modal.fillFieldsError'));
             return;
         }
+        const parsedAmount = parseFloat(form.amount);
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            toast.error(t('finance.modal.fillFieldsError'));
+            return;
+        }
     
         const commonData = {
-            amount: parseFloat(form.amount),
+            amount: parsedAmount,
             notes: form.notes,
         };
     
@@ -1874,7 +1896,7 @@ const BorrowLendView: React.FC<{
             <Card>
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">{t('finance.borrowLend.youOwe')}</h3>
-                    <button onClick={() => openModal('borrowing')} className="p-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"><HiPlus className="h-4 w-4"/></button>
+                    <button onClick={() => openModal('borrowing')} aria-label="Add borrowing record" className="p-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"><HiPlus className="h-4 w-4"/></button>
                 </div>
                 {borrowings.filter(b => b.status === 'outstanding').length > 0 ? (
                     <div className="space-y-3">
@@ -1899,7 +1921,7 @@ const BorrowLendView: React.FC<{
             <Card>
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary">{t('finance.borrowLend.owedToYou')}</h3>
-                    <button onClick={() => openModal('lending')} className="p-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"><HiPlus className="h-4 w-4"/></button>
+                    <button onClick={() => openModal('lending')} aria-label="Add lending record" className="p-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"><HiPlus className="h-4 w-4"/></button>
                 </div>
                 {lendings.filter(l => l.status === 'outstanding').length > 0 ? (
                     <div className="space-y-3">
@@ -2134,7 +2156,7 @@ const SavingsGoalCard: React.FC<{
                 <div className="flex justify-between items-start">
                     <h3 className="text-base sm:text-lg font-bold text-light-text-primary dark:text-text-primary pr-8">{goal.title}</h3>
                     <div className="relative" ref={menuRef}>
-                        <button onClick={() => setMenuOpen(prev => !prev)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
+                        <button onClick={() => setMenuOpen(prev => !prev)} aria-label="Goal actions" className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-zinc-700 text-light-text-secondary dark:text-text-secondary">
                             <HiEllipsisVertical className="h-5 w-5" />
                         </button>
                         <AnimatePresence>
